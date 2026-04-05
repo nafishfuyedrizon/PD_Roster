@@ -120,7 +120,7 @@ export default function AdminPage() {
   const { data: shiftConfigs = [] } = useQuery<ShiftConfig[]>({
     queryKey: ["admin", "shift-configs"],
     queryFn: fetchShiftConfigs,
-    staleTime: 1000 * 60 * 5,
+    refetchInterval: 30_000,
   });
 
   const { data: adjData, isLoading: adjLoading } = useQuery({
@@ -131,6 +131,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     const id = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "shift-configs"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
     }, 30_000);
     return () => clearInterval(id);

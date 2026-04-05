@@ -64,7 +64,7 @@ function useShiftConfigs() {
   return useQuery<ShiftConfig[]>({
     queryKey: ["shift-configs"],
     queryFn: () => fetch("/api/ems/shift-configs").then((r) => r.json()),
-    staleTime: 1000 * 60 * 5,
+    refetchInterval: 30_000,
   });
 }
 
@@ -413,6 +413,7 @@ export default function PdDutyHourPage() {
       qcMain.invalidateQueries({ queryKey: ["/api/ems/stats"] });
       qcMain.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
       qcMain.invalidateQueries({ queryKey: ["officer-duty"] });
+      qcMain.invalidateQueries({ queryKey: ["shift-configs"] });
     }, 30_000);
     return () => clearInterval(id);
   }, [qcMain]);
