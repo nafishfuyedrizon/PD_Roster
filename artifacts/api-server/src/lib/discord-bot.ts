@@ -5,7 +5,7 @@ import {
   emsDutyLogsTable,
   officersTable,
 } from "@workspace/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, or } from "drizzle-orm";
 import { logger } from "./logger";
 
 const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID!;
@@ -109,7 +109,12 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
   const officer = await db
     .select()
     .from(officersTable)
-    .where(eq(officersTable.rockstarLicenseId, licenseId))
+    .where(
+      or(
+        eq(officersTable.rockstarLicenseId, licenseId),
+        eq(officersTable.rockstarLicenseId, `license:${licenseId}`)
+      )
+    )
     .limit(1)
     .then((r) => r[0] ?? null);
 
