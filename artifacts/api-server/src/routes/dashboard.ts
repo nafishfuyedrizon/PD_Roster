@@ -209,7 +209,12 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   }
   const rankDistribution = Object.entries(rankMap)
     .map(([rank, count]) => ({ rank, count }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => {
+      const ra = RANK_ORDER[a.rank.toUpperCase()] ?? 99;
+      const rb = RANK_ORDER[b.rank.toUpperCase()] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return b.count - a.count;
+    });
 
   // ── Status overview ────────────────────────────────────────────────────────
   const statusGroups: Record<string, { count: number; weekSecs: number }> = {};
