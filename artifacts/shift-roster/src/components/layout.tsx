@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity } from "lucide-react";
+import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings } from "lucide-react";
 
 const DEPARTMENTS = [
   { label: "SASP", value: "SASP" },
@@ -148,6 +148,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <Activity className="w-4 h-4 text-green-400" />
               Command Dashboard
+            </div>
+          </Link>
+
+          {/* Admin Panel */}
+          <Link href="/admin" data-testid="nav-admin">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/admin"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              }`}
+            >
+              <Settings className="w-4 h-4 text-teal-400" />
+              Admin Panel
             </div>
           </Link>
         </nav>
