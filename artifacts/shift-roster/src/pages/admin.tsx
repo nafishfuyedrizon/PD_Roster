@@ -209,7 +209,7 @@ export default function AdminPage() {
           <Settings className="w-6 h-6 text-teal-400" />
           Admin Panel
         </h1>
-        <p className="text-sm text-muted-foreground">Manage system configuration and Discord channel integrations.</p>
+        <p className="text-sm text-muted-foreground">Add or remove duty hours for officers by month.</p>
       </div>
 
       {/* Duty Hour Adjustments Section */}

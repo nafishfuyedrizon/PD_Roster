@@ -178,7 +178,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     }`}
                   >
                     <Hash className="w-3.5 h-3.5 shrink-0 text-teal-400" />
-                    Discord Channels
+                    Duty Add/Remove
                   </div>
                 </Link>
                 <Link href="/admin/duty-logs" data-testid="nav-admin-duty-logs">
