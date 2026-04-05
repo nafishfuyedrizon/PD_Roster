@@ -412,6 +412,26 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
           )} />
         </div>
 
+        {/* Rockstar License */}
+        <FormField control={form.control} name="rockstarLicenseId" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs">Rockstar License ID</FormLabel>
+            <FormControl>
+              <div className="flex items-center rounded-md border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+                <span className="px-2 py-2 text-xs font-mono text-muted-foreground bg-muted border-r border-input select-none whitespace-nowrap">
+                  license:
+                </span>
+                <input
+                  className="flex-1 px-2 py-2 text-xs font-mono bg-transparent outline-none placeholder:text-muted-foreground/50"
+                  placeholder="09804dc3c0d77eaa..."
+                  value={(field.value ?? "").replace(/^license:/, "")}
+                  onChange={(e) => field.onChange(e.target.value ? `license:${e.target.value}` : "")}
+                />
+              </div>
+            </FormControl>
+          </FormItem>
+        )} />
+
         <div className="flex justify-end gap-2 pt-2 sticky bottom-0 bg-background pb-1">
           <Button type="submit" disabled={isSubmitting} data-testid="button-submit-officer">
             {isSubmitting ? "Saving..." : "Save Officer"}
