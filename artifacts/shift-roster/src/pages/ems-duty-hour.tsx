@@ -409,10 +409,10 @@ export default function PdDutyHourPage() {
     const lines = [...breakdown]
       .map((p) => {
         const wk = p.weeks.find((w) => w.weekPeriod === selectedWeekPeriod);
-        return { name: p.name, secs: hmsToSecs(wk?.dutyHours) };
+        return { displayName: p.discordUsername ?? p.name, secs: hmsToSecs(wk?.dutyHours) };
       })
       .sort((a, b) => b.secs - a.secs)
-      .map(({ name, secs }) => `@${name} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
+      .map(({ displayName, secs }) => `@${displayName} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
       .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
       setWeekCopied(true);
@@ -429,10 +429,10 @@ export default function PdDutyHourPage() {
           const wk = p.weeks.find((w) => w.weekPeriod === wp);
           return acc + hmsToSecs(wk?.dutyHours);
         }, 0);
-        return { name: p.name, secs };
+        return { displayName: p.discordUsername ?? p.name, secs };
       })
       .sort((a, b) => b.secs - a.secs)
-      .map(({ name, secs }) => `@${name} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
+      .map(({ displayName, secs }) => `@${displayName} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
       .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
       setMonthCopied(true);

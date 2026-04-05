@@ -12,6 +12,7 @@ export interface EmsPersonnelWeekly {
   name: string;
   status: string;
   rank: string;
+  discordUsername?: string | null;
   weeks: EmsPersonnelWeeklyWeeksItem[];
   totalHours: string;
 }
