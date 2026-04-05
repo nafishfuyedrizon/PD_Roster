@@ -218,7 +218,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
               <FormLabel className="text-xs">Rank *</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl><SelectTrigger data-testid="input-rank"><SelectValue /></SelectTrigger></FormControl>
-                <SelectContent>
+                <SelectContent className="max-h-[260px] overflow-y-auto">
                   {["CHIEF","ASSISTANT CHIEF","SHERIFF","COLONEL","SENIOR DEPUTY CHIEF","UNDERSHERIFF","ASSISTANT COLONEL","DEPUTY CHIEF","ASSISTANT SHERIFF","DEPUTY COLONEL","CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL","SENIOR TROOPER","SENIOR DEPUTY","SENIOR STATE TROOPER","TROOPER FIRST CLASS","DEPUTY FIRST CLASS","STATE TROOPER FIRST CLASS","TROOPER","DEPUTY","STATE TROOPER","PROBATIONARY OFFICER","CADET","TRAINEE"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                 </SelectContent>
               </Select>
