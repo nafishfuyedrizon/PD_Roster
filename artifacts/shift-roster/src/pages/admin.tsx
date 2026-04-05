@@ -158,6 +158,10 @@ export default function AdminPage() {
     },
     onSuccess: (_data, { officer, sign }) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ems/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setAdjInputs((prev) => ({ ...prev, [officer.cs]: "" }));
       setAdjNotes((prev) => ({ ...prev, [officer.cs]: "" }));
       toast({ title: sign === 1 ? "Hours added" : "Hours removed", description: `Updated ${officer.name}` });
@@ -173,6 +177,10 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ems/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({ title: "Adjustment removed" });
     },
   });
