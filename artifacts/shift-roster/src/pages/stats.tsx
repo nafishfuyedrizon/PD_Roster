@@ -257,31 +257,42 @@ export default function StatsPage() {
 
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="font-mono text-sm uppercase tracking-wider">Top Performers (Duty Hours)</CardTitle>
+              <CardTitle className="font-mono text-sm uppercase tracking-wider flex items-center justify-between">
+                <span>Top Performers (Duty Hours)</span>
+                <span className="text-muted-foreground font-normal text-xs">{stats.topDutyHours.length} officers</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {stats.topDutyHours.length === 0 ? (
-                  <p className="text-sm text-muted-foreground font-mono">No duty hours recorded.</p>
-                ) : (
-                  stats.topDutyHours.map((officer, i) => (
+              {stats.topDutyHours.length === 0 ? (
+                <p className="text-sm text-muted-foreground font-mono">No duty hours recorded.</p>
+              ) : (
+                <div className="h-[480px] overflow-y-auto space-y-2 pr-1">
+                  {stats.topDutyHours.map((officer, i) => (
                     <div key={officer.id} className="flex items-center justify-between p-3 rounded bg-secondary/30 border border-border" data-testid={`stat-top-${i}`}>
                       <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                          i === 0 ? "bg-yellow-500/20 text-yellow-400" :
+                          i === 1 ? "bg-slate-400/20 text-slate-300" :
+                          i === 2 ? "bg-orange-600/20 text-orange-400" :
+                          "bg-primary/10 text-primary/70"
+                        }`}>
                           {i + 1}
                         </div>
                         <div>
-                          <div className="font-semibold">{officer.name}</div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {officer.name}
+                            <span className="text-xs font-mono text-muted-foreground">{officer.callSign}</span>
+                          </div>
                           <div className="text-xs text-muted-foreground font-mono">{officer.department} • {officer.rank}</div>
                         </div>
                       </div>
-                      <div className="font-mono font-bold text-primary text-lg">
+                      <div className="font-mono font-bold text-primary text-lg shrink-0">
                         {officer.dutyHours}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

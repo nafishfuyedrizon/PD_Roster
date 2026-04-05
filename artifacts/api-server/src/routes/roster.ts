@@ -139,7 +139,6 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
 
   const topDutyHours = Array.from(byCs.entries())
     .sort(([, a], [, b]) => b.totalMins - a.totalMins)
-    .slice(0, 10)
     .map(([callSign, e]) => {
       const h = Math.floor(e.totalMins / 60);
       const m = e.totalMins % 60;
