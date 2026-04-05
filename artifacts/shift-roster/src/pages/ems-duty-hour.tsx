@@ -146,7 +146,7 @@ function HoursCell({ hours }: { hours: string | null | undefined }) {
   const status = getWeekStatus(hours);
   const colorCls =
     status === "inactive" ? "text-red-400" :
-    status === "semi"     ? "text-yellow-400" :
+    status === "semi"     ? "text-orange-400" :
     "text-foreground";
   return (
     <span className={`font-mono text-xs tabular-nums ${colorCls}`}>
