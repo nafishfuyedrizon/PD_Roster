@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetEmsStats,
@@ -47,6 +47,29 @@ function HoursCell({ hours }: { hours: string | null | undefined }) {
       {hours}
     </span>
   );
+}
+
+// Parse "MM/DD-MM/DD" → month name of END date (e.g. "04/05" → "APR")
+const MONTH_NAMES = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+function weekEndMonth(wp: string): string {
+  const parts = wp.split("-");
+  const endPart = parts.length === 2 ? parts[1] : parts[0];
+  const mNum = parseInt((endPart ?? "").split("/")[0] ?? "0");
+  return MONTH_NAMES[mNum - 1] ?? "";
+}
+
+function hmsToSecs(hms: string | null | undefined): number {
+  if (!hms) return 0;
+  const [h, m, s] = hms.split(":").map(Number);
+  return (h ?? 0) * 3600 + (m ?? 0) * 60 + (s ?? 0);
+}
+
+function secsToHms(total: number): string {
+  if (total <= 0) return "00:00:00";
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
 function TopPerformerRow({
@@ -105,6 +128,20 @@ export default function PdDutyHourPage() {
   });
 
   const weekPeriods = stats?.weekPeriods ?? [];
+
+  // Derive distinct months (in display order) and which weeks belong to each month
+  const { months, monthWeeks } = useMemo(() => {
+    const seen = new Set<string>();
+    const monthList: string[] = [];
+    const mwMap: Record<string, string[]> = {};
+    for (const wp of weekPeriods) {
+      const m = weekEndMonth(wp);
+      if (!seen.has(m)) { seen.add(m); monthList.push(m); }
+      if (!mwMap[m]) mwMap[m] = [];
+      mwMap[m].push(wp);
+    }
+    return { months: monthList, monthWeeks: mwMap };
+  }, [weekPeriods]);
 
   return (
     <Layout>
@@ -287,8 +324,16 @@ export default function PdDutyHourPage() {
                     {wp}
                   </TableHead>
                 ))}
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-primary">
-                  5-Wk Total
+                {months.map((m) => (
+                  <TableHead
+                    key={`month-${m}`}
+                    className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-orange-400 border-l border-border/60"
+                  >
+                    {m} TOTAL
+                  </TableHead>
+                ))}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-primary border-l border-border/60">
+                  5-WK TOTAL
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -304,12 +349,24 @@ export default function PdDutyHourPage() {
               ) : breakdown.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={(weekPeriods.length || 5) + 5} className="text-center py-12 text-muted-foreground">
-                    No EMS duty data found.
+                    No PD duty data found.
                   </TableCell>
                 </TableRow>
               ) : (
                 breakdown.map((person) => {
                   const isInactive = person.status === "Inactive" || person.status === "LOA";
+                  // Build weekPeriod→hours map for this person
+                  const weekHoursMap: Record<string, string | null> = {};
+                  for (const w of person.weeks) weekHoursMap[w.weekPeriod] = w.dutyHours;
+                  // Compute monthly totals
+                  const monthTotals: Record<string, string> = {};
+                  for (const mo of months) {
+                    const secs = (monthWeeks[mo] ?? []).reduce(
+                      (acc, wp) => acc + hmsToSecs(weekHoursMap[wp]),
+                      0
+                    );
+                    monthTotals[mo] = secsToHms(secs);
+                  }
                   return (
                     <TableRow
                       key={person.csNumber}
@@ -337,12 +394,17 @@ export default function PdDutyHourPage() {
                       <TableCell className="text-sm text-muted-foreground">
                         {person.rank}
                       </TableCell>
-                      {person.weeks.map((w) => (
-                        <TableCell key={w.weekPeriod} className="text-center">
-                          <HoursCell hours={w.dutyHours} />
+                      {weekPeriods.map((wp) => (
+                        <TableCell key={wp} className="text-center">
+                          <HoursCell hours={weekHoursMap[wp]} />
                         </TableCell>
                       ))}
-                      <TableCell className="text-center">
+                      {months.map((mo) => (
+                        <TableCell key={`mt-${mo}`} className="text-center border-l border-border/40">
+                          <HoursCell hours={monthTotals[mo]} />
+                        </TableCell>
+                      ))}
+                      <TableCell className="text-center border-l border-border/40">
                         <span className="font-mono text-sm font-bold text-primary tabular-nums">
                           {person.totalHours}
                         </span>
