@@ -141,9 +141,8 @@ export default function StatsPage() {
                   <SelectSeparator />
                   <SelectGroup>
                     <SelectLabel className="text-xs text-muted-foreground uppercase tracking-wider px-2">{yg.year}</SelectLabel>
-                    <SelectItem value={`year:${yg.year}`}>{yg.year} — All</SelectItem>
                     {yg.months.map((mo) => (
-                      <SelectItem key={mo.value} value={mo.value} className="pl-6">{mo.label}</SelectItem>
+                      <SelectItem key={mo.value} value={mo.value}>{mo.label}</SelectItem>
                     ))}
                   </SelectGroup>
                 </React.Fragment>
