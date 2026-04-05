@@ -108,52 +108,59 @@ export default function DashboardPage() {
   return (
     <Layout>
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono uppercase">
-            Command Dashboard
-          </h1>
-          <p className="text-xs text-muted-foreground font-mono mt-0.5">Real-time Operational Statistics</p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <Countdown intervalMs={15000} onTick={refetch} />
-          <button onClick={() => refetch()} className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
-          <LiveClock />
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground font-mono uppercase">
+          Command Dashboard
+        </h1>
+        <p className="text-xs text-muted-foreground font-mono mt-0.5">Real-time Operational Statistics</p>
       </div>
 
       {/* Live On Duty */}
       <div className="bg-card border border-green-500/30 rounded-lg overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-green-500/20 flex items-center gap-3">
+        {/* Panel header */}
+        <div className="px-4 py-2.5 flex items-center gap-2.5">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-          <span className="text-xs font-mono font-bold uppercase tracking-widest text-green-400">Live on Duty</span>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-green-400">
+            {"{>"} Live on Duty
+          </span>
           {!isLoading && (
-            <span className="ml-auto text-xs font-mono bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded">
+            <span className="text-[10px] font-mono bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-sm">
               {data?.liveOnDuty.length ?? 0} On Duty
             </span>
           )}
+          <div className="ml-auto flex items-center gap-2">
+            <Countdown intervalMs={15000} onTick={refetch} />
+            <button onClick={() => refetch()} className="text-muted-foreground hover:text-green-400 transition-colors">
+              <RefreshCw className="w-3 h-3" />
+            </button>
+            <LiveClock />
+          </div>
         </div>
-        <div className="p-3">
+
+        <div className="border-t border-green-500/20 p-3">
           {isLoading ? (
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="w-44 h-20 shrink-0 rounded-md" />)}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-[82px] rounded-md" />)}
             </div>
           ) : data?.liveOnDuty.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground text-xs font-mono">No officers currently on duty</div>
           ) : (
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {data?.liveOnDuty.map((o) => (
-                <div key={o.licenseId} className="flex flex-col gap-1 bg-green-500/5 border border-green-500/20 rounded-md px-3 py-2.5 min-w-[160px]">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-green-400">{o.csNumber ?? "—"}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <div
+                  key={o.licenseId}
+                  className="flex flex-col gap-1 bg-[#0a1f14] border border-green-900/60 hover:border-green-500/40 rounded-md px-3 py-2.5 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[11px] font-bold text-green-400">
+                      {o.csNumber ? `[${o.csNumber}]` : "—"}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
                   </div>
-                  <div className="font-semibold text-sm text-foreground leading-tight">{o.name}</div>
-                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{o.rank}</div>
-                  <div className="flex items-center gap-1 text-xs text-green-300 mt-0.5">
-                    <Clock className="w-3 h-3 shrink-0" />
+                  <div className="font-semibold text-sm text-white leading-snug truncate">{o.name}</div>
+                  <div className="text-[10px] text-green-700 capitalize truncate">{o.rank}</div>
+                  <div className="flex items-center gap-1 text-[11px] text-green-400 mt-0.5">
+                    <Clock className="w-3 h-3 shrink-0 opacity-70" />
                     <LiveTimer onSince={o.onSince} />
                   </div>
                 </div>
