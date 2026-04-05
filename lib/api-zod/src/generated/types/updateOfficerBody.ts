@@ -7,11 +7,31 @@
  */
 
 export interface UpdateOfficerBody {
-  name?: string;
-  discordId?: string;
-  rank?: string;
+  callSign?: string;
+  citizenId?: string | null;
+  name?: string | null;
+  phoneNumber?: string | null;
   department?: string;
+  rank?: string;
+  division?: string | null;
   status?: string;
+  timezone?: string | null;
+  dateOfJoining?: string | null;
+  lastPromotion?: string | null;
+  pilot?: boolean | null;
+  mdt?: boolean | null;
+  seu?: boolean | null;
+  smg?: boolean | null;
+  rifle?: boolean | null;
+  shotgun?: boolean | null;
+  rifleTierII?: boolean | null;
+  ftp?: boolean | null;
+  strikesMajor?: string | null;
+  strikesMinor?: string | null;
+  discordUsername?: string | null;
+  discordUid?: string | null;
+  discordId?: string;
+  rockstarLicenseId?: string | null;
   dutyHours?: string | null;
   completionStatus?: string | null;
   appointedFto?: string | null;

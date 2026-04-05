@@ -335,16 +335,76 @@ components:
       properties:
         id:
           type: integer
+        callSign:
+          type: string
+        citizenId:
+          type: string
+          nullable: true
         name:
           type: string
-        discordId:
+          nullable: true
+        phoneNumber:
+          type: string
+          nullable: true
+        department:
           type: string
         rank:
           type: string
-        department:
+        division:
           type: string
+          nullable: true
         status:
           type: string
+        timezone:
+          type: string
+          nullable: true
+        dateOfJoining:
+          type: string
+          nullable: true
+        lastPromotion:
+          type: string
+          nullable: true
+        pilot:
+          type: boolean
+          nullable: true
+        mdt:
+          type: boolean
+          nullable: true
+        seu:
+          type: boolean
+          nullable: true
+        smg:
+          type: boolean
+          nullable: true
+        rifle:
+          type: boolean
+          nullable: true
+        shotgun:
+          type: boolean
+          nullable: true
+        rifleTierII:
+          type: boolean
+          nullable: true
+        ftp:
+          type: boolean
+          nullable: true
+        strikesMajor:
+          type: string
+          nullable: true
+        strikesMinor:
+          type: string
+          nullable: true
+        discordUsername:
+          type: string
+          nullable: true
+        discordUid:
+          type: string
+          nullable: true
+        discordId:
+          type: string
+        rockstarLicenseId:
+          type: string
+          nullable: true
         dutyHours:
           type: string
           nullable: true
@@ -361,27 +421,87 @@ components:
           format: date-time
       required:
         - id
-        - name
-        - discordId
-        - rank
+        - callSign
         - department
+        - rank
         - status
+        - discordId
         - weekPeriod
         - createdAt
 
     CreateOfficerBody:
       type: object
       properties:
+        callSign:
+          type: string
+        citizenId:
+          type: string
+          nullable: true
         name:
           type: string
-        discordId:
+          nullable: true
+        phoneNumber:
+          type: string
+          nullable: true
+        department:
           type: string
         rank:
           type: string
-        department:
+        division:
           type: string
+          nullable: true
         status:
           type: string
+        timezone:
+          type: string
+          nullable: true
+        dateOfJoining:
+          type: string
+          nullable: true
+        lastPromotion:
+          type: string
+          nullable: true
+        pilot:
+          type: boolean
+          nullable: true
+        mdt:
+          type: boolean
+          nullable: true
+        seu:
+          type: boolean
+          nullable: true
+        smg:
+          type: boolean
+          nullable: true
+        rifle:
+          type: boolean
+          nullable: true
+        shotgun:
+          type: boolean
+          nullable: true
+        rifleTierII:
+          type: boolean
+          nullable: true
+        ftp:
+          type: boolean
+          nullable: true
+        strikesMajor:
+          type: string
+          nullable: true
+        strikesMinor:
+          type: string
+          nullable: true
+        discordUsername:
+          type: string
+          nullable: true
+        discordUid:
+          type: string
+          nullable: true
+        discordId:
+          type: string
+        rockstarLicenseId:
+          type: string
+          nullable: true
         dutyHours:
           type: string
           nullable: true
@@ -394,26 +514,86 @@ components:
         weekPeriod:
           type: string
       required:
-        - name
-        - discordId
-        - rank
+        - callSign
         - department
+        - rank
         - status
+        - discordId
         - weekPeriod
 
     UpdateOfficerBody:
       type: object
       properties:
+        callSign:
+          type: string
+        citizenId:
+          type: string
+          nullable: true
         name:
           type: string
-        discordId:
+          nullable: true
+        phoneNumber:
+          type: string
+          nullable: true
+        department:
           type: string
         rank:
           type: string
-        department:
+        division:
           type: string
+          nullable: true
         status:
           type: string
+        timezone:
+          type: string
+          nullable: true
+        dateOfJoining:
+          type: string
+          nullable: true
+        lastPromotion:
+          type: string
+          nullable: true
+        pilot:
+          type: boolean
+          nullable: true
+        mdt:
+          type: boolean
+          nullable: true
+        seu:
+          type: boolean
+          nullable: true
+        smg:
+          type: boolean
+          nullable: true
+        rifle:
+          type: boolean
+          nullable: true
+        shotgun:
+          type: boolean
+          nullable: true
+        rifleTierII:
+          type: boolean
+          nullable: true
+        ftp:
+          type: boolean
+          nullable: true
+        strikesMajor:
+          type: string
+          nullable: true
+        strikesMinor:
+          type: string
+          nullable: true
+        discordUsername:
+          type: string
+          nullable: true
+        discordUid:
+          type: string
+          nullable: true
+        discordId:
+          type: string
+        rockstarLicenseId:
+          type: string
+          nullable: true
         dutyHours:
           type: string
           nullable: true

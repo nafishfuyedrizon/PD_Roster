@@ -38,7 +38,7 @@ router.get("/roster", async (req, res): Promise<void> => {
     .select()
     .from(officersTable)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(officersTable.rank, officersTable.name);
+    .orderBy(officersTable.rank, officersTable.callSign);
 
   res.json(ListOfficersResponse.parse(officers));
 });
@@ -130,7 +130,7 @@ router.get("/roster/fto-pairs", async (req, res): Promise<void> => {
     .select()
     .from(officersTable)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(officersTable.appointedFto, officersTable.name);
+    .orderBy(officersTable.appointedFto, officersTable.callSign);
 
   const ftoMap: Record<string, typeof officers> = {};
   for (const o of officers) {
