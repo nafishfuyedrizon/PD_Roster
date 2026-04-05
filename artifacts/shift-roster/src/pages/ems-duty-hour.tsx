@@ -504,8 +504,8 @@ export default function PdDutyHourPage() {
   const selectedWeekPeriod = weekPeriods[weekNav] ?? null;
   const selectedMonth = months[monthNav] ?? null;
 
-  // Table week columns: only weeks that belong to the selected month
-  const tableWeekPeriods = selectedMonth ? (monthWeeks[selectedMonth] ?? []) : weekPeriods;
+  // Table week columns: always show the 5 most recent weeks
+  const tableWeekPeriods = weekPeriods;
 
   // Top performers for selected week — computed from breakdown
   const weekTopPerformers = useMemo(() => {
@@ -838,7 +838,7 @@ export default function PdDutyHourPage() {
                   </TableHead>
                 ))}
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-primary border-l border-border/60">
-                  ALL-TIME
+                  5-WK TOTAL
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -875,6 +875,10 @@ export default function PdDutyHourPage() {
                     const weekStatuses: WeekStatus[] = wps.map((wp) => getWeekStatus(weekHoursMap[wp]));
                     monthStatuses[mo] = computeMonthlyStatus(weekStatuses);
                   }
+
+                  // 5-week total = sum of the 5 most recent week periods
+                  const fiveWkSecs = weekPeriods.reduce((acc, wp) => acc + hmsToSecs(weekHoursMap[wp]), 0);
+                  const fiveWkTotal = secsToHms(fiveWkSecs);
 
                   // STATUS column: LOA keeps its badge; others show computed current-month activity
                   const currentMonthStatus = months[0] ? monthStatuses[months[0]] : null;
@@ -914,7 +918,7 @@ export default function PdDutyHourPage() {
                         </TableCell>
                       ))}
                       <TableCell className="text-center border-l border-border/40">
-                        <span className="font-mono text-sm font-bold text-primary tabular-nums">{person.totalHours}</span>
+                        <span className="font-mono text-sm font-bold text-primary tabular-nums">{fiveWkTotal}</span>
                       </TableCell>
                     </TableRow>
                   );
