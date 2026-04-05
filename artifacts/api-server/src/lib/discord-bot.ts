@@ -77,6 +77,76 @@ function getMessageTexts(msg: Message): string[] {
   return texts;
 }
 
+// ── Shift window definitions ────────────────────────────────────────────────
+// [startHour, endHour] in UTC. endHour < startHour means it wraps midnight.
+
+const SHIFT_WINDOWS: Record<string, [number, number]> = {
+  EVENING:  [20, 22],  // 8PM – 10PM
+  NIGHT:    [22, 2],   // 10PM – 2AM
+  MIDNIGHT: [0,  6],   // 12AM – 6AM
+  FULL:     [20, 2],   // 8PM – 2AM
+};
+
+function computeShiftOverlapSecs(
+  sessionStart: Date,
+  sessionEnd: Date,
+  shiftStartHour: number,
+  shiftEndHour: number
+): number {
+  const wraps = shiftEndHour < shiftStartHour;
+  let total = 0;
+  const day = new Date(sessionStart.getTime());
+  day.setUTCHours(0, 0, 0, 0);
+  const lastDay = new Date(sessionEnd.getTime());
+  lastDay.setUTCHours(0, 0, 0, 0);
+  while (day <= lastDay) {
+    const ms = day.getTime();
+    const wStart = ms + shiftStartHour * 3_600_000;
+    const wEnd   = wraps
+      ? ms + (24 + shiftEndHour) * 3_600_000
+      : ms + shiftEndHour * 3_600_000;
+    const oStart = Math.max(sessionStart.getTime(), wStart);
+    const oEnd   = Math.min(sessionEnd.getTime(),   wEnd);
+    if (oEnd > oStart) total += (oEnd - oStart) / 1000;
+    day.setUTCDate(day.getUTCDate() + 1);
+  }
+  return Math.floor(total);
+}
+
+async function upsertDutyLog(
+  callSign: string,
+  name: string,
+  rank: string,
+  status: string,
+  weekPeriod: string,
+  shiftType: string,
+  dutyHours: string
+): Promise<void> {
+  const existing = await db
+    .select({ id: emsDutyLogsTable.id })
+    .from(emsDutyLogsTable)
+    .where(
+      and(
+        eq(emsDutyLogsTable.csNumber, callSign),
+        eq(emsDutyLogsTable.weekPeriod, weekPeriod),
+        eq(emsDutyLogsTable.shiftType, shiftType)
+      )
+    )
+    .limit(1)
+    .then((r) => r[0] ?? null);
+
+  if (existing) {
+    await db
+      .update(emsDutyLogsTable)
+      .set({ dutyHours })
+      .where(eq(emsDutyLogsTable.id, existing.id));
+  } else {
+    await db.insert(emsDutyLogsTable).values({
+      csNumber: callSign, name, rank, status, weekPeriod, dutyHours, shiftType,
+    });
+  }
+}
+
 // ── Duty-hour recompute ────────────────────────────────────────────────────
 
 async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
@@ -91,20 +161,27 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
     )
     .orderBy(asc(discordDutyEventsTable.eventAt));
 
-  let totalSecs = 0;
+  // Build on/off sessions
+  const sessions: { start: Date; end: Date }[] = [];
   let lastOn: Date | null = null;
-
   for (const ev of events) {
     if (ev.eventType === "on") {
       lastOn = new Date(ev.eventAt);
     } else if (ev.eventType === "off" && lastOn) {
-      const diff = Math.max(0, (new Date(ev.eventAt).getTime() - lastOn.getTime()) / 1000);
-      totalSecs += Math.floor(diff);
+      sessions.push({ start: lastOn, end: new Date(ev.eventAt) });
       lastOn = null;
     }
   }
 
-  const dutyHours = secsToHms(totalSecs);
+  // Compute total and per-shift seconds
+  let totalSecs = 0;
+  const shiftSecs: Record<string, number> = { EVENING: 0, NIGHT: 0, MIDNIGHT: 0, FULL: 0 };
+  for (const { start, end } of sessions) {
+    totalSecs += Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+    for (const [st, [sh, eh]] of Object.entries(SHIFT_WINDOWS)) {
+      shiftSecs[st]! += computeShiftOverlapSecs(start, end, sh, eh);
+    }
+  }
 
   const officer = await db
     .select()
@@ -120,36 +197,17 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
 
   if (!officer) return;
 
-  const existing = await db
-    .select()
-    .from(emsDutyLogsTable)
-    .where(
-      and(
-        eq(emsDutyLogsTable.csNumber, officer.callSign),
-        eq(emsDutyLogsTable.weekPeriod, weekPeriod)
-      )
-    )
-    .limit(1)
-    .then((r) => r[0] ?? null);
+  const cs   = officer.callSign;
+  const name = officer.name ?? officer.callSign;
+  const rank = officer.rank ?? "Unknown";
+  const status = officer.status;
 
-  if (existing) {
-    await db
-      .update(emsDutyLogsTable)
-      .set({ dutyHours })
-      .where(eq(emsDutyLogsTable.id, existing.id));
-  } else {
-    await db.insert(emsDutyLogsTable).values({
-      csNumber: officer.callSign,
-      name: officer.name ?? officer.callSign,
-      rank: officer.rank,
-      status: officer.status,
-      weekPeriod,
-      dutyHours,
-      shiftType: "ALL",
-    });
+  await upsertDutyLog(cs, name, rank, status, weekPeriod, "ALL", secsToHms(totalSecs));
+  for (const st of Object.keys(SHIFT_WINDOWS)) {
+    await upsertDutyLog(cs, name, rank, status, weekPeriod, st, secsToHms(shiftSecs[st]!));
   }
 
-  logger.info({ licenseId, weekPeriod, dutyHours }, "Updated duty hours");
+  logger.info({ licenseId, weekPeriod, totalSecs }, "Updated duty hours");
 }
 
 // ── Message processor ──────────────────────────────────────────────────────

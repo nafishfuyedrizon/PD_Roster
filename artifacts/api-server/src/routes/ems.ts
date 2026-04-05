@@ -43,14 +43,14 @@ router.get("/ems/duty-logs", async (req, res): Promise<void> => {
   }
 
   const { weekPeriod, shiftType } = parsed.data;
-  const conditions = [];
+  const resolvedShift = shiftType && shiftType !== "ALL" ? shiftType : "ALL";
+  const conditions = [eq(emsDutyLogsTable.shiftType, resolvedShift)];
   if (weekPeriod) conditions.push(eq(emsDutyLogsTable.weekPeriod, weekPeriod));
-  if (shiftType && shiftType !== "ALL") conditions.push(eq(emsDutyLogsTable.shiftType, shiftType));
 
   const logs = await db
     .select()
     .from(emsDutyLogsTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(emsDutyLogsTable.csNumber, emsDutyLogsTable.weekPeriod);
 
   res.json(ListEmsDutyLogsResponse.parse(logs));
@@ -75,35 +75,30 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
   }
 
   const { weekPeriod, shiftType } = parsed.data;
+  const resolvedShift = shiftType && shiftType !== "ALL" ? shiftType : "ALL";
+  const shiftCond = eq(emsDutyLogsTable.shiftType, resolvedShift);
 
   // Get all weeks to determine current week and monthly window
   const allWeeks = await db
     .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
     .from(emsDutyLogsTable)
+    .where(shiftCond)
     .orderBy(desc(emsDutyLogsTable.weekPeriod));
 
   const weekPeriods = allWeeks.map((w) => w.weekPeriod);
   const latestWeek = weekPeriod ?? weekPeriods[0] ?? "";
 
-  const shiftCond = shiftType && shiftType !== "ALL"
-    ? [eq(emsDutyLogsTable.shiftType, shiftType)]
-    : [];
-
   // All logs (for monthly stats)
   const allLogs = await db
     .select()
     .from(emsDutyLogsTable)
-    .where(shiftCond.length > 0 ? and(...shiftCond) : undefined);
+    .where(shiftCond);
 
   // This week's logs
   const weekLogs = await db
     .select()
     .from(emsDutyLogsTable)
-    .where(
-      shiftCond.length > 0
-        ? and(eq(emsDutyLogsTable.weekPeriod, latestWeek), ...shiftCond)
-        : eq(emsDutyLogsTable.weekPeriod, latestWeek)
-    );
+    .where(and(eq(emsDutyLogsTable.weekPeriod, latestWeek), shiftCond));
 
   // Fetch ALL PD officers as the authority for names/ranks
   const allPdOfficersForStats = await db
@@ -166,14 +161,13 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
   }
 
   const { shiftType } = parsed.data;
-  const shiftCond = shiftType && shiftType !== "ALL"
-    ? [eq(emsDutyLogsTable.shiftType, shiftType)]
-    : [];
+  const resolvedShift = shiftType && shiftType !== "ALL" ? shiftType : "ALL";
+  const shiftCond = eq(emsDutyLogsTable.shiftType, resolvedShift);
 
   const logs = await db
     .select()
     .from(emsDutyLogsTable)
-    .where(shiftCond.length > 0 ? and(...shiftCond) : undefined)
+    .where(shiftCond)
     .orderBy(emsDutyLogsTable.weekPeriod);
 
   // Get distinct week periods sorted
