@@ -82,7 +82,7 @@ function sortByRank(officers: Officer[]): Officer[] {
 }
 
 const DEPT_LABELS: Record<string, string> = {
-  SASP: "SASP (Full)",
+  SASP: "SASP",
   BCSO: "BCSO",
   SAHP: "SAHP",
   IA: "IA",

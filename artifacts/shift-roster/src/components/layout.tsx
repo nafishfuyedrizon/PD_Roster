@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Ambulance } from "lucide-react";
 
 const DEPARTMENTS = [
-  { label: "SASP (Full)", value: "SASP" },
+  { label: "SASP", value: "SASP" },
   { label: "BCSO", value: "BCSO" },
   { label: "SAHP", value: "SAHP" },
   { label: "IA", value: "IA" },
