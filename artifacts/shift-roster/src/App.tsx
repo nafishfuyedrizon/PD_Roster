@@ -11,6 +11,7 @@ import FtoPairsPage from "@/pages/fto-pairs";
 import PdDutyHourPage from "@/pages/ems-duty-hour";
 import ManagementPage from "@/pages/management";
 import FtpRosterPage from "@/pages/ftp-roster";
+import DashboardPage from "@/pages/dashboard";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/stats" component={StatsPage} />
       <Route path="/fto-pairs" component={FtoPairsPage} />
       <Route path="/pd-duty-hour" component={PdDutyHourPage} />
+      <Route path="/dashboard" component={DashboardPage} />
       <Route path="/ems-duty-hour">{() => <RedirectTo to="/pd-duty-hour" />}</Route>
       <Route component={NotFound} />
     </Switch>
