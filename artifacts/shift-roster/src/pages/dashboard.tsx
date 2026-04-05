@@ -290,7 +290,6 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-2">
               {data?.statusOverview
-                .sort((a, b) => b.count - a.count)
                 .map(({ status, count, weekHours }) => {
                   const s = statusStyle(status);
                   const [h] = weekHours.split(":");

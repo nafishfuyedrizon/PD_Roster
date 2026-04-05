@@ -216,23 +216,75 @@ router.get("/dashboard", async (req, res): Promise<void> => {
       return b.count - a.count;
     });
 
-  // ── Status overview ────────────────────────────────────────────────────────
-  const statusGroups: Record<string, { count: number; weekSecs: number }> = {};
+  // ── Status overview (activity-based: Active / Semi-Active / Inactive / LOA) ─
+  type WeekStatus = "active" | "semi" | "inactive";
+
+  function getWeekStatus(secs: number): WeekStatus {
+    if (secs >= 36000) return "active";  // ≥10h
+    if (secs >= 18000) return "semi";    // ≥5h
+    return "inactive";
+  }
+
+  function computeMonthlyStatus(statuses: WeekStatus[]): "Active" | "Semi-Active" | "Inactive" {
+    if (statuses.length === 0) return "Inactive";
+    const active   = statuses.filter((s) => s === "active").length;
+    const semi     = statuses.filter((s) => s === "semi").length;
+    const inactive = statuses.filter((s) => s === "inactive").length;
+    if (semi >= 3) return "Inactive";
+    if (semi === 2) return "Semi-Active";
+    if (active > semi + inactive) return "Active";
+    if (inactive > active) return "Inactive";
+    if (semi > active) return "Semi-Active";
+    return "Active";
+  }
+
+  // Determine weeks that belong to the current calendar month (by week-end date)
+  const currentMonthNum = now.getUTCMonth() + 1;
+  const allWeekPeriods = [...new Set(allLogs.map((l) => l.weekPeriod))];
+  const currentMonthWeeks = allWeekPeriods.filter((wp) => {
+    const endPart = wp.split("-")[1] ?? wp;
+    const mNum = parseInt((endPart ?? "").split("/")[0] ?? "0");
+    return mNum === currentMonthNum;
+  });
+
+  // Index logs by [csNumber][weekPeriod] → seconds
+  const logsByCsWeek: Record<string, Record<string, number>> = {};
+  for (const l of allLogs) {
+    if (!logsByCsWeek[l.csNumber]) logsByCsWeek[l.csNumber] = {};
+    logsByCsWeek[l.csNumber]![l.weekPeriod] =
+      (logsByCsWeek[l.csNumber]![l.weekPeriod] ?? 0) + parseHms(l.dutyHours);
+  }
+
+  const ORDER = ["Active", "Semi-Active", "Inactive", "LOA"] as const;
+  const activityGroups: Record<string, { count: number; weekSecs: number }> = {
+    "Active":      { count: 0, weekSecs: 0 },
+    "Semi-Active": { count: 0, weekSecs: 0 },
+    "Inactive":    { count: 0, weekSecs: 0 },
+    "LOA":         { count: 0, weekSecs: 0 },
+  };
+
   for (const o of officers) {
-    const s = o.status || "Unknown";
-    if (!statusGroups[s]) statusGroups[s] = { count: 0, weekSecs: 0 };
-    statusGroups[s]!.count++;
+    const cs = o.callSign ?? "";
+    const thisWeekSecs2 = (logsByCsWeek[cs] ?? {})[currentWeek] ?? 0;
+
+    if (o.status === "LOA") {
+      activityGroups["LOA"]!.count++;
+      activityGroups["LOA"]!.weekSecs += thisWeekSecs2;
+      continue;
+    }
+
+    const weekStatuses: WeekStatus[] = currentMonthWeeks.map((wp) =>
+      getWeekStatus((logsByCsWeek[cs] ?? {})[wp] ?? 0)
+    );
+    const actStatus = computeMonthlyStatus(weekStatuses);
+    activityGroups[actStatus]!.count++;
+    activityGroups[actStatus]!.weekSecs += thisWeekSecs2;
   }
-  for (const l of weekLogs) {
-    const o = officers.find((off) => off.callSign === l.csNumber);
-    const s = o?.status ?? "Unknown";
-    if (!statusGroups[s]) statusGroups[s] = { count: 0, weekSecs: 0 };
-    statusGroups[s]!.weekSecs += parseHms(l.dutyHours);
-  }
-  const statusOverview = Object.entries(statusGroups).map(([status, { count, weekSecs }]) => ({
+
+  const statusOverview = ORDER.map((status) => ({
     status,
-    count,
-    weekHours: secsToHms(weekSecs),
+    count: activityGroups[status]!.count,
+    weekHours: secsToHms(activityGroups[status]!.weekSecs),
   }));
 
   res.json({
