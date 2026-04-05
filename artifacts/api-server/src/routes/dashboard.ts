@@ -18,8 +18,11 @@ function parseHms(h: string | null | undefined): number {
   return (p[0] ?? 0) * 3600 + (p[1] ?? 0) * 60 + (p[2] ?? 0);
 }
 
+// Bangladesh Standard Time = UTC+6
+const BST_OFFSET_MS = 6 * 60 * 60 * 1000;
+
 function getWeekPeriod(date: Date): string {
-  const d = new Date(date);
+  const d = new Date(date.getTime() + BST_OFFSET_MS);
   const day = d.getUTCDay();
   const diff = day === 0 ? -6 : 1 - day;
   const mon = new Date(d);

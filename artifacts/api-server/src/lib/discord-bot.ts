@@ -14,8 +14,11 @@ const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+// Bangladesh Standard Time = UTC+6
+const BST_OFFSET_MS = 6 * 60 * 60 * 1000;
+
 function getWeekPeriod(date: Date): string {
-  const d = new Date(date);
+  const d = new Date(date.getTime() + BST_OFFSET_MS);
   const day = d.getUTCDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
   const monday = new Date(d);

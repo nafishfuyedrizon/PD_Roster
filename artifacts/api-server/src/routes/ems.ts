@@ -35,17 +35,20 @@ function secondsToHms(secs: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-// Returns the current Mon–Sun week period string e.g. "04/06-04/12"
+// Bangladesh Standard Time = UTC+6
+const BST_OFFSET_MS = 6 * 60 * 60 * 1000;
+
+// Returns the current Mon–Sun week period in BST e.g. "04/06-04/12"
 function getCurrentWeekPeriod(): string {
-  const now = new Date();
-  const day = now.getUTCDay(); // 0=Sun
+  const d = new Date(Date.now() + BST_OFFSET_MS);
+  const day = d.getUTCDay(); // 0=Sun
   const diff = day === 0 ? -6 : 1 - day;
-  const mon = new Date(now);
-  mon.setUTCDate(now.getUTCDate() + diff);
+  const mon = new Date(d);
+  mon.setUTCDate(d.getUTCDate() + diff);
   const sun = new Date(mon);
   sun.setUTCDate(mon.getUTCDate() + 6);
-  const fmt = (d: Date) =>
-    `${String(d.getUTCMonth() + 1).padStart(2, "0")}/${String(d.getUTCDate()).padStart(2, "0")}`;
+  const fmt = (dt: Date) =>
+    `${String(dt.getUTCMonth() + 1).padStart(2, "0")}/${String(dt.getUTCDate()).padStart(2, "0")}`;
   return `${fmt(mon)}-${fmt(sun)}`;
 }
 
