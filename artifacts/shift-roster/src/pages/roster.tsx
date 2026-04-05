@@ -77,6 +77,9 @@ function sortByRank(officers: Officer[]): Officer[] {
   return [...officers].sort((a, b) => {
     const rankDiff = getRankOrder(a.rank) - getRankOrder(b.rank);
     if (rankDiff !== 0) return rankDiff;
+    // Group same rank names together before sorting by name
+    const rankNameDiff = a.rank.localeCompare(b.rank);
+    if (rankNameDiff !== 0) return rankNameDiff;
     return (a.name ?? "").localeCompare(b.name ?? "");
   });
 }
@@ -329,7 +332,32 @@ export default function RosterPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((o) => (
+                (() => {
+                  // Group by rank (list is already rank-sorted)
+                  const groups: { rank: string; members: typeof filtered }[] = [];
+                  for (const o of filtered) {
+                    const last = groups[groups.length - 1];
+                    if (last && last.rank === o.rank) {
+                      last.members.push(o);
+                    } else {
+                      groups.push({ rank: o.rank, members: [o] });
+                    }
+                  }
+                  return groups.flatMap(({ rank, members }) => [
+                    <TableRow key={`group-${rank}`} className="bg-secondary/30 hover:bg-secondary/30 border-t border-border">
+                      <TableCell
+                        colSpan={22}
+                        className="sticky left-0 py-1.5 px-3"
+                      >
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-purple-400">
+                          {rank}
+                        </span>
+                        <span className="ml-2 text-[10px] font-mono text-muted-foreground/60">
+                          ({members.length} {members.length === 1 ? "member" : "members"})
+                        </span>
+                      </TableCell>
+                    </TableRow>,
+                    ...members.map((o) => (
                   <TableRow
                     key={o.id}
                     className="hover:bg-secondary/20 transition-colors text-xs"
@@ -417,8 +445,10 @@ export default function RosterPage() {
                         </Button>
                       </div>
                     </TableCell>
-                  </TableRow>
-                ))
+                    </TableRow>
+                    )) // close members.map
+                  ]); // close flatMap array + callback
+                })() // close IIFE
               )}
             </TableBody>
           </Table>
