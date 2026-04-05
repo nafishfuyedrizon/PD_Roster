@@ -486,21 +486,26 @@ export default function PdDutyHourPage() {
 
   const weekPeriods = (stats?.weekPeriods ?? []).slice(0, 5);
 
+  // Build months/monthWeeks from ALL available week periods, not just the top 5
+  const allStatWeekPeriods = stats?.weekPeriods ?? [];
   const { months, monthWeeks } = useMemo(() => {
     const seen = new Set<string>();
     const monthList: string[] = [];
     const mwMap: Record<string, string[]> = {};
-    for (const wp of weekPeriods) {
+    for (const wp of allStatWeekPeriods) {
       const m = weekEndMonth(wp);
       if (!seen.has(m)) { seen.add(m); monthList.push(m); }
       if (!mwMap[m]) mwMap[m] = [];
       mwMap[m].push(wp);
     }
     return { months: monthList.slice(0, 2), monthWeeks: mwMap };
-  }, [weekPeriods]);
+  }, [allStatWeekPeriods]);
 
   const selectedWeekPeriod = weekPeriods[weekNav] ?? null;
   const selectedMonth = months[monthNav] ?? null;
+
+  // Table week columns: only weeks that belong to the selected month
+  const tableWeekPeriods = selectedMonth ? (monthWeeks[selectedMonth] ?? []) : weekPeriods;
 
   // Top performers for selected week — computed from breakdown
   const weekTopPerformers = useMemo(() => {
@@ -822,7 +827,7 @@ export default function PdDutyHourPage() {
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-card z-20 min-w-[160px] text-purple-400">Rank</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[240px] bg-card z-20 min-w-[140px]">Name</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[380px] bg-card z-20 min-w-[90px] border-r border-border">Status</TableHead>
-                {weekPeriods.map((wp) => (
+                {tableWeekPeriods.map((wp) => (
                   <TableHead key={wp} className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[100px]">
                     {wp}
                   </TableHead>
@@ -833,7 +838,7 @@ export default function PdDutyHourPage() {
                   </TableHead>
                 ))}
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-primary border-l border-border/60">
-                  5-WK TOTAL
+                  ALL-TIME
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -841,14 +846,14 @@ export default function PdDutyHourPage() {
               {breakdownLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={(weekPeriods.length || 5) + 5}>
+                    <TableCell colSpan={(tableWeekPeriods.length || 1) + months.length + 5}>
                       <Skeleton className="h-8 w-full" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : filteredBreakdown.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={(weekPeriods.length || 5) + 5} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={(tableWeekPeriods.length || 1) + months.length + 5} className="text-center py-12 text-muted-foreground">
                     {search.trim() ? `No officers matching "${search}"` : "No PD duty data found."}
                   </TableCell>
                 </TableRow>
@@ -900,7 +905,7 @@ export default function PdDutyHourPage() {
                           {displayStatus}
                         </Badge>
                       </TableCell>
-                      {weekPeriods.map((wp) => (
+                      {tableWeekPeriods.map((wp) => (
                         <TableCell key={wp} className="text-center"><HoursCell hours={weekHoursMap[wp]} isLoa={dbStatus === "LOA"} /></TableCell>
                       ))}
                       {months.map((mo) => (
