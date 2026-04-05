@@ -279,28 +279,37 @@ export default function RosterPage() {
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary z-20 min-w-[80px]">Sign</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-secondary z-20 min-w-[55px]">CID</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[135px] bg-secondary z-20 min-w-[160px] border-r border-border">Name</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[100px]">Phone</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[60px]">Dept</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[190px]">Rank</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[160px]">Division</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[90px]">Status</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[45px]">TZ</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[95px]">Joined</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[95px]">Promo</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px]">Pilot</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px]">MDT</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px]">SEU</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px]">SMG</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[45px]">Rifle</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px]">SG</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[45px]">R-II</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px]">FTP</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[70px]">Strikes</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[140px]">Discord</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-right min-w-[80px]">Actions</TableHead>
+                {/* Identity — sticky */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary z-20 min-w-[80px] text-yellow-400">Sign</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-secondary z-20 min-w-[55px] text-blue-400">CID</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[135px] bg-secondary z-20 min-w-[160px] border-r border-border text-white">Name</TableHead>
+                {/* Contact */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[100px] text-slate-400">Phone</TableHead>
+                {/* Role */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[60px] text-orange-400">Dept</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[190px] text-purple-400">Rank</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[160px] text-indigo-400">Division</TableHead>
+                {/* Status */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[90px] text-green-400">Status</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[45px] text-cyan-400">TZ</TableHead>
+                {/* Dates */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[95px] text-amber-400">Joined</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[95px] text-amber-300">Promo</TableHead>
+                {/* Qualifications */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px] text-sky-400">Pilot</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px] text-sky-400">MDT</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px] text-sky-400">SEU</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px] text-sky-400">SMG</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[45px] text-sky-400">Rifle</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px] text-sky-400">SG</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[45px] text-sky-400">R-II</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[40px] text-sky-400">FTP</TableHead>
+                {/* Discipline */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[70px] text-red-400">Strikes</TableHead>
+                {/* Social */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[140px] text-violet-400">Discord</TableHead>
+                {/* Actions */}
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-right min-w-[80px] text-slate-400">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
