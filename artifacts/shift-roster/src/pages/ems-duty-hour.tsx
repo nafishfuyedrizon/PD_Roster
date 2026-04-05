@@ -96,22 +96,20 @@ function secsToHms(total: number): string {
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
-type WeekStatus = "active" | "semi" | "inactive" | "zero";
+type WeekStatus = "active" | "semi" | "inactive";
 
 function getWeekStatus(hms: string | null | undefined): WeekStatus {
   const secs = hmsToSecs(hms);
-  if (secs === 0) return "zero";
   if (secs >= 36000) return "active";
   if (secs >= 18000) return "semi";
   return "inactive";
 }
 
 function computeMonthlyStatus(statuses: WeekStatus[]): "Active" | "Semi-Active" | "Inactive" | null {
-  const nonZero = statuses.filter((s) => s !== "zero");
-  if (nonZero.length === 0) return null;
-  const active   = nonZero.filter((s) => s === "active").length;
-  const semi     = nonZero.filter((s) => s === "semi").length;
-  const inactive = nonZero.filter((s) => s === "inactive").length;
+  if (statuses.length === 0) return null;
+  const active   = statuses.filter((s) => s === "active").length;
+  const semi     = statuses.filter((s) => s === "semi").length;
+  const inactive = statuses.filter((s) => s === "inactive").length;
   if (semi >= 3) return "Inactive";
   if (semi === 2) return "Semi-Active";
   if (active > semi + inactive) return "Active";
@@ -547,7 +545,7 @@ export default function PdDutyHourPage() {
                     const wps = monthWeeks[mo] ?? [];
                     const secs = wps.reduce((acc, wp) => acc + hmsToSecs(weekHoursMap[wp]), 0);
                     monthTotals[mo] = secsToHms(secs);
-                    const weekStatuses = wps.map((wp) => getWeekStatus(weekHoursMap[wp]));
+                    const weekStatuses: WeekStatus[] = wps.map((wp) => getWeekStatus(weekHoursMap[wp]));
                     monthStatuses[mo] = computeMonthlyStatus(weekStatuses);
                   }
 
