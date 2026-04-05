@@ -279,9 +279,9 @@ export default function RosterPage() {
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary z-20 min-w-[80px] border-r border-border">Sign</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[55px]">CID</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[160px]">Name</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary z-20 min-w-[80px]">Sign</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-secondary z-20 min-w-[55px]">CID</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[135px] bg-secondary z-20 min-w-[160px] border-r border-border">Name</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[100px]">Phone</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[60px]">Dept</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[190px]">Rank</TableHead>
@@ -326,11 +326,13 @@ export default function RosterPage() {
                     className="hover:bg-secondary/20 transition-colors text-xs"
                     data-testid={`row-officer-${o.id}`}
                   >
-                    <TableCell className="sticky left-0 bg-card font-mono font-bold text-primary z-20 py-2 border-r border-border">
+                    <TableCell className="sticky left-0 bg-card font-mono font-bold text-primary z-20 py-2">
                       {o.callSign}
                     </TableCell>
-                    <TableCell className="font-mono text-muted-foreground py-2">{o.citizenId ?? "—"}</TableCell>
-                    <TableCell className="font-semibold text-foreground py-2 whitespace-nowrap">
+                    <TableCell className="sticky left-[80px] bg-card font-mono text-muted-foreground z-20 py-2">
+                      {o.citizenId ?? "—"}
+                    </TableCell>
+                    <TableCell className="sticky left-[135px] bg-card font-semibold text-foreground z-20 py-2 whitespace-nowrap border-r border-border">
                       {o.name ?? <span className="text-muted-foreground/40 italic">—</span>}
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground py-2">{o.phoneNumber ?? "—"}</TableCell>
