@@ -98,20 +98,19 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   // Top performers come from ems_duty_logs, filtered by period when specified
   // weekPeriod format: "MM/DD-MM/DD" — end-month at chars 7-8 (SQL 1-indexed)
   // dutyYear column stores the 4-digit year for cross-year correctness
-  const logConditions = weekPeriod
-    ? [eq(emsDutyLogsTable.weekPeriod, weekPeriod)]
-    : month && year
-      ? [sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}`, eq(emsDutyLogsTable.dutyYear, year)]
-      : month
-        ? [sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}`]
-        : year
-          ? [eq(emsDutyLogsTable.dutyYear, year)]
-          : [];
+  // Always filter by shift_type = 'ALL' to avoid double-counting per-shift rows
+  const logConditions: ReturnType<typeof eq>[] = [eq(emsDutyLogsTable.shiftType, "ALL")];
+  if (weekPeriod) {
+    logConditions.push(eq(emsDutyLogsTable.weekPeriod, weekPeriod));
+  } else {
+    if (month) logConditions.push(sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}` as ReturnType<typeof eq>);
+    if (year)  logConditions.push(eq(emsDutyLogsTable.dutyYear, year));
+  }
 
   const dutyLogs = await db
     .select()
     .from(emsDutyLogsTable)
-    .where(logConditions.length > 0 ? and(...logConditions) : undefined);
+    .where(and(...logConditions));
 
   // Group by csNumber, sum duty hours, use latest name/rank per officer
   const byCs = new Map<string, { name: string; rank: string; department: string; id: number; totalMins: number }>();
