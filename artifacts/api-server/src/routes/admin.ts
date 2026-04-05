@@ -284,8 +284,10 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
 
   const resolvedShift = shiftType && shiftType !== "ALL" ? shiftType : "ALL";
 
-  const logConds = [eq(emsDutyLogsTable.dutyYear, year)];
-  if (resolvedShift !== "ALL") logConds.push(eq(emsDutyLogsTable.shiftType, resolvedShift));
+  const logConds = [
+    eq(emsDutyLogsTable.dutyYear, year),
+    eq(emsDutyLogsTable.shiftType, resolvedShift),
+  ];
 
   const adjConds = [
     eq(dutyAdjustmentsTable.dutyMonth, month.toUpperCase()),
