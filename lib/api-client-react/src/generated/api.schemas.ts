@@ -72,6 +72,68 @@ export interface FtoPairing {
   trainees: Officer[];
 }
 
+export interface EmsDutyLog {
+  id: number;
+  csNumber: string;
+  name: string;
+  status: string;
+  rank: string;
+  weekPeriod: string;
+  dutyHours?: string | null;
+  shiftType: string;
+  createdAt: string;
+}
+
+export interface CreateEmsDutyLogBody {
+  csNumber: string;
+  name: string;
+  status: string;
+  rank: string;
+  weekPeriod: string;
+  dutyHours?: string | null;
+  shiftType: string;
+}
+
+export interface UpdateEmsDutyLogBody {
+  csNumber?: string;
+  name?: string;
+  status?: string;
+  rank?: string;
+  weekPeriod?: string;
+  dutyHours?: string | null;
+  shiftType?: string;
+}
+
+export type EmsPersonnelWeeklyWeeksItem = {
+  weekPeriod: string;
+  dutyHours?: string | null;
+};
+
+export interface EmsPersonnelWeekly {
+  csNumber: string;
+  name: string;
+  status: string;
+  rank: string;
+  weeks: EmsPersonnelWeeklyWeeksItem[];
+  totalHours: string;
+}
+
+export interface EmsTopPerformer {
+  csNumber: string;
+  name: string;
+  rank: string;
+  totalHours: string;
+  position: number;
+}
+
+export interface EmsStats {
+  activePersonnel: number;
+  monthlyTotal: string;
+  weeklyTopPerformers: EmsTopPerformer[];
+  monthlyTopPerformers: EmsTopPerformer[];
+  weekPeriods: string[];
+}
+
 export type ListOfficersParams = {
   department?: string;
   status?: string;
@@ -84,4 +146,18 @@ export type GetRosterStatsParams = {
 
 export type GetFtoPairsParams = {
   weekPeriod?: string;
+};
+
+export type ListEmsDutyLogsParams = {
+  weekPeriod?: string;
+  shiftType?: string;
+};
+
+export type GetEmsStatsParams = {
+  weekPeriod?: string;
+  shiftType?: string;
+};
+
+export type GetEmsBreakdownParams = {
+  shiftType?: string;
 };

@@ -17,14 +17,22 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  CreateEmsDutyLogBody,
   CreateOfficerBody,
+  EmsDutyLog,
+  EmsPersonnelWeekly,
+  EmsStats,
   FtoPairing,
+  GetEmsBreakdownParams,
+  GetEmsStatsParams,
   GetFtoPairsParams,
   GetRosterStatsParams,
   HealthStatus,
+  ListEmsDutyLogsParams,
   ListOfficersParams,
   Officer,
   RosterStats,
+  UpdateEmsDutyLogBody,
   UpdateOfficerBody,
 } from "./api.schemas";
 
@@ -812,4 +820,618 @@ export const useDeleteOfficer = <
   TContext
 > => {
   return useMutation(getDeleteOfficerMutationOptions(options));
+};
+
+/**
+ * @summary List EMS duty logs
+ */
+export const getListEmsDutyLogsUrl = (params?: ListEmsDutyLogsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/ems/duty-logs?${stringifiedParams}`
+    : `/api/ems/duty-logs`;
+};
+
+export const listEmsDutyLogs = async (
+  params?: ListEmsDutyLogsParams,
+  options?: RequestInit,
+): Promise<EmsDutyLog[]> => {
+  return customFetch<EmsDutyLog[]>(getListEmsDutyLogsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListEmsDutyLogsQueryKey = (params?: ListEmsDutyLogsParams) => {
+  return [`/api/ems/duty-logs`, ...(params ? [params] : [])] as const;
+};
+
+export const getListEmsDutyLogsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listEmsDutyLogs>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListEmsDutyLogsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listEmsDutyLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListEmsDutyLogsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmsDutyLogs>>> = ({
+    signal,
+  }) => listEmsDutyLogs(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listEmsDutyLogs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListEmsDutyLogsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listEmsDutyLogs>>
+>;
+export type ListEmsDutyLogsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List EMS duty logs
+ */
+
+export function useListEmsDutyLogs<
+  TData = Awaited<ReturnType<typeof listEmsDutyLogs>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListEmsDutyLogsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listEmsDutyLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListEmsDutyLogsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create EMS duty log
+ */
+export const getCreateEmsDutyLogUrl = () => {
+  return `/api/ems/duty-logs`;
+};
+
+export const createEmsDutyLog = async (
+  createEmsDutyLogBody: CreateEmsDutyLogBody,
+  options?: RequestInit,
+): Promise<EmsDutyLog> => {
+  return customFetch<EmsDutyLog>(getCreateEmsDutyLogUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createEmsDutyLogBody),
+  });
+};
+
+export const getCreateEmsDutyLogMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createEmsDutyLog>>,
+    TError,
+    { data: BodyType<CreateEmsDutyLogBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createEmsDutyLog>>,
+  TError,
+  { data: BodyType<CreateEmsDutyLogBody> },
+  TContext
+> => {
+  const mutationKey = ["createEmsDutyLog"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createEmsDutyLog>>,
+    { data: BodyType<CreateEmsDutyLogBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createEmsDutyLog(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateEmsDutyLogMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createEmsDutyLog>>
+>;
+export type CreateEmsDutyLogMutationBody = BodyType<CreateEmsDutyLogBody>;
+export type CreateEmsDutyLogMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create EMS duty log
+ */
+export const useCreateEmsDutyLog = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createEmsDutyLog>>,
+    TError,
+    { data: BodyType<CreateEmsDutyLogBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createEmsDutyLog>>,
+  TError,
+  { data: BodyType<CreateEmsDutyLogBody> },
+  TContext
+> => {
+  return useMutation(getCreateEmsDutyLogMutationOptions(options));
+};
+
+/**
+ * @summary Get EMS statistics
+ */
+export const getGetEmsStatsUrl = (params?: GetEmsStatsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/ems/stats?${stringifiedParams}`
+    : `/api/ems/stats`;
+};
+
+export const getEmsStats = async (
+  params?: GetEmsStatsParams,
+  options?: RequestInit,
+): Promise<EmsStats> => {
+  return customFetch<EmsStats>(getGetEmsStatsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEmsStatsQueryKey = (params?: GetEmsStatsParams) => {
+  return [`/api/ems/stats`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetEmsStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEmsStats>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetEmsStatsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEmsStats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEmsStatsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmsStats>>> = ({
+    signal,
+  }) => getEmsStats(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEmsStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEmsStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEmsStats>>
+>;
+export type GetEmsStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get EMS statistics
+ */
+
+export function useGetEmsStats<
+  TData = Awaited<ReturnType<typeof getEmsStats>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetEmsStatsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEmsStats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEmsStatsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get weekly duty hour breakdown per personnel
+ */
+export const getGetEmsBreakdownUrl = (params?: GetEmsBreakdownParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/ems/breakdown?${stringifiedParams}`
+    : `/api/ems/breakdown`;
+};
+
+export const getEmsBreakdown = async (
+  params?: GetEmsBreakdownParams,
+  options?: RequestInit,
+): Promise<EmsPersonnelWeekly[]> => {
+  return customFetch<EmsPersonnelWeekly[]>(getGetEmsBreakdownUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEmsBreakdownQueryKey = (params?: GetEmsBreakdownParams) => {
+  return [`/api/ems/breakdown`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetEmsBreakdownQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEmsBreakdown>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetEmsBreakdownParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEmsBreakdown>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEmsBreakdownQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmsBreakdown>>> = ({
+    signal,
+  }) => getEmsBreakdown(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEmsBreakdown>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEmsBreakdownQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEmsBreakdown>>
+>;
+export type GetEmsBreakdownQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get weekly duty hour breakdown per personnel
+ */
+
+export function useGetEmsBreakdown<
+  TData = Awaited<ReturnType<typeof getEmsBreakdown>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetEmsBreakdownParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEmsBreakdown>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEmsBreakdownQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all EMS week periods
+ */
+export const getListEmsWeekPeriodsUrl = () => {
+  return `/api/ems/week-periods`;
+};
+
+export const listEmsWeekPeriods = async (
+  options?: RequestInit,
+): Promise<string[]> => {
+  return customFetch<string[]>(getListEmsWeekPeriodsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListEmsWeekPeriodsQueryKey = () => {
+  return [`/api/ems/week-periods`] as const;
+};
+
+export const getListEmsWeekPeriodsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listEmsWeekPeriods>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listEmsWeekPeriods>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListEmsWeekPeriodsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listEmsWeekPeriods>>
+  > = ({ signal }) => listEmsWeekPeriods({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listEmsWeekPeriods>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListEmsWeekPeriodsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listEmsWeekPeriods>>
+>;
+export type ListEmsWeekPeriodsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all EMS week periods
+ */
+
+export function useListEmsWeekPeriods<
+  TData = Awaited<ReturnType<typeof listEmsWeekPeriods>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listEmsWeekPeriods>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListEmsWeekPeriodsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update EMS duty log
+ */
+export const getUpdateEmsDutyLogUrl = (id: number) => {
+  return `/api/ems/duty-logs/${id}`;
+};
+
+export const updateEmsDutyLog = async (
+  id: number,
+  updateEmsDutyLogBody: UpdateEmsDutyLogBody,
+  options?: RequestInit,
+): Promise<EmsDutyLog> => {
+  return customFetch<EmsDutyLog>(getUpdateEmsDutyLogUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateEmsDutyLogBody),
+  });
+};
+
+export const getUpdateEmsDutyLogMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateEmsDutyLog>>,
+    TError,
+    { id: number; data: BodyType<UpdateEmsDutyLogBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateEmsDutyLog>>,
+  TError,
+  { id: number; data: BodyType<UpdateEmsDutyLogBody> },
+  TContext
+> => {
+  const mutationKey = ["updateEmsDutyLog"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateEmsDutyLog>>,
+    { id: number; data: BodyType<UpdateEmsDutyLogBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateEmsDutyLog(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateEmsDutyLogMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateEmsDutyLog>>
+>;
+export type UpdateEmsDutyLogMutationBody = BodyType<UpdateEmsDutyLogBody>;
+export type UpdateEmsDutyLogMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update EMS duty log
+ */
+export const useUpdateEmsDutyLog = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateEmsDutyLog>>,
+    TError,
+    { id: number; data: BodyType<UpdateEmsDutyLogBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateEmsDutyLog>>,
+  TError,
+  { id: number; data: BodyType<UpdateEmsDutyLogBody> },
+  TContext
+> => {
+  return useMutation(getUpdateEmsDutyLogMutationOptions(options));
+};
+
+/**
+ * @summary Delete EMS duty log
+ */
+export const getDeleteEmsDutyLogUrl = (id: number) => {
+  return `/api/ems/duty-logs/${id}`;
+};
+
+export const deleteEmsDutyLog = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteEmsDutyLogUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteEmsDutyLogMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteEmsDutyLog>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteEmsDutyLog>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteEmsDutyLog"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteEmsDutyLog>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteEmsDutyLog(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteEmsDutyLogMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteEmsDutyLog>>
+>;
+
+export type DeleteEmsDutyLogMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete EMS duty log
+ */
+export const useDeleteEmsDutyLog = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteEmsDutyLog>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteEmsDutyLog>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteEmsDutyLogMutationOptions(options));
 };

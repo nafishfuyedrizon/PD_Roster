@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: roster
     description: Shift roster operations
+  - name: ems
+    description: EMS duty hour operations
 paths:
   /healthz:
     get:
@@ -182,6 +184,142 @@ paths:
         "204":
           description: Officer deleted
 
+  /ems/duty-logs:
+    get:
+      operationId: listEmsDutyLogs
+      tags: [ems]
+      summary: List EMS duty logs
+      parameters:
+        - name: weekPeriod
+          in: query
+          schema:
+            type: string
+        - name: shiftType
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of EMS duty logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmsDutyLog"
+    post:
+      operationId: createEmsDutyLog
+      tags: [ems]
+      summary: Create EMS duty log
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEmsDutyLogBody"
+      responses:
+        "201":
+          description: EMS duty log created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmsDutyLog"
+
+  /ems/stats:
+    get:
+      operationId: getEmsStats
+      tags: [ems]
+      summary: Get EMS statistics
+      parameters:
+        - name: weekPeriod
+          in: query
+          schema:
+            type: string
+        - name: shiftType
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: EMS statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmsStats"
+
+  /ems/breakdown:
+    get:
+      operationId: getEmsBreakdown
+      tags: [ems]
+      summary: Get weekly duty hour breakdown per personnel
+      parameters:
+        - name: shiftType
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Per-person weekly breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmsPersonnelWeekly"
+
+  /ems/week-periods:
+    get:
+      operationId: listEmsWeekPeriods
+      tags: [ems]
+      summary: List all EMS week periods
+      responses:
+        "200":
+          description: List of week periods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /ems/duty-logs/{id}:
+    put:
+      operationId: updateEmsDutyLog
+      tags: [ems]
+      summary: Update EMS duty log
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEmsDutyLogBody"
+      responses:
+        "200":
+          description: EMS duty log updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmsDutyLog"
+    delete:
+      operationId: deleteEmsDutyLog
+      tags: [ems]
+      summary: Delete EMS duty log
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: EMS duty log deleted
+
 components:
   schemas:
     HealthStatus:
@@ -348,3 +486,160 @@ components:
       required:
         - ftoName
         - trainees
+
+    EmsDutyLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        csNumber:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        rank:
+          type: string
+        weekPeriod:
+          type: string
+        dutyHours:
+          type: string
+          nullable: true
+        shiftType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - csNumber
+        - name
+        - status
+        - rank
+        - weekPeriod
+        - shiftType
+        - createdAt
+
+    CreateEmsDutyLogBody:
+      type: object
+      properties:
+        csNumber:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        rank:
+          type: string
+        weekPeriod:
+          type: string
+        dutyHours:
+          type: string
+          nullable: true
+        shiftType:
+          type: string
+      required:
+        - csNumber
+        - name
+        - status
+        - rank
+        - weekPeriod
+        - shiftType
+
+    UpdateEmsDutyLogBody:
+      type: object
+      properties:
+        csNumber:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        rank:
+          type: string
+        weekPeriod:
+          type: string
+        dutyHours:
+          type: string
+          nullable: true
+        shiftType:
+          type: string
+
+    EmsPersonnelWeekly:
+      type: object
+      properties:
+        csNumber:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        rank:
+          type: string
+        weeks:
+          type: array
+          items:
+            type: object
+            properties:
+              weekPeriod:
+                type: string
+              dutyHours:
+                type: string
+                nullable: true
+            required:
+              - weekPeriod
+        totalHours:
+          type: string
+      required:
+        - csNumber
+        - name
+        - status
+        - rank
+        - weeks
+        - totalHours
+
+    EmsTopPerformer:
+      type: object
+      properties:
+        csNumber:
+          type: string
+        name:
+          type: string
+        rank:
+          type: string
+        totalHours:
+          type: string
+        position:
+          type: integer
+      required:
+        - csNumber
+        - name
+        - rank
+        - totalHours
+        - position
+
+    EmsStats:
+      type: object
+      properties:
+        activePersonnel:
+          type: integer
+        monthlyTotal:
+          type: string
+        weeklyTopPerformers:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmsTopPerformer"
+        monthlyTopPerformers:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmsTopPerformer"
+        weekPeriods:
+          type: array
+          items:
+            type: string
+      required:
+        - activePersonnel
+        - monthlyTotal
+        - weeklyTopPerformers
+        - monthlyTopPerformers
+        - weekPeriods

@@ -6,14 +6,24 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./createEmsDutyLogBody";
 export * from "./createOfficerBody";
+export * from "./emsDutyLog";
+export * from "./emsPersonnelWeekly";
+export * from "./emsPersonnelWeeklyWeeksItem";
+export * from "./emsStats";
+export * from "./emsTopPerformer";
 export * from "./ftoPairing";
+export * from "./getEmsBreakdownParams";
+export * from "./getEmsStatsParams";
 export * from "./getFtoPairsParams";
 export * from "./getRosterStatsParams";
 export * from "./healthStatus";
+export * from "./listEmsDutyLogsParams";
 export * from "./listOfficersParams";
 export * from "./officer";
 export * from "./rosterStats";
 export * from "./rosterStatsDepartmentBreakdownItem";
 export * from "./rosterStatsRankBreakdownItem";
+export * from "./updateEmsDutyLogBody";
 export * from "./updateOfficerBody";

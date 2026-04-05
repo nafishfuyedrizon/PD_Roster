@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight } from "lucide-react";
+import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Ambulance } from "lucide-react";
 
 const DEPARTMENTS = [
   { label: "SASP (Full)", value: "SASP" },
@@ -120,6 +120,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <UsersRound className="w-4 h-4" />
               FTO Pairs
+            </div>
+          </Link>
+
+          {/* EMS Duty Hour */}
+          <Link href="/ems-duty-hour" data-testid="nav-ems-duty-hour">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/ems-duty-hour"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              }`}
+            >
+              <Ambulance className="w-4 h-4 text-red-400" />
+              EMS Duty Hour
             </div>
           </Link>
         </nav>

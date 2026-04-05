@@ -1,0 +1,296 @@
+																												
+	POLICE ROSTER																						INFORMATION					
+	Total Officers: 36 | ACTIVE: 32 | SEMI-ACTIVE: 0 | INACTIVE: 0 | SUSPENDED: 0 | LOA: 4																											
+	Call Sign	Citizen ID	Name	Phone Number	Department	Rank	Division	Status	Time Zone	Date of Joining (M/D/Y)	Last Promotion / Demotion (M/D/Y)	Pilot	MDT	SEU	SMG	Rifle	Shotgun	Rifle Tier II	FTP	Strikes (Major)	Strike (Minor)		Discord Username	Discord UID	Rockstar License ID	Steam Profile	Steam Hex	Steam 2 ID
+																												
+	X-100	205	Ricardo Lance	449-3900	SASP	CHIEF	High Command	LOA	BD	07/10/2024	07/10/2024	✔	✔	✔	✔	✔	✔	✔	✔	0/4	0/2		ghostfreak070	442421398913155092	license:09804dc3c0d77eaa0eeb6e195bbd5804bf5bceb9			
+	X-101	161	Devon Max	161-6969	SASP	ASSISTANT CHIEF	High Command	Active	BD	07/10/2024	01/20/2026	✔	✔	✔	✔	✔	✔	✔	✔	0/4	0/2		tanmoy9552	484620218887438347	license:8e0e5ecfc8b5262c9caef0710ab3f5e124bd7768			
+	X-102	/	/	/	BCSO	SHERIFF	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-103	/	/	/	SAHP	COLONEL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-104	/	/	/	SASP	SENIOR DEPUTY CHIEF	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-105	393	Dino Smith	154-2903	BCSO	UNDERSHERIFF	High Command	Active	BD	07/10/2024	01/21/2026	✔	✔	✔	✔	✔	✔	✔	✔	0/4	0/2		imr_08	539698723610165268	license:9804a6e7dcaf05565c0922fefc0c4e833f593670			
+	X-106	/	/	/	SAHP	ASSISTANT COLONEL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-107	/	/	/	SASP	DEPUTY CHIEF	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-108	/	/	/	BCSO	ASSISTANT SHERIFF	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-109	/	/	/	SAHP	DEPUTY COLONEL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-110	/	/	/	SASP	DEPUTY CHIEF	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-111	/	/	/	BCSO	ASSISTANT SHERIFF	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	X-112	/	/	/	SAHP	DEPUTY COLONEL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	A-115	/	/	/	SASP	CAPTAIN	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	A-116	/	/	/	SASP	CAPTAIN	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	A-117	/	/	/	SASP	CAPTAIN	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	A-118	64	Kibria Salvatore	666-9999	BCSO	CAPTAIN	Field Training Supervisor	Active	BD	12/01/2025	04/01/2026	✖	✔	✖	✔	✔	✔	✔	✔	0/4	0/2		kibria_gg	812733898899062785	license:2cb2cf5932640d3649c1845e29714c62de0926bb			
+	A-119	/	/	/	BCSO	CAPTAIN	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	A-120	38	Tim Bradford	763-4249 	BCSO	CAPTAIN	/	LOA	BD	12/01/2025	02/18/2026	✖	✔	✖	✔	✔	✔	✔	✖	0/4	0/2		healer2200	602830834738921485	license:1e05447d0d28903b3a9c78f11ee74512688d527b			
+	A-121	/	/	/	SAHP	CAPTAIN	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	A-122	/	/	/	SAHP	CAPTAIN	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	A-123	/	/	/	SAHP	CAPTAIN	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	LT-125	24	Antu Haque	780-1322	SASP	LIEUTENANT	Field Training Supervisor	Active	BD	12/01/2025	01/20/2026	✖	✔	✔	✔	✔	✔	✔	✔	0/4	0/2		inzamam_ul_haque	524079934109515776	license:a9af84f82e5f65197033622e01ff8024d4514858			
+	LT-126	/	/	/	SASP	LIEUTENANT	/	/	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	LT-127	/	/	/	SASP	LIEUTENANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	LT-128	/	/	/	SASP	LIEUTENANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	LT-129	/	/	/	SASP	LIEUTENANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	LT-130	/	/	/	BCSO	LIEUTENANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	LT-131	928	Logan Price	857-5689	BCSO	LIEUTENANT	/	Active	BD	01/03/2026	3/29/2026	✖	✔	✖	✔	✔	✔	✔	✖	0/4	0/2		p4bl0_5505	148735855333343232	license:7491a220e806d7d23a2eb6a66f6e1cd6dbe520fa			
+	LT-132	90	Rox Rosario	679-5257	BCSO	LIEUTENANT	Field Training Officer	Active	BD	12/01/2025	04/01/2026	✔	✔	✔	✔	✔	✔	✔	✔	0/4	0/2		roxgg007	401071603527581697	license:b525ecb1cb32361617c63fe3053cc8f8a8af77e5			
+	LT-133	/	/	/	BCSO	LIEUTENANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	LT-134	/	/	/	BCSO	LIEUTENANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	LT-135	51	Aiden O Neil	910-0283	SAHP	LIEUTENANT	Field Training Officer	Active	BD	12/01/2025	01/20/2026	✔	✔	✔	✔	✔	✔	✔	✔	0/4	0/2		sh4dow8887	401034118718160926	license:77c0793dc8906412fc3b63b129fac3dfa4638007			
+	LT-136	192	Marshall Reeves	648-0806	SAHP	LIEUTENANT	/	LOA	BD	12/01/2025	01/20/2026	✖	✔	✔	✔	✔	✔	✔	✖	0/4	0/2		anafsian	481132907495424002	license:c9742bfd0518525da484fabab72948860f326996			
+	LT-137	210	Icarus Daedlus	673-7597	SAHP	LIEUTENANT	Field Training Officer	Active	BD	12/01/2025	04/01/2026	✖	✔	✔	✔	✔	✔	✔	✔	0/4	0/2		zekesenpai	463587754471718923	license:cf1ecd7e4f5a19a08e52bc2e76afd9159ff232c8			
+	LT-138	/	/	/	SAHP	LIEUTENANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	LT-139	/	/	/	SAHP	LIEUTENANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	SF-201	95	Romeo Rodriguez	146-7979	SASP	SERGEANT FIRST CLASS	/	Active	IN	12/01/2025	2/18/2026	✖	✔	✖	✔	✔	✔	✔	✖	0/4	0/2		𝚈⊙𝕕𝕕ℎ🗡ǟ	1017134648440148019	license:517667794e14c88a4a9b0562fe1779b2e36d1115			
+	SF-202	87	Aaron Ronnie	629-3755	SASP	SERGEANT FIRST CLASS	Field Training Officer	Active	BD	12/01/2025	04/01/2026	✔	✔	✖	✔	✔	✔	✔	✔	0/4	0/2		itachi_0	665163856145809464	license:bd25ed592a9c817e2e7c26327881b0d86702ecae			
+	SF-203	/	/	/	SASP	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-204	/	/	/	SASP	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-205	/	/	/	SASP	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-206	/	/	/	BCSO	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-207	/	/	/	BCSO	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-208	41	Markel Reeves	515-6784	BCSO	SERGEANT FIRST CLASS	Field Training Officer	Active	BD	12/01/2025	03/13/2026	✖	✔	✔	✔	✔	✔	✔	✔	0/4	0/2		siam_sadaf	827491250994282506	license:8980e29d75db4b2a7edcec47dcd97d910e8da19d			
+	SF-209	/	/	/	BCSO	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-210	/	/	/	BCSO	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-211	/	/	/	SAHP	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-212	1144	George Nix	566-3724	SAHP	SERGEANT FIRST CLASS	/	Active	BD	02/03/2026	2/15/2026	✖	✔	✖	✔	✔	✔	✔	✖	0/4	0/2		mfb69	546244482128019457	license:a1ce4d51de6cc820fa35f2cf1bd16e757de1b5fd			
+	SF-213	/	/	/	SAHP	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-214	/	/	/	SAHP	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SF-215	/	/	/	SAHP	SERGEANT FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	S-221	/	/	/	SASP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-222	/	/	/	SASP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-223	/	/	/	SASP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-224	/	/	/	SASP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-225	/	/	/	SASP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-251	/	/	/	BCSO	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-252	/	/	/	BCSO	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-253	/	/	/	BCSO	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-254	/	/	/	BCSO	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-255	/	/	/	BCSO	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-271	/	/	/	SAHP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-272	/	/	/	SAHP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-273	/	/	/	SAHP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-274	/	/	/	SAHP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	S-275	/	/	/	SAHP	SERGEANT	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	CO-301	/	/	/	SASP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-302	/	/	/	SASP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-303	/	/	/	SASP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-304	/	/	/	SASP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-305	/	/	/	SASP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-351	215	Kishor Chowdhury	456-9321	BCSO	CORPORAL	/	Active	BD	12/01/2025	01/20/2026	✔	✔	✖	✔	✔	✖	✖	✖	1/4	0/2		mr.halal	624654547050168345	license:76dc329bc52b6ad95be6f1de448c6f4262fdff8c			
+	CO-352	/	/	/	BCSO	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-353	/	/	/	BCSO	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-354	/	/	/	BCSO	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-355	/	/	/	BCSO	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-371	/	/	/	SAHP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-372	/	/	/	SAHP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-373	/	/	/	SAHP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-374	/	/	/	SAHP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	CO-375	/	/	/	SAHP	CORPORAL	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	ST-401	837	Arwan Zain	888-9010	SASP	SENIOR TROOPER	/	Active	BD	12/23/2025	2/18/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		bloody_daddy_69	493029501677338644	license:2cffb9fcf206945b5aaf2c7b85bff925d993579d			
+	ST-402	606	Jayed Hassan	920-0768	SASP	SENIOR TROOPER	/	Active	BD	12/01/2025	2/18/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		little_noobiee	764201687358504961	license:f90bbfea5ca28a0b02954554f99f97c212c9bfd4			
+	ST-403	118	Vincent Lobo	459-7942	SASP	SENIOR TROOPER	/	Active	BD	12/01/2025	3/6/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		bobson347	752082538192699465	license:b7fae4a88fd16c0409f20c0410e767abf7df5772			
+	ST-404	/	/	/	SASP	SENIOR TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-405	/	/	/	SASP	SENIOR TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-406	/	/	/	SASP	SENIOR TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-407	/	/	/	SASP	SENIOR TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-408	/	/	/	SASP	SENIOR TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-409	/	/	/	SASP	SENIOR TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-410	/	/	/	SASP	SENIOR TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SD-451	218	Jennie Valentine	344-5240	BCSO	SENIOR DEPUTY	/	Active	BD	12/01/2025	01/20/2026	✖	✔	✔	✔	✖	✖	✖	✖	0/4	0/2		.meducer	535403071107497985	license:5cf1427cef676147e94604232f43e4c6d434f648			
+	SD-452	67	Kakashi Hatake	466-9973	BCSO	SENIOR DEPUTY	Field Training Officer	Active	BD	12/01/2025	2/18/2026	✖	✔	✖	✔	✖	✖	✖	✔	0/4	0/2		kakashiwashere	591328568886296675	license:25c9a2fd054c70b56e7c4af47023a2fc5ae7e581			
+	SD-453	76	Tasin Rahman	380-8544	BCSO	SENIOR DEPUTY	/	Active	BD	12/01/2025	3/6/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		_madmax_849	1019613916105551927	license:711339eea900dda3e836bd3b2af886d3bcec0ca9			
+	SD-454	/	/	/	BCSO	SENIOR DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SD-455	/	/	/	BCSO	SENIOR DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SD-456	/	/	/	BCSO	SENIOR DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SD-457	/	/	/	BCSO	SENIOR DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SD-458	/	/	/	BCSO	SENIOR DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SD-459	/	/	/	BCSO	SENIOR DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	SD-460	/	/	/	BCSO	SENIOR DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-471	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-472	855	Jason Friday	374-8177	SAHP	SENIOR STATE TROOPER	/	Active	BD	12/24/2025	02/06/2026	✖	✔	✖	✔	✖	✖	✖	✖	1/4	0/2		jawadrahmannoor	712360606044258375	license:3d4bba6c56cee35bebb0f2aa687d398df375da8b			
+	ST-473	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-474	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-475	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-476	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-477	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-478	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-479	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	ST-480	/	/	/	SAHP	SENIOR STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	TF-501	246	Soichiro Yagami	948-1292	SASP	TROOPER FIRST CLASS	/	LOA	BD	12/01/2025	02/18/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		shinigami1289	447092557147799584	license:f1186e9a4e7410359f89531de1e21b217327126a			
+	TF-502	163	Ashfaq Reeves	447-8424	SASP	TROOPER FIRST CLASS	/	Active	BD	12/08/2025	03/13/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		_faaqq_	880061779957403688	license:8a800fda364e30763a1987bfc2aeddc61c0b9c86			
+	TF-503	/	/	/	SASP	TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-504	/	/	/	SASP	TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-505	/	/	/	SASP	TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-506	/	/	/	SASP	TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-507	/	/	/	SASP	TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-508	/	/	/	SASP	TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-509	/	/	/	SASP	TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-510	/	/	/	SASP	TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-551				BCSO	DEPUTY FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-552	/	/	/	BCSO	DEPUTY FIRST CLASS	/	Vacant	/			✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-553	314	Daniel Parker	131-5793	BCSO	DEPUTY FIRST CLASS	/	Active	BD	12/01/2025	01/20/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		himura_nagi	900229282696146985	 license:364ca20180e0a0b90c5a410bd3ee877f35af425c			
+	DF-554	/	/	/	BCSO	DEPUTY FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-555	/	/	/	BCSO	DEPUTY FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-556	/	/	/	BCSO	DEPUTY FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-557	/	/	/	BCSO	DEPUTY FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-558	/	/	/	BCSO	DEPUTY FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-559	/	/	/	BCSO	DEPUTY FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	DF-560	/	/	/	BCSO	DEPUTY FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-571	56	Jerry Cruise	977-1323	SAHP	STATE TROOPER FIRST CLASS	/	Active	BD	12/01/2025	2/18/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		tabz2528	683173323911594142	license:a5d798fae52b91dc05c88b334869415c91ea7881			
+	TF-572	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-573	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-574	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-575	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-576	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-577	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-578	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-579	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TF-580	/	/	/	SAHP	STATE TROOPER FIRST CLASS	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	T-601	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-602	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-603	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-604	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-605	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-606	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-607	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-608	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-609	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-610	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-611	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-612	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-613	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-614	/	/	/	SASP	TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-651	453	James Miller	586-7453	BCSO	DEPUTY	/	Active	BD	01/14/2026	03/09/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		.kobaby	513074038936043552	license:afea0e08a03ca1659ae4c5d33c0154ad2343af25			
+	D-652	94	Jeshu Smith	460-8369	BCSO	DEPUTY	/	Active	BD	03/14/2026	03/14/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		jeshu_885	1395360292149399572	license:9812439f19456fc3fc12cb48eeb3c36e3d07116f			
+	D-653	1053	John Nolan	782-3895	BCSO	DEPUTY	/	Active	BD	01/29/2026	03/17/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		oscar_ftw	881400022393057280	license:bc0c7fbd8557a1832c95d966213f217e09e10f0e			
+	D-654	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-655	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-656	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-657	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-658	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-659	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-660	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-661	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-662	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-663	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-664	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	D-665	/	/	/	BCSO	DEPUTY	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-671	965	Nick Di Caprio	174-7434	SAHP	STATE TROOPER	/	Active	BD	01/29/2026	3/13/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		genuine.nick	749874328405016628	license:64f41398227aa42410b9843927e0fba435042354			
+	T-672	915	Bruce Willis	670-8865	SAHP	STATE TROOPER	/	Active	BD	01/29/2026	04/01/2026	✖	✔	✖	✔	✖	✖	✖	✖	0/4	0/2		tremendous_ahanaf	511979115042308116	license:26060d83660e981f4c899bf55bb37444db3ee518			
+	T-673	/	/	/	SAHP	STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-674	/	/	/	SAHP	STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-675	/	/	/	SAHP	STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-676	/	/	/	SAHP	STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-677	/	/	/	SAHP	STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-678	/	/	/	SAHP	STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-679	/	/	/	SAHP	STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	T-680	/	/	/	SAHP	STATE TROOPER	/	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	PO-681	/	/	/	PTA	Probationary Officer	Training Academy	/	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-682	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-683	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-684	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-685	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/			✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-686	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-687	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-688	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-689	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-690	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-691	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-692	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-693	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-694	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-695	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-696	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-697	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-698	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	PO-699	/	/	/	PTA	Probationary Officer	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	TA-701	204	Ryder Phantom	382-9201	PTA	CADET	Training Academy	Active	BD	01/29/2026	03/12/2026	✖	✔	✖	✖	✖	✖	✖	✖	0/4	0/2		rayhansarkershimul75	1398561840488775713	license:e4c23735c381328d0136b2b2c6be30975f0451fa			
+	TA-702	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-703	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-704	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-705	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-706	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-707	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-708	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-709	1048	Steve Scott	670-8865	PTA	CADET	Training Academy	Active	BD	01/29/2026	2/9/2026	✖	✔	✖	✖	✖	✖	✖	✖	0/4	0/2		yasinx6969	493842845120331782	license:60752ae2ce2de34d6442a857f667c05b963d4764			
+	TA-710	578	Hasanuzzaman Mashrafe	642-2332	PTA	CADET	Training Academy	Active	BD	12/08/2025	2/9/2026	✖	✔	✖	✖	✖	✖	✖	✖	0/4	0/2		mashrafe25	856792691299844117	license:26415b5d892551211c439f0822262214d1a8aaa9			
+	TA-711	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-712	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-713	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-714	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-715	1058	Torrez  Santoro 	301-7595	PTA	CADET	Training Academy	Active	BD	01/29/2026	2/18/2026	✖	✔	✖	✖	✖	✖	✖	✖	0/4	0/2		mahim_x	584041694153146371	license:7b9cf53a57779981d0b8db9665f35ec8406a4b66			
+	TA-716	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-717	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-718	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-719	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-720	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-721	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-722	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-723	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-724	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-725	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-726	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-727	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-728	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-729	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-730	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-731	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-732	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-733	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-734	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-735	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-736	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-737	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-738	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-739	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TA-740	/	/	/	PTA	CADET	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+																												
+	TO-801	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-802	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-803	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-804	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-805	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-806	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-807	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-808	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-809	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-810	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-811	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-812	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-813	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-814	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-815	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-816	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-817	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-818	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-819	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-820	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-821	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-822	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-823	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-824	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-825	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-826	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-827	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-828	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-829	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-830	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-831	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-832	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-833	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-834	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-835	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-836	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-837	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-838	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-839	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							
+	TO-840	/	/	/	PTA	TRAINEE	Training Academy	Vacant	/	/	/	✖	✖	✖	✖	✖	✖	✖	✖	✖	✖							

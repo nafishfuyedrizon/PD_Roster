@@ -188,3 +188,135 @@ export const UpdateOfficerResponse = zod.object({
 export const DeleteOfficerParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary List EMS duty logs
+ */
+export const ListEmsDutyLogsQueryParams = zod.object({
+  weekPeriod: zod.coerce.string().optional(),
+  shiftType: zod.coerce.string().optional(),
+});
+
+export const ListEmsDutyLogsResponseItem = zod.object({
+  id: zod.number(),
+  csNumber: zod.string(),
+  name: zod.string(),
+  status: zod.string(),
+  rank: zod.string(),
+  weekPeriod: zod.string(),
+  dutyHours: zod.string().nullish(),
+  shiftType: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListEmsDutyLogsResponse = zod.array(ListEmsDutyLogsResponseItem);
+
+/**
+ * @summary Create EMS duty log
+ */
+export const CreateEmsDutyLogBody = zod.object({
+  csNumber: zod.string(),
+  name: zod.string(),
+  status: zod.string(),
+  rank: zod.string(),
+  weekPeriod: zod.string(),
+  dutyHours: zod.string().nullish(),
+  shiftType: zod.string(),
+});
+
+/**
+ * @summary Get EMS statistics
+ */
+export const GetEmsStatsQueryParams = zod.object({
+  weekPeriod: zod.coerce.string().optional(),
+  shiftType: zod.coerce.string().optional(),
+});
+
+export const GetEmsStatsResponse = zod.object({
+  activePersonnel: zod.number(),
+  monthlyTotal: zod.string(),
+  weeklyTopPerformers: zod.array(
+    zod.object({
+      csNumber: zod.string(),
+      name: zod.string(),
+      rank: zod.string(),
+      totalHours: zod.string(),
+      position: zod.number(),
+    }),
+  ),
+  monthlyTopPerformers: zod.array(
+    zod.object({
+      csNumber: zod.string(),
+      name: zod.string(),
+      rank: zod.string(),
+      totalHours: zod.string(),
+      position: zod.number(),
+    }),
+  ),
+  weekPeriods: zod.array(zod.string()),
+});
+
+/**
+ * @summary Get weekly duty hour breakdown per personnel
+ */
+export const GetEmsBreakdownQueryParams = zod.object({
+  shiftType: zod.coerce.string().optional(),
+});
+
+export const GetEmsBreakdownResponseItem = zod.object({
+  csNumber: zod.string(),
+  name: zod.string(),
+  status: zod.string(),
+  rank: zod.string(),
+  weeks: zod.array(
+    zod.object({
+      weekPeriod: zod.string(),
+      dutyHours: zod.string().nullish(),
+    }),
+  ),
+  totalHours: zod.string(),
+});
+export const GetEmsBreakdownResponse = zod.array(GetEmsBreakdownResponseItem);
+
+/**
+ * @summary List all EMS week periods
+ */
+export const ListEmsWeekPeriodsResponseItem = zod.string();
+export const ListEmsWeekPeriodsResponse = zod.array(
+  ListEmsWeekPeriodsResponseItem,
+);
+
+/**
+ * @summary Update EMS duty log
+ */
+export const UpdateEmsDutyLogParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateEmsDutyLogBody = zod.object({
+  csNumber: zod.string().optional(),
+  name: zod.string().optional(),
+  status: zod.string().optional(),
+  rank: zod.string().optional(),
+  weekPeriod: zod.string().optional(),
+  dutyHours: zod.string().nullish(),
+  shiftType: zod.string().optional(),
+});
+
+export const UpdateEmsDutyLogResponse = zod.object({
+  id: zod.number(),
+  csNumber: zod.string(),
+  name: zod.string(),
+  status: zod.string(),
+  rank: zod.string(),
+  weekPeriod: zod.string(),
+  dutyHours: zod.string().nullish(),
+  shiftType: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete EMS duty log
+ */
+export const DeleteEmsDutyLogParams = zod.object({
+  id: zod.coerce.number(),
+});
