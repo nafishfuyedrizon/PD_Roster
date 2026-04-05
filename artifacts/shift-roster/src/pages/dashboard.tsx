@@ -121,8 +121,8 @@ export default function DashboardPage() {
 
       {/* Live On Duty */}
       <div
-        className="rounded-lg overflow-hidden border border-green-500/25"
-        style={{ background: "#0b1a12", boxShadow: "0 0 30px rgba(34,197,94,0.08), inset 0 1px 0 rgba(34,197,94,0.1)" }}
+        className="rounded-lg overflow-hidden border border-green-500/25 bg-card"
+        style={{ boxShadow: "0 0 30px rgba(34,197,94,0.08), inset 0 1px 0 rgba(34,197,94,0.1)" }}
       >
         {/* Panel header */}
         <div className="px-4 py-2.5 flex items-center gap-2.5 border-b border-green-900/50">
