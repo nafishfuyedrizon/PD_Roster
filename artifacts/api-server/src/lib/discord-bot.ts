@@ -214,6 +214,30 @@ async function backfillHistory(channel: TextChannel) {
   logger.info({ processed }, "History backfill complete");
 }
 
+// ── Recompute all ──────────────────────────────────────────────────────────
+
+export async function recomputeAllDutyHours(): Promise<{ pairs: number; updated: number }> {
+  const rows = await db
+    .selectDistinct({
+      licenseId: discordDutyEventsTable.licenseId,
+      weekPeriod: discordDutyEventsTable.weekPeriod,
+    })
+    .from(discordDutyEventsTable);
+
+  let updated = 0;
+  for (const { licenseId, weekPeriod } of rows) {
+    try {
+      await recomputeDutyHours(licenseId, weekPeriod);
+      updated++;
+    } catch (err) {
+      logger.error({ err, licenseId, weekPeriod }, "recompute error");
+    }
+  }
+
+  logger.info({ pairs: rows.length, updated }, "Full recompute complete");
+  return { pairs: rows.length, updated };
+}
+
 // ── Bot start ──────────────────────────────────────────────────────────────
 
 export async function startDiscordBot() {
