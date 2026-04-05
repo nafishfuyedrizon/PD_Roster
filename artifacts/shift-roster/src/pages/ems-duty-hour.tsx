@@ -74,9 +74,19 @@ const ALL_SHIFTS_TAB = { value: "ALL", label: "All Shifts", sub: "", icon: "◉"
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => {
   const ampm = h < 12 ? "AM" : "PM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
-  const label = `${h12}:00 ${ampm} (${String(h).padStart(2, "0")}:00)`;
+  const label = `${h12}:00 ${ampm} (${String(h).padStart(2, "0")}:00 UTC)`;
   return { value: h, label };
 });
+
+function shiftSub(startHour: number, endHour: number): string {
+  if (startHour === 0 && endHour === 0) return "";
+  const fmt = (h: number) => {
+    const ampm = h < 12 ? "AM" : "PM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:00 ${ampm}`;
+  };
+  return `${fmt(startHour)} – ${fmt(endHour)} UTC`;
+}
 
 function HourSelect({ value, onChange, placeholder }: { value: number | undefined; onChange: (h: number) => void; placeholder?: string }) {
   return (
@@ -111,18 +121,20 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
 
   async function save() {
     setSaving(true);
+    const autoSub = shiftSub(form.startHour ?? 0, form.endHour ?? 0);
+    const payload = { ...form, sub: autoSub };
     try {
       if (adding) {
         await fetch("/api/ems/shift-configs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
       } else if (editing) {
         await fetch(`/api/ems/shift-configs/${editing.key}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
       }
       qc.invalidateQueries({ queryKey: ["shift-configs"] });
@@ -194,10 +206,6 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
               <div className="col-span-2 space-y-1">
                 <Label className="text-xs">Display Name</Label>
                 <Input value={form.label ?? ""} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} placeholder="e.g. Morning Shift" className="text-sm" />
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label className="text-xs">Time Range Label (shown under button)</Label>
-                <Input value={form.sub ?? ""} onChange={(e) => setForm((f) => ({ ...f, sub: e.target.value }))} placeholder="e.g. 6AM – 2PM" className="font-mono text-sm" />
               </div>
               <div className="col-span-2 grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -628,7 +636,7 @@ export default function PdDutyHourPage() {
             </span>
             <span className="flex flex-col items-start">
               <span>{s.label}</span>
-              {s.sub && <span className="text-[10px] font-mono opacity-60 font-normal">{s.sub}</span>}
+              {s.startHour > 0 || s.endHour > 0 ? <span className="text-[10px] font-mono opacity-60 font-normal">{shiftSub(s.startHour, s.endHour)}</span> : null}
             </span>
           </button>
         ))}
@@ -1045,7 +1053,7 @@ export default function PdDutyHourPage() {
                                 {shiftConfigs.map((s, i) => (
                                   <div key={s.key} className="px-2 py-2 text-center">
                                     <p className={`text-[9px] font-mono uppercase tracking-wider ${SHIFT_COLORS[i % SHIFT_COLORS.length]} mb-0.5`}>{s.label}</p>
-                                    <p className="text-[9px] text-muted-foreground/60 mb-1">{s.sub}</p>
+                                    <p className="text-[9px] text-muted-foreground/60 mb-1">{shiftSub(s.startHour, s.endHour)}</p>
                                     <p className="font-mono text-xs tabular-nums text-foreground/90">{w.shifts[s.key] ?? "00:00:00"}</p>
                                   </div>
                                 ))}
