@@ -279,7 +279,7 @@ export default function RosterPage() {
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary/50 z-10 min-w-[80px]">Sign</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary z-20 min-w-[80px] border-r border-border">Sign</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[55px]">CID</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[160px]">Name</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[100px]">Phone</TableHead>
@@ -326,7 +326,7 @@ export default function RosterPage() {
                     className="hover:bg-secondary/20 transition-colors text-xs"
                     data-testid={`row-officer-${o.id}`}
                   >
-                    <TableCell className="sticky left-0 bg-card font-mono font-bold text-primary z-10 py-2">
+                    <TableCell className="sticky left-0 bg-card font-mono font-bold text-primary z-20 py-2 border-r border-border">
                       {o.callSign}
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground py-2">{o.citizenId ?? "—"}</TableCell>
