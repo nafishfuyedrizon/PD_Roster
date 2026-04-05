@@ -738,10 +738,10 @@ export default function PdDutyHourPage() {
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary/50 z-20 min-w-[80px]">CS</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-secondary/50 z-20 min-w-[160px] text-purple-400">Rank</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[240px] bg-secondary/50 z-20 min-w-[140px]">Name</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[380px] bg-secondary/50 z-20 min-w-[90px] border-r border-border">Status</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-card z-20 min-w-[80px]">CS</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-card z-20 min-w-[160px] text-purple-400">Rank</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[240px] bg-card z-20 min-w-[140px]">Name</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[380px] bg-card z-20 min-w-[90px] border-r border-border">Status</TableHead>
                 {weekPeriods.map((wp) => (
                   <TableHead key={wp} className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[100px]">
                     {wp}
