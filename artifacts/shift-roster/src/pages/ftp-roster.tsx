@@ -1,11 +1,17 @@
 import React, { useState } from "react";
-import { useListOfficers, getListOfficersQueryKey } from "@workspace/api-client-react";
+import {
+  useListOfficers,
+  useUpdateOfficer,
+  getListOfficersQueryKey,
+} from "@workspace/api-client-react";
 import type { Officer } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2, UserPlus } from "lucide-react";
 import { OfficerEditDialog } from "@/components/officer-edit-dialog";
+import { AddMemberDialog } from "@/components/add-member-dialog";
 
 const RANK_ORDER: Record<string, number> = {
   "CHIEF": 1, "ASSISTANT CHIEF": 2, "SHERIFF": 2, "COLONEL": 2,
@@ -32,21 +38,45 @@ function getFtpRole(rank: string): string {
 }
 
 export default function FtpRosterPage() {
+  const queryClient = useQueryClient();
   const { data: officers = [], isLoading } = useListOfficers(
     {},
     { query: { queryKey: getListOfficersQueryKey({}) } }
   );
+  const { mutate: updateOfficer } = useUpdateOfficer();
 
   const [editing, setEditing] = useState<Officer | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [removingId, setRemovingId] = useState<number | null>(null);
 
   const members = officers
     .filter((o) => o.ftp)
     .sort((a, b) => getRankOrder(a.rank) - getRankOrder(b.rank));
 
+  function handleRemove(id: number) {
+    setRemovingId(id);
+    updateOfficer(
+      { id, data: { ftp: false } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListOfficersQueryKey() });
+          setRemovingId(null);
+        },
+        onError: () => setRemovingId(null),
+      }
+    );
+  }
+
   return (
     <Layout>
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-6">Field Training Program</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold text-foreground">Field Training Program</h1>
+          <Button onClick={() => setAdding(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Add Member
+          </Button>
+        </div>
 
         <div className="rounded-lg overflow-hidden border border-border">
           <table className="w-full text-sm">
@@ -57,7 +87,7 @@ export default function FtpRosterPage() {
                 <th className="py-3 px-6 text-center font-semibold text-foreground/80 w-44">Rank</th>
                 <th className="py-3 px-6 text-center font-semibold text-foreground/80 w-40">Status</th>
                 <th className="py-3 px-6 text-center font-semibold text-foreground/80">Note</th>
-                <th className="py-3 px-2 text-center font-semibold text-foreground/80 w-14"></th>
+                <th className="py-3 px-2 text-center font-semibold text-foreground/80 w-20"></th>
               </tr>
             </thead>
             <tbody>
@@ -79,6 +109,7 @@ export default function FtpRosterPage() {
                 members.map((o, i) => {
                   const role = getFtpRole(o.rank);
                   const isActive = o.status === "Active";
+                  const isRemoving = removingId === o.id;
                   return (
                     <tr
                       key={o.id}
@@ -104,14 +135,25 @@ export default function FtpRosterPage() {
                         {o.completionStatus ?? ""}
                       </td>
                       <td className="py-3 px-2 text-center">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={() => setEditing(o as Officer)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={() => setEditing(o as Officer)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                            onClick={() => handleRemove(o.id)}
+                            disabled={isRemoving}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -126,6 +168,12 @@ export default function FtpRosterPage() {
           open={!!editing}
           onClose={() => setEditing(null)}
           showNoteField
+        />
+
+        <AddMemberDialog
+          open={adding}
+          onClose={() => setAdding(false)}
+          filterFlag="ftp"
         />
       </div>
     </Layout>
