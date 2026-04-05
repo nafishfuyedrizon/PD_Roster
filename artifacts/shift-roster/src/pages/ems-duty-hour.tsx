@@ -20,7 +20,6 @@ import {
 import {
   Clock,
   TrendingUp,
-  AlertTriangle,
   Users,
   Trophy,
 } from "lucide-react";
@@ -182,18 +181,6 @@ export default function PdDutyHourPage() {
         ))}
       </div>
 
-      {/* Warning bar */}
-      <div className="flex flex-wrap items-center gap-4 text-xs font-mono bg-card border border-border rounded-md px-4 py-2">
-        <div className="flex items-center gap-1.5 text-yellow-400">
-          <AlertTriangle className="w-3.5 h-3.5" />
-          <span>Week &lt; 5h (warning)</span>
-        </div>
-        <div className="w-1 h-1 rounded-full bg-border hidden sm:block" />
-        <div className="flex items-center gap-1.5 text-red-400">
-          <AlertTriangle className="w-3.5 h-3.5" />
-          <span>3+ red weeks = auto Inactive</span>
-        </div>
-      </div>
 
       {/* Top performers + stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
