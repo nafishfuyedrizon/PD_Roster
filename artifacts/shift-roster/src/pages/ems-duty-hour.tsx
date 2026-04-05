@@ -69,8 +69,8 @@ function secsToHms(total: number): string {
 }
 
 function HoursCell({ hours }: { hours: string | null | undefined }) {
-  if (!hours || hours === "00:00:00" || hours === "0") {
-    return <span className="text-muted-foreground/40 font-mono text-xs">—</span>;
+  if (!hours || hours === "0" || hours === "00:00:00") {
+    return <span className="text-muted-foreground/40 font-mono text-xs">00:00:00</span>;
   }
   const [h, m] = hours.split(":");
   const totalMins = parseInt(h ?? "0") * 60 + parseInt(m ?? "0");
