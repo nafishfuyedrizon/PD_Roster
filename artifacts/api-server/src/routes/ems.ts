@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc } from "drizzle-orm";
-import { db, emsDutyLogsTable } from "@workspace/db";
+import { eq, and, desc, inArray } from "drizzle-orm";
+import { db, emsDutyLogsTable, officersTable } from "@workspace/db";
 import {
   ListEmsDutyLogsQueryParams,
   ListEmsDutyLogsResponse,
@@ -105,31 +105,44 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
         : eq(emsDutyLogsTable.weekPeriod, latestWeek)
     );
 
-  // Active personnel = distinct names with status Active
-  const activeNames = new Set(allLogs.filter((l) => l.status === "Active").map((l) => l.csNumber));
-  const activePersonnel = activeNames.size;
+  // Fetch ALL PD officers as the authority for names/ranks
+  const allPdOfficersForStats = await db
+    .select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status })
+    .from(officersTable);
+  const pdMap: Record<string, { name: string; rank: string; status: string }> = {};
+  for (const o of allPdOfficersForStats) pdMap[o.callSign] = { name: o.name ?? o.callSign, rank: o.rank, status: o.status };
 
-  // Monthly total across all weeks
-  const monthlyTotalSecs = allLogs.reduce((acc, l) => acc + parseHms(l.dutyHours), 0);
+  // Active personnel = PD officers that are Active and have at least one duty log
+  const logCsSet = new Set(allLogs.map((l) => l.csNumber));
+  const activePersonnel = allPdOfficersForStats.filter(
+    (o) => o.status === "Active" && logCsSet.has(o.callSign)
+  ).length;
 
-  // Top performers this week
-  const weekMap: Record<string, { csNumber: string; name: string; rank: string; totalSecs: number }> = {};
-  for (const l of weekLogs) {
-    if (!weekMap[l.csNumber]) weekMap[l.csNumber] = { csNumber: l.csNumber, name: l.name, rank: l.rank, totalSecs: 0 };
-    weekMap[l.csNumber]!.totalSecs += parseHms(l.dutyHours);
+  // Monthly total across all PD officer logs
+  const pdLogSecs: Record<string, number> = {};
+  for (const l of allLogs) {
+    if (pdMap[l.csNumber]) {
+      pdLogSecs[l.csNumber] = (pdLogSecs[l.csNumber] ?? 0) + parseHms(l.dutyHours);
+    }
   }
-  const weeklyTopPerformers = Object.values(weekMap)
+  const monthlyTotalSecs = Object.values(pdLogSecs).reduce((a, b) => a + b, 0);
+
+  // Top performers this week — PD officers only
+  const weekLogSecs: Record<string, number> = {};
+  for (const l of weekLogs) {
+    if (pdMap[l.csNumber]) {
+      weekLogSecs[l.csNumber] = (weekLogSecs[l.csNumber] ?? 0) + parseHms(l.dutyHours);
+    }
+  }
+  const weeklyTopPerformers = Object.entries(weekLogSecs)
+    .map(([cs, secs]) => ({ csNumber: cs, name: pdMap[cs]!.name, rank: pdMap[cs]!.rank, totalSecs: secs }))
     .sort((a, b) => b.totalSecs - a.totalSecs)
     .slice(0, 5)
     .map((p, i) => ({ ...p, totalHours: secondsToHms(p.totalSecs), position: i + 1 }));
 
-  // Top performers monthly (all weeks combined)
-  const monthMap: Record<string, { csNumber: string; name: string; rank: string; totalSecs: number }> = {};
-  for (const l of allLogs) {
-    if (!monthMap[l.csNumber]) monthMap[l.csNumber] = { csNumber: l.csNumber, name: l.name, rank: l.rank, totalSecs: 0 };
-    monthMap[l.csNumber]!.totalSecs += parseHms(l.dutyHours);
-  }
-  const monthlyTopPerformers = Object.values(monthMap)
+  // Top performers monthly — PD officers only
+  const monthlyTopPerformers = Object.entries(pdLogSecs)
+    .map(([cs, secs]) => ({ csNumber: cs, name: pdMap[cs]!.name, rank: pdMap[cs]!.rank, totalSecs: secs }))
     .sort((a, b) => b.totalSecs - a.totalSecs)
     .slice(0, 5)
     .map((p, i) => ({ ...p, totalHours: secondsToHms(p.totalSecs), position: i + 1 }));
@@ -166,39 +179,30 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
   // Get distinct week periods sorted
   const allWeekPeriods = [...new Set(logs.map((l) => l.weekPeriod))].sort().reverse();
 
-  // Group by person
-  const personMap: Record<string, {
-    csNumber: string; name: string; status: string; rank: string;
-    weekMap: Record<string, string | null>;
-    totalSecs: number;
-  }> = {};
+  // Fetch ALL PD officers as the source of truth
+  const allPdOfficers = await db
+    .select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status })
+    .from(officersTable)
+    .orderBy(officersTable.rank, officersTable.callSign);
 
+  // Build a map of duty log data keyed by csNumber + weekPeriod
+  const logMap: Record<string, Record<string, string | null>> = {};
+  const logSecsMap: Record<string, number> = {};
   for (const l of logs) {
-    if (!personMap[l.csNumber]) {
-      personMap[l.csNumber] = {
-        csNumber: l.csNumber,
-        name: l.name,
-        status: l.status,
-        rank: l.rank,
-        weekMap: {},
-        totalSecs: 0,
-      };
-    }
-    personMap[l.csNumber]!.weekMap[l.weekPeriod] = l.dutyHours ?? null;
-    personMap[l.csNumber]!.totalSecs += parseHms(l.dutyHours);
-    // Keep most recent status
-    personMap[l.csNumber]!.status = l.status;
+    if (!logMap[l.csNumber]) logMap[l.csNumber] = {};
+    logMap[l.csNumber]![l.weekPeriod] = l.dutyHours ?? null;
+    logSecsMap[l.csNumber] = (logSecsMap[l.csNumber] ?? 0) + parseHms(l.dutyHours);
   }
 
-  const breakdown = Object.values(personMap).map((p) => ({
-    csNumber: p.csNumber,
-    name: p.name,
-    status: p.status,
-    rank: p.rank,
-    totalHours: secondsToHms(p.totalSecs),
+  const breakdown = allPdOfficers.map((o) => ({
+    csNumber: o.callSign,
+    name: o.name ?? o.callSign,
+    status: o.status,
+    rank: o.rank,
+    totalHours: secondsToHms(logSecsMap[o.callSign] ?? 0),
     weeks: allWeekPeriods.map((wp) => ({
       weekPeriod: wp,
-      dutyHours: p.weekMap[wp] ?? null,
+      dutyHours: logMap[o.callSign]?.[wp] ?? null,
     })),
   }));
 
