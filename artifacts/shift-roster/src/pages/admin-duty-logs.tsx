@@ -42,7 +42,7 @@ function useShiftConfigs() {
   return useQuery<ShiftConfig[]>({
     queryKey: ["shift-configs"],
     queryFn: () => fetch("/api/ems/shift-configs").then((r) => r.json()),
-    staleTime: 1000 * 60 * 5,
+    refetchInterval: 60_000,
   });
 }
 
@@ -92,7 +92,7 @@ export default function AdminDutyLogsPage() {
   const { data: logs = [], isLoading } = useQuery<PdDutyLog[]>({
     queryKey: ["admin", "duty-logs", search, dateFrom, dateTo, activeShift],
     queryFn: () => fetch(`/api/admin/duty-logs?${params}`).then((r) => r.json()),
-    refetchOnWindowFocus: false,
+    refetchInterval: 60_000,
   });
 
   const { data: officers = [] } = useQuery<OfficerOption[]>({
@@ -102,6 +102,14 @@ export default function AdminDutyLogsPage() {
 
   const { data: shiftConfigs = [] } = useShiftConfigs();
   const shiftFilterTabs = [{ label: "All", icon: "", sub: "" }, ...shiftConfigs];
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "duty-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["shift-configs"] });
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [queryClient]);
 
   const totalSecs = useMemo(() => logs.reduce((s, l) => s + parseHms(l.duration), 0), [logs]);
 
