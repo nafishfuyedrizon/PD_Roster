@@ -6,7 +6,7 @@ import {
   officersTable,
   shiftConfigsTable,
 } from "@workspace/db";
-import { eq, and, asc, or } from "drizzle-orm";
+import { eq, and, asc, desc, or, lt } from "drizzle-orm";
 import { logger } from "./logger";
 
 const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID!;
@@ -179,9 +179,40 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
     )
     .orderBy(asc(discordDutyEventsTable.eventAt));
 
+  // Cross-week carry-over: if the first event of this week is "off", look back for
+  // an unmatched "on" from a prior week (handles sessions that span the BST week boundary).
+  let carryOnTime: Date | null = null;
+  if (events.length > 0 && events[0]!.eventType === "off") {
+    const firstOffAt = events[0]!.eventAt;
+    // Find the most recent "on" before this week's first "off"
+    const lastOnRow = await db
+      .select({ eventAt: discordDutyEventsTable.eventAt })
+      .from(discordDutyEventsTable)
+      .where(and(eq(discordDutyEventsTable.licenseId, licenseId), eq(discordDutyEventsTable.eventType, "on"), lt(discordDutyEventsTable.eventAt, firstOffAt)))
+      .orderBy(desc(discordDutyEventsTable.eventAt))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    if (lastOnRow) {
+      // Find the most recent "off" before this week's first "off"
+      const lastOffRow = await db
+        .select({ eventAt: discordDutyEventsTable.eventAt })
+        .from(discordDutyEventsTable)
+        .where(and(eq(discordDutyEventsTable.licenseId, licenseId), eq(discordDutyEventsTable.eventType, "off"), lt(discordDutyEventsTable.eventAt, firstOffAt)))
+        .orderBy(desc(discordDutyEventsTable.eventAt))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      // Session is open only if the last "on" is more recent than the last "off"
+      if (!lastOffRow || new Date(lastOnRow.eventAt) > new Date(lastOffRow.eventAt)) {
+        carryOnTime = new Date(lastOnRow.eventAt);
+      }
+    }
+  }
+
   // Build on/off sessions
   const sessions: { start: Date; end: Date }[] = [];
-  let lastOn: Date | null = null;
+  let lastOn: Date | null = carryOnTime;
   for (const ev of events) {
     if (ev.eventType === "on") {
       lastOn = new Date(ev.eventAt);
