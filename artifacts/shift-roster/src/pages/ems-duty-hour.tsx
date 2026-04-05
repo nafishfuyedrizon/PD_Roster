@@ -261,7 +261,8 @@ function getRankOrder(rank: string): number {
   return RANK_ORDER[(rank ?? "").toUpperCase()] ?? 99;
 }
 
-const MONTH_NAMES = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+const MONTH_NAMES = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+const MONTH_INDEX: Record<string, number> = Object.fromEntries(MONTH_NAMES.map((m, i) => [m, i + 1]));
 
 function weekEndMonth(wp: string): string {
   const parts = wp.split("-");
@@ -407,12 +408,11 @@ export default function PdDutyHourPage() {
   const fmtDiscord = (p: { discordUid?: string | null; discordUsername?: string | null; name: string }) =>
     p.discordUid ? `<@${p.discordUid}>` : `@${p.discordUsername ?? p.name}`;
 
-  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
-  const fmtMonthLabel = (ym: string) => {
-    const [year, mm] = ym.split("-");
-    const name = MONTH_NAMES[parseInt(mm ?? "1", 10) - 1] ?? mm;
-    return `${name?.toUpperCase()} ${year}`;
+  const fmtMonthLabel = (monthName: string) => {
+    const mIdx = MONTH_INDEX[monthName] ?? (new Date().getMonth() + 1);
+    const now = new Date();
+    const year = mIdx > now.getMonth() + 2 ? now.getFullYear() - 1 : now.getFullYear();
+    return `${monthName} ${year}`;
   };
 
   const buildAnnouncement = (title: string, officerLines: string[]) =>
