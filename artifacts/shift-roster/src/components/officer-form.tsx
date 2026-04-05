@@ -180,7 +180,21 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
           <FormField control={form.control} name="division" render={({ field }) => (
             <FormItem>
               <FormLabel className="text-xs">Division</FormLabel>
-              <FormControl><Input placeholder="High Command" {...field} /></FormControl>
+              <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select division" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="High Command">High Command</SelectItem>
+                  <SelectItem value="Low Command (HR)">Low Command (HR)</SelectItem>
+                  <SelectItem value="Field Training Supervisor">Field Training Supervisor</SelectItem>
+                  <SelectItem value="Field Training Officer">Field Training Officer</SelectItem>
+                  <SelectItem value="Field Training Trainee">Field Training Trainee</SelectItem>
+                  <SelectItem value="Training Academy">Training Academy</SelectItem>
+                </SelectContent>
+              </Select>
             </FormItem>
           )} />
         </div>
