@@ -100,6 +100,10 @@ function statusStyle(s: string) {
   return STATUS_STYLE[s] ?? { bg: "bg-secondary/20", text: "text-muted-foreground", border: "border-border", icon: "●" };
 }
 
+function titleCase(s: string) {
+  return s.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+}
+
 export default function DashboardPage() {
   const { data, isLoading, refetch } = useDashboard(15000);
 
@@ -116,51 +120,58 @@ export default function DashboardPage() {
       </div>
 
       {/* Live On Duty */}
-      <div className="bg-card border border-green-500/30 rounded-lg overflow-hidden">
+      <div
+        className="rounded-lg overflow-hidden border border-green-500/25"
+        style={{ background: "#0b1a12", boxShadow: "0 0 30px rgba(34,197,94,0.08), inset 0 1px 0 rgba(34,197,94,0.1)" }}
+      >
         {/* Panel header */}
-        <div className="px-4 py-2.5 flex items-center gap-2.5">
+        <div className="px-4 py-2.5 flex items-center gap-2.5 border-b border-green-900/50">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-          <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-green-400">
-            {"{>"} Live on Duty
+          <span className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-green-400 flex items-center gap-1.5">
+            <span className="text-green-600 font-normal">({">>"})</span>
+            LIVE ON DUTY
           </span>
           {!isLoading && (
-            <span className="text-[10px] font-mono bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-sm">
-              {data?.liveOnDuty.length ?? 0} On Duty
+            <span className="text-[10px] font-mono bg-green-500/15 text-green-400 border border-green-500/25 px-2.5 py-0.5 rounded-full font-semibold">
+              {data?.liveOnDuty.length ?? 0} ON DUTY
             </span>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 text-[11px] font-mono text-green-600">
             <Countdown intervalMs={15000} onTick={refetch} />
-            <button onClick={() => refetch()} className="text-muted-foreground hover:text-green-400 transition-colors">
+            <button onClick={() => refetch()} className="hover:text-green-400 transition-colors">
               <RefreshCw className="w-3 h-3" />
             </button>
-            <LiveClock />
+            <span className="text-green-500/80"><LiveClock /></span>
           </div>
         </div>
 
-        <div className="border-t border-green-500/20 p-3">
+        <div className="p-3">
           {isLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-[82px] rounded-md" />)}
             </div>
           ) : data?.liveOnDuty.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground text-xs font-mono">No officers currently on duty</div>
+            <div className="text-center py-8 text-green-700 text-xs font-mono">No officers currently on duty</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {data?.liveOnDuty.map((o) => (
                 <div
                   key={o.licenseId}
-                  className="flex flex-col gap-1 bg-[#0a1f14] border border-green-900/60 hover:border-green-500/40 rounded-md px-3 py-2.5 transition-colors"
+                  className="flex flex-col gap-0.5 rounded-md px-3 py-2.5 transition-colors cursor-default"
+                  style={{ background: "#0f2419", border: "1px solid rgba(21,128,61,0.35)" }}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[11px] font-bold text-green-400">
-                      {o.csNumber ? `[${o.csNumber}]` : "—"}
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="font-mono text-[11px] font-bold text-green-400 tracking-wide">
+                      {o.csNumber ? `[${o.csNumber}]` : "[—]"}
                     </span>
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
                   </div>
-                  <div className="font-semibold text-sm text-white leading-snug truncate">{o.name}</div>
-                  <div className="text-[10px] text-green-700 capitalize truncate">{o.rank}</div>
-                  <div className="flex items-center gap-1 text-[11px] text-green-400 mt-0.5">
-                    <Clock className="w-3 h-3 shrink-0 opacity-70" />
+                  <div className="font-semibold text-[13px] text-white leading-snug truncate">{o.name}</div>
+                  <div className="text-[10px] truncate" style={{ color: "#3a9e6a" }}>
+                    {titleCase(o.rank)}
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px] font-mono mt-1" style={{ color: "#2d8a55" }}>
+                    <Clock className="w-3 h-3 shrink-0" />
                     <LiveTimer onSince={o.onSince} />
                   </div>
                 </div>
