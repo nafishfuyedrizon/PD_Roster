@@ -54,52 +54,91 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   function norm(s: string) { return s.toLowerCase().replace(/[-_.\s]/g, ""); }
   function tokens(s: string) { return s.toLowerCase().split(/[\s\-_]+/).filter(Boolean); }
 
-  function findOfficerByName(evName: string): typeof officers[0] | null {
-    const evNorm = norm(evName);
-    const evTokens = tokens(evName);
+  // Leet-speak normalisation: 4→a, 3→e, 0→o, 1→i, 5→s, 7→t
+  function leetNorm(s: string) {
+    return norm(s).replace(/4/g, "a").replace(/3/g, "e").replace(/0/g, "o").replace(/1/g, "i").replace(/5/g, "s").replace(/7/g, "t");
+  }
 
+  function findOfficerByName(evName: string, excludeIds: Set<number>): typeof officers[0] | null {
+    const evNorm = norm(evName);
+    const evLeet = leetNorm(evName);
+    const evTokens = tokens(evName);
+    const evLeetTokens = evLeet.split(/[^a-z]+/).filter(Boolean);
+
+    const pool = officers.filter((o) => !excludeIds.has(o.id));
     const candidates: typeof officers[0][] = [];
 
-    for (const o of officers) {
+    for (const o of pool) {
       const rosterNorm = norm(o.name ?? "");
       const discordNorm = norm(o.discordUsername ?? "");
+      const discordLeet = leetNorm(o.discordUsername ?? "");
       const rosterTokens = tokens(o.name ?? "");
 
       // Exact full name
       if (rosterNorm === evNorm) return o;
 
-      // Event name is a substring of discord_username or vice-versa
+      // Leet-normalised event name found in discord username (or vice-versa)
+      if (evLeet.length >= 3 && (discordNorm.includes(evLeet) || discordLeet.includes(evLeet) || evLeet.includes(discordNorm))) {
+        candidates.push(o);
+        continue;
+      }
+
+      // Event name substring in discord_username or vice-versa
       if (evNorm.length >= 3 && (discordNorm.includes(evNorm) || evNorm.includes(discordNorm))) {
         candidates.push(o);
         continue;
       }
 
-      // Any event token (len≥3) appears in discord_username OR matches roster first-name token
-      const matched = evTokens.some((t) => {
+      // Any event token (or leet variant, len≥3) appears in discord_username OR matches roster first-name token
+      const matched = [...evTokens, ...evLeetTokens].some((t) => {
         if (t.length < 3) return false;
-        return discordNorm.includes(t) || rosterTokens[0] === t;
+        return discordNorm.includes(t) || discordLeet.includes(t) || rosterTokens[0] === t;
       });
       if (matched) { candidates.push(o); continue; }
     }
 
-    // Only accept if exactly one candidate to avoid wrong matches
-    return candidates.length === 1 ? candidates[0]! : null;
+    if (candidates.length === 1) return candidates[0]!;
+    return null;
   }
 
-  const liveOnDuty = [...latestByLicense.values()]
-    .filter((ev) => ev.eventType === "on")
-    .map((ev) => {
-      const o = licenseToOfficer.get(ev.licenseId) ?? findOfficerByName(ev.officerName) ?? null;
-      const elapsedSecs = Math.max(0, Math.floor((now.getTime() - ev.eventAt.getTime()) / 1000));
-      return {
-        licenseId: ev.licenseId,
-        csNumber: o?.callSign ?? null,
-        name: o?.name ?? ev.officerName,
-        rank: o?.rank ?? ev.rank ?? "Unknown",
-        onSince: ev.eventAt.toISOString(),
-        elapsedHms: secsToHms(elapsedSecs),
-      };
-    })
+  // Build live-on-duty list in two passes so rank-unique fallback can use
+  // already-claimed officers to avoid double-assignments
+  const onDutyEvents = [...latestByLicense.values()].filter((ev) => ev.eventType === "on");
+
+  // Pass 1: license ID + fuzzy name matching
+  const claimedOfficerIds = new Set<number>();
+  const pass1 = onDutyEvents.map((ev) => {
+    const byLicense = licenseToOfficer.get(ev.licenseId);
+    if (byLicense) { claimedOfficerIds.add(byLicense.id); return { ev, o: byLicense }; }
+    const byName = findOfficerByName(ev.officerName, claimedOfficerIds);
+    if (byName) { claimedOfficerIds.add(byName.id); return { ev, o: byName }; }
+    return { ev, o: null };
+  });
+
+  // Pass 2: rank-unique fallback for still-unmatched events
+  const liveOnDuty = pass1.map(({ ev, o: matched }) => {
+    let o = matched;
+    if (!o) {
+      // Normalise the event rank and find all unclaimed officers with that exact rank
+      const evRankNorm = (ev.rank ?? "").toLowerCase().trim();
+      const rankPool = officers.filter(
+        (r) => !claimedOfficerIds.has(r.id) && r.rank?.toLowerCase().trim() === evRankNorm
+      );
+      if (rankPool.length === 1) {
+        o = rankPool[0]!;
+        claimedOfficerIds.add(o.id);
+      }
+    }
+    const elapsedSecs = Math.max(0, Math.floor((now.getTime() - ev.eventAt.getTime()) / 1000));
+    return {
+      licenseId: ev.licenseId,
+      csNumber: o?.callSign ?? null,
+      name: o?.name ?? ev.officerName,
+      rank: o?.rank ?? ev.rank ?? "Unknown",
+      onSince: ev.eventAt.toISOString(),
+      elapsedHms: secsToHms(elapsedSecs),
+    };
+  })
     .sort((a, b) => a.onSince.localeCompare(b.onSince));
 
   // ── Stats ──────────────────────────────────────────────────────────────────

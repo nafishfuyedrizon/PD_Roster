@@ -78,12 +78,16 @@ export function OfficerEditDialog({
   const [status, setStatus] = useState("");
   const [rank, setRank] = useState("");
   const [note, setNote] = useState("");
+  const [discordUsername, setDiscordUsername] = useState("");
+  const [rockstarLicenseId, setRockstarLicenseId] = useState("");
 
   useEffect(() => {
     if (officer) {
       setStatus(officer.status ?? "Active");
       setRank(initialRankValue ? initialRankValue(officer) : (officer.rank ?? ""));
       setNote(officer.completionStatus ?? "");
+      setDiscordUsername(officer.discordUsername ?? "");
+      setRockstarLicenseId(officer.rockstarLicenseId ?? "");
     }
   }, [officer]);
 
@@ -97,6 +101,8 @@ export function OfficerEditDialog({
         data: {
           status,
           rank,
+          discordUsername: discordUsername || null,
+          rockstarLicenseId: rockstarLicenseId || null,
           ...(showNoteField ? { completionStatus: note || null } : {}),
         },
       },
@@ -149,6 +155,24 @@ export function OfficerEditDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Discord Username</Label>
+            <Input
+              value={discordUsername}
+              onChange={(e) => setDiscordUsername(e.target.value)}
+              placeholder="e.g. username123"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Rockstar License ID</Label>
+            <Input
+              value={rockstarLicenseId}
+              onChange={(e) => setRockstarLicenseId(e.target.value)}
+              placeholder="e.g. license:abc123..."
+            />
           </div>
 
           {showNoteField && (
