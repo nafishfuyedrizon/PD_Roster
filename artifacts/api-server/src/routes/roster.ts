@@ -111,14 +111,16 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   const officerByCs = new Map(allOfficers.filter((o) => o.callSign).map((o) => [o.callSign!, o]));
   for (const log of dutyLogs) {
     const key = log.csNumber;
+    // Only include PD officers — skip any call signs not in the roster
+    const officer = officerByCs.get(key);
+    if (!officer) continue;
     const existing = byCs.get(key);
     const mins = parseDutyMinutes(log.dutyHours);
-    const officer = officerByCs.get(key);
     if (!existing) {
       byCs.set(key, {
-        name: log.name,
-        rank: log.rank,
-        department: officer?.department ?? "",
+        name: officer.name ?? log.name,
+        rank: officer.rank ?? log.rank,
+        department: officer.department,
         id: log.id,
         totalMins: mins,
       });
