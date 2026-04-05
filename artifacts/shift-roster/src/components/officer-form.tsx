@@ -287,13 +287,37 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
           <FormField control={form.control} name="strikesMajor" render={({ field }) => (
             <FormItem>
               <FormLabel className="text-xs">Strikes (Major)</FormLabel>
-              <FormControl><Input placeholder="0/4" {...field} /></FormControl>
+              <Select onValueChange={field.onChange} value={field.value ?? "0/4"}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="0/4" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="0/4">0/4</SelectItem>
+                  <SelectItem value="1/4">1/4</SelectItem>
+                  <SelectItem value="2/4">2/4</SelectItem>
+                  <SelectItem value="3/4">3/4</SelectItem>
+                  <SelectItem value="4/4">4/4</SelectItem>
+                </SelectContent>
+              </Select>
             </FormItem>
           )} />
           <FormField control={form.control} name="strikesMinor" render={({ field }) => (
             <FormItem>
               <FormLabel className="text-xs">Strikes (Minor)</FormLabel>
-              <FormControl><Input placeholder="0/2" {...field} /></FormControl>
+              <Select onValueChange={field.onChange} value={field.value ?? "0/2"}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="0/2" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="0/2">0/2</SelectItem>
+                  <SelectItem value="1/2">1/2</SelectItem>
+                  <SelectItem value="2/2">2/2</SelectItem>
+                </SelectContent>
+              </Select>
             </FormItem>
           )} />
         </div>
