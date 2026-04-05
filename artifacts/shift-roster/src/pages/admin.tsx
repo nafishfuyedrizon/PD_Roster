@@ -45,6 +45,13 @@ interface AdjData {
   adjustments: AdjEntry[];
 }
 
+interface ShiftConfig {
+  key: string;
+  label: string;
+  sub: string;
+  icon: string;
+}
+
 const MONTH_NAMES = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 
 function parseInputToSeconds(input: string): number {
@@ -77,9 +84,17 @@ async function fetchChannels(): Promise<DiscordChannel[]> {
   return res.json();
 }
 
-async function fetchAdjustments(month: string, year: string): Promise<AdjData> {
-  const res = await fetch(`/api/admin/duty-adjustments?month=${month}&year=${year}`);
+async function fetchAdjustments(month: string, year: string, shiftType: string): Promise<AdjData> {
+  const params = new URLSearchParams({ month, year });
+  if (shiftType && shiftType !== "ALL") params.set("shiftType", shiftType);
+  const res = await fetch(`/api/admin/duty-adjustments?${params}`);
   if (!res.ok) throw new Error("Failed to fetch adjustments");
+  return res.json();
+}
+
+async function fetchShiftConfigs(): Promise<ShiftConfig[]> {
+  const res = await fetch(`/api/ems/shift-configs`);
+  if (!res.ok) return [];
   return res.json();
 }
 
@@ -90,6 +105,7 @@ export default function AdminPage() {
   const now = new Date();
   const [adjMonthIdx, setAdjMonthIdx] = useState(now.getMonth());
   const [adjYear, setAdjYear] = useState(now.getFullYear());
+  const [adjShift, setAdjShift] = useState("ALL");
   const [adjInputs, setAdjInputs] = useState<Record<string, string>>({});
   const [adjNotes, setAdjNotes] = useState<Record<string, string>>({});
   const [adjSearch, setAdjSearch] = useState("");
@@ -101,9 +117,15 @@ export default function AdminPage() {
     queryFn: fetchChannels,
   });
 
+  const { data: shiftConfigs = [] } = useQuery<ShiftConfig[]>({
+    queryKey: ["admin", "shift-configs"],
+    queryFn: fetchShiftConfigs,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const { data: adjData, isLoading: adjLoading } = useQuery({
-    queryKey: ["admin", "duty-adjustments", adjMonth, String(adjYear)],
-    queryFn: () => fetchAdjustments(adjMonth, String(adjYear)),
+    queryKey: ["admin", "duty-adjustments", adjMonth, String(adjYear), adjShift],
+    queryFn: () => fetchAdjustments(adjMonth, String(adjYear), adjShift),
     refetchInterval: 30_000,
   });
 
@@ -179,6 +201,7 @@ export default function AdminPage() {
           officerName: officer.name,
           dutyMonth: adjMonth,
           dutyYear: String(adjYear),
+          shiftType: adjShift,
           adjustmentSeconds: sign * secs,
           note: adjNotes[officer.cs]?.trim() || null,
         }),
@@ -256,6 +279,27 @@ export default function AdminPage() {
             </button>
           </div>
         </div>
+
+        {/* Shift tabs */}
+        {shiftConfigs.length > 0 && (
+          <div className="px-4 py-2.5 border-b border-border bg-secondary/10 flex items-center gap-2 flex-wrap">
+            {[{ key: "ALL", label: "All Shifts", sub: "", icon: "◉" }, ...shiftConfigs].map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setAdjShift(s.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all border ${
+                  adjShift === s.key
+                    ? "bg-teal-600/20 border-teal-500/60 text-teal-300"
+                    : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                }`}
+              >
+                <span>{s.icon}</span>
+                <span>{s.label}</span>
+                {s.sub && <span className="opacity-60 text-[10px]">{s.sub}</span>}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Search */}
         <div className="px-5 py-3 border-b border-border bg-secondary/10">

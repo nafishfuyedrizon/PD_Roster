@@ -6,6 +6,7 @@ export const dutyAdjustmentsTable = pgTable("duty_adjustments", {
   officerName: text("officer_name"),
   dutyMonth: text("duty_month").notNull(),
   dutyYear: text("duty_year").notNull(),
+  shiftType: text("shift_type").notNull().default("ALL"),
   adjustmentSeconds: integer("adjustment_seconds").notNull(),
   note: text("note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -276,11 +276,22 @@ router.post("/admin/duty-logs/import-discord", async (req, res): Promise<void> =
 // ── Duty Adjustments ─────────────────────────────────────────────────────────
 
 router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
-  const { month, year } = req.query as { month?: string; year?: string };
+  const { month, year, shiftType } = req.query as { month?: string; year?: string; shiftType?: string };
   if (!month || !year) { res.status(400).json({ error: "month and year required" }); return; }
 
   const monthNum = MONTH_NAMES.indexOf(month.toUpperCase());
   if (monthNum < 1) { res.status(400).json({ error: "Invalid month" }); return; }
+
+  const resolvedShift = shiftType && shiftType !== "ALL" ? shiftType : "ALL";
+
+  const logConds = [eq(emsDutyLogsTable.dutyYear, year)];
+  if (resolvedShift !== "ALL") logConds.push(eq(emsDutyLogsTable.shiftType, resolvedShift));
+
+  const adjConds = [
+    eq(dutyAdjustmentsTable.dutyMonth, month.toUpperCase()),
+    eq(dutyAdjustmentsTable.dutyYear, year),
+    eq(dutyAdjustmentsTable.shiftType, resolvedShift),
+  ];
 
   const [allOfficers, allLogs, adjustments] = await Promise.all([
     db.select({
@@ -289,9 +300,9 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
       rank: officersTable.rank,
       status: officersTable.status,
     }).from(officersTable).orderBy(asc(officersTable.callSign)),
-    db.select().from(emsDutyLogsTable).where(eq(emsDutyLogsTable.dutyYear, year)),
+    db.select().from(emsDutyLogsTable).where(and(...logConds)),
     db.select().from(dutyAdjustmentsTable)
-      .where(and(eq(dutyAdjustmentsTable.dutyMonth, month.toUpperCase()), eq(dutyAdjustmentsTable.dutyYear, year)))
+      .where(and(...adjConds))
       .orderBy(desc(dutyAdjustmentsTable.createdAt)),
   ]);
 
@@ -345,9 +356,9 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
-  const { officerCs, officerName, dutyMonth, dutyYear, adjustmentSeconds, note } = req.body as {
+  const { officerCs, officerName, dutyMonth, dutyYear, shiftType, adjustmentSeconds, note } = req.body as {
     officerCs?: string; officerName?: string; dutyMonth?: string; dutyYear?: string;
-    adjustmentSeconds?: number; note?: string;
+    shiftType?: string; adjustmentSeconds?: number; note?: string;
   };
   if (!officerCs?.trim() || !dutyMonth?.trim() || !dutyYear?.trim() || typeof adjustmentSeconds !== "number" || adjustmentSeconds === 0) {
     res.status(400).json({ error: "officerCs, dutyMonth, dutyYear, adjustmentSeconds (non-zero) required" }); return;
@@ -357,6 +368,7 @@ router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
     officerName: officerName?.trim() || null,
     dutyMonth: dutyMonth.trim().toUpperCase(),
     dutyYear: dutyYear.trim(),
+    shiftType: shiftType?.trim() || "ALL",
     adjustmentSeconds,
     note: note?.trim() || null,
   }).returning();
