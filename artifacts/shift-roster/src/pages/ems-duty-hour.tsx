@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   useGetEmsStats,
   getGetEmsStatsQueryKey,
@@ -17,7 +18,34 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Clock, TrendingUp, Users, Trophy, Search } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Clock, TrendingUp, Users, Trophy, Search, Shield, Calendar, Hash, ChevronRight } from "lucide-react";
+
+interface OfficerDutyDetail {
+  csNumber: string;
+  name: string;
+  rank: string;
+  status: string;
+  citizenId: string | null;
+  dateOfJoining: string | null;
+  pilot: boolean | null;
+  ftp: boolean | null;
+  appointedFto: string | null;
+  mdt: boolean | null;
+  seu: boolean | null;
+  smg: boolean | null;
+  rifle: boolean | null;
+  shotgun: boolean | null;
+  rifleTierII: boolean | null;
+  discordUsername: string | null;
+  isManagement: boolean | null;
+  weeks: { weekPeriod: string; shifts: Record<string, string> }[];
+}
 
 const SHIFT_TYPES = [
   { value: "ALL",     label: "All Shifts",  sub: "",           icon: "◉" },
@@ -120,11 +148,24 @@ function TopPerformerRow({
   );
 }
 
+function useOfficerDuty(callSign: string | null) {
+  return useQuery<OfficerDutyDetail>({
+    queryKey: ["officer-duty", callSign],
+    queryFn: async () => {
+      const res = await fetch(`/api/ems/officer-duty/${encodeURIComponent(callSign!)}`);
+      if (!res.ok) throw new Error("Failed to load officer");
+      return res.json() as Promise<OfficerDutyDetail>;
+    },
+    enabled: !!callSign,
+  });
+}
+
 export default function PdDutyHourPage() {
   const [shiftType, setShiftType] = useState("ALL");
   const [search, setSearch] = useState("");
   const [weekNav, setWeekNav] = useState(0);
   const [monthNav, setMonthNav] = useState(0);
+  const [selectedCs, setSelectedCs] = useState<string | null>(null);
 
   const statsParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
   const breakdownParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
@@ -136,6 +177,8 @@ export default function PdDutyHourPage() {
   const { data: breakdown = [], isLoading: breakdownLoading } = useGetEmsBreakdown(breakdownParams, {
     query: { queryKey: getGetEmsBreakdownQueryKey(breakdownParams) },
   });
+
+  const { data: dossier, isLoading: dossierLoading } = useOfficerDuty(selectedCs);
 
   const weekPeriods = stats?.weekPeriods ?? [];
 
@@ -447,7 +490,14 @@ export default function PdDutyHourPage() {
                     <TableRow key={person.csNumber} className="hover:bg-secondary/20 transition-colors" data-testid={`ems-row-${person.csNumber}`}>
                       <TableCell className="sticky left-0 bg-card font-mono text-sm font-bold text-primary z-20">{person.csNumber}</TableCell>
                       <TableCell className="sticky left-[80px] bg-card z-20 min-w-[160px] py-2 uppercase text-[10px] font-medium text-purple-300">{person.rank}</TableCell>
-                      <TableCell className="sticky left-[240px] bg-card font-semibold text-foreground text-sm z-20 min-w-[140px]">{person.name}</TableCell>
+                      <TableCell className="sticky left-[240px] bg-card z-20 min-w-[140px]">
+                        <button
+                          className="font-semibold text-foreground text-sm hover:text-primary hover:underline underline-offset-2 transition-colors text-left w-full cursor-pointer"
+                          onClick={() => setSelectedCs(person.csNumber)}
+                        >
+                          {person.name}
+                        </button>
+                      </TableCell>
                       <TableCell className="sticky left-[380px] bg-card z-20 min-w-[90px] border-r border-border/60">
                         <Badge variant="outline" className={`text-xs font-mono ${isInactive ? "text-red-400 border-red-500/30 bg-red-500/10" : "text-green-400 border-green-500/30 bg-green-500/10"}`}>
                           {person.status}
@@ -470,6 +520,139 @@ export default function PdDutyHourPage() {
           </Table>
         </div>
       </div>
+
+      {/* Officer Dossier Sheet */}
+      <Sheet open={!!selectedCs} onOpenChange={(open) => { if (!open) setSelectedCs(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto bg-card border-l border-border p-0">
+          {dossierLoading || !dossier ? (
+            <div className="p-6 space-y-4">
+              <Skeleton className="h-10 w-48" />
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-3/4" />
+            </div>
+          ) : (
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-border bg-secondary/30">
+                <SheetHeader>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-2xl font-bold text-primary">{dossier.csNumber}</span>
+                    <SheetTitle className="text-xl font-bold text-foreground uppercase tracking-wide">{dossier.name}</SheetTitle>
+                  </div>
+                  <p className="text-[10px] font-mono uppercase tracking-[0.15em] text-muted-foreground mt-0.5">Personnel Dossier</p>
+                </SheetHeader>
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {/* Identity section */}
+                <div className="px-6 py-4 border-b border-border/60">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1.5">
+                    <Shield className="w-3 h-3" /> Identity &amp; Status
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Status</p>
+                      <Badge variant="outline" className={`text-xs font-mono ${dossier.status === "Active" ? "text-green-400 border-green-500/30 bg-green-500/10" : "text-red-400 border-red-500/30 bg-red-500/10"}`}>
+                        {dossier.status}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Rank</p>
+                      <p className="text-sm font-semibold text-purple-300 uppercase">{dossier.rank}</p>
+                    </div>
+                    {dossier.dateOfJoining && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 flex items-center gap-1"><Calendar className="w-2.5 h-2.5" /> Joined</p>
+                        <p className="text-sm font-mono text-foreground">{dossier.dateOfJoining}</p>
+                      </div>
+                    )}
+                    {dossier.citizenId && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5 flex items-center gap-1"><Hash className="w-2.5 h-2.5" /> Citizen ID</p>
+                        <p className="text-sm font-mono text-foreground">{dossier.citizenId}</p>
+                      </div>
+                    )}
+                    {dossier.discordUsername && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Discord</p>
+                        <p className="text-sm font-mono text-foreground">{dossier.discordUsername}</p>
+                      </div>
+                    )}
+                    {dossier.appointedFto && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">FTO</p>
+                        <p className="text-sm font-mono text-foreground">{dossier.appointedFto}</p>
+                      </div>
+                    )}
+                  </div>
+                  {/* Qualifications */}
+                  {(dossier.pilot || dossier.mdt || dossier.seu || dossier.smg || dossier.rifle || dossier.shotgun || dossier.rifleTierII) && (
+                    <div className="mt-3">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">Qualifications</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {dossier.pilot     && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">PILOT</span>}
+                        {dossier.mdt       && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">MDT</span>}
+                        {dossier.seu       && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-orange-500/10 text-orange-300 border border-orange-500/20">SEU</span>}
+                        {dossier.smg       && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">SMG</span>}
+                        {dossier.rifle     && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-500/10 text-red-300 border border-red-500/20">RIFLE</span>}
+                        {dossier.rifleTierII && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-600/10 text-red-400 border border-red-600/20">RIFLE T-II</span>}
+                        {dossier.shotgun   && <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">SHOTGUN</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Duty Time Analysis */}
+                <div className="px-6 py-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                      <Clock className="w-3 h-3" /> Duty Time Analysis
+                    </p>
+                    <span className="font-mono text-lg font-bold text-primary tabular-nums">
+                      {secsToHms(dossier.weeks.reduce((acc, w) => acc + hmsToSecs(w.shifts["ALL"]), 0))}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {dossier.weeks.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">No duty records found.</p>
+                    ) : (
+                      dossier.weeks.map((w) => (
+                        <div key={w.weekPeriod} className="border border-border/50 rounded-lg overflow-hidden">
+                          {/* Week header */}
+                          <div className="flex items-center justify-between px-3 py-2 bg-secondary/40">
+                            <div className="flex items-center gap-2">
+                              <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                              <span className="font-mono text-xs font-semibold text-foreground">{w.weekPeriod.replace("-", " – ")}</span>
+                            </div>
+                            <span className="font-mono text-xs font-bold text-primary tabular-nums">{w.shifts["ALL"] ?? "00:00:00"}</span>
+                          </div>
+                          {/* Shift breakdown grid */}
+                          <div className="grid grid-cols-4 divide-x divide-border/40 bg-card">
+                            {[
+                              { key: "EVENING",  label: "Evening",  sub: "8PM–10PM",  color: "text-amber-400" },
+                              { key: "NIGHT",    label: "Night",    sub: "10PM–2AM",  color: "text-blue-400" },
+                              { key: "MIDNIGHT", label: "Midnight", sub: "12AM–6AM",  color: "text-indigo-400" },
+                              { key: "FULL",     label: "Full",     sub: "8PM–2AM",   color: "text-emerald-400" },
+                            ].map(({ key, label, sub, color }) => (
+                              <div key={key} className="px-2 py-2 text-center">
+                                <p className={`text-[9px] font-mono uppercase tracking-wider ${color} mb-0.5`}>{label}</p>
+                                <p className="text-[9px] text-muted-foreground/60 mb-1">{sub}</p>
+                                <p className="font-mono text-xs tabular-nums text-foreground/90">{w.shifts[key] ?? "00:00:00"}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </Layout>
   );
 }

@@ -206,6 +206,58 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
   res.json(GetEmsBreakdownResponse.parse(breakdown));
 });
 
+router.get("/ems/officer-duty/:callSign", async (req, res): Promise<void> => {
+  const callSign = req.params.callSign as string;
+
+  const [officer] = await db
+    .select()
+    .from(officersTable)
+    .where(eq(officersTable.callSign, callSign))
+    .limit(1);
+
+  if (!officer) {
+    res.status(404).json({ error: "Officer not found" });
+    return;
+  }
+
+  const logs = await db
+    .select()
+    .from(emsDutyLogsTable)
+    .where(eq(emsDutyLogsTable.csNumber, callSign))
+    .orderBy(desc(emsDutyLogsTable.weekPeriod));
+
+  const weekMap: Record<string, Record<string, string>> = {};
+  for (const l of logs) {
+    if (!weekMap[l.weekPeriod]) weekMap[l.weekPeriod] = {};
+    weekMap[l.weekPeriod]![l.shiftType] = l.dutyHours ?? "00:00:00";
+  }
+
+  const weeks = Object.entries(weekMap)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([weekPeriod, shifts]) => ({ weekPeriod, shifts }));
+
+  res.json({
+    csNumber: officer.callSign,
+    name: officer.name ?? officer.callSign,
+    rank: officer.rank,
+    status: officer.status,
+    citizenId: officer.citizenId,
+    dateOfJoining: officer.dateOfJoining,
+    pilot: officer.pilot,
+    ftp: officer.ftp,
+    appointedFto: officer.appointedFto,
+    mdt: officer.mdt,
+    seu: officer.seu,
+    smg: officer.smg,
+    rifle: officer.rifle,
+    shotgun: officer.shotgun,
+    rifleTierII: officer.rifleTierII,
+    discordUsername: officer.discordUsername,
+    isManagement: officer.isManagement,
+    weeks,
+  });
+});
+
 router.get("/ems/week-periods", async (_req, res): Promise<void> => {
   const rows = await db
     .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
