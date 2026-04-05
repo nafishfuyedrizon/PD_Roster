@@ -35,6 +35,20 @@ function secondsToHms(secs: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// Returns the current Mon–Sun week period string e.g. "04/06-04/12"
+function getCurrentWeekPeriod(): string {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now);
+  mon.setUTCDate(now.getUTCDate() + diff);
+  const sun = new Date(mon);
+  sun.setUTCDate(mon.getUTCDate() + 6);
+  const fmt = (d: Date) =>
+    `${String(d.getUTCMonth() + 1).padStart(2, "0")}/${String(d.getUTCDate()).padStart(2, "0")}`;
+  return `${fmt(mon)}-${fmt(sun)}`;
+}
+
 router.get("/ems/duty-logs", async (req, res): Promise<void> => {
   const parsed = ListEmsDutyLogsQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -93,6 +107,9 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
     .orderBy(desc(emsDutyLogsTable.weekPeriod));
 
   const weekPeriods = allWeeks.map((w) => w.weekPeriod);
+  // Always include the current week even if no logs exist yet
+  const currentWeekPeriod = getCurrentWeekPeriod();
+  if (!weekPeriods.includes(currentWeekPeriod)) weekPeriods.unshift(currentWeekPeriod);
   const latestWeek = weekPeriod ?? weekPeriods[0] ?? "";
 
   // All logs (for monthly stats)
@@ -187,8 +204,10 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     .where(shiftCond)
     .orderBy(emsDutyLogsTable.weekPeriod);
 
-  // Get distinct week periods sorted
+  // Get distinct week periods sorted, always including the current week
   const allWeekPeriods = [...new Set(logs.map((l) => l.weekPeriod))].sort().reverse();
+  const _cwp = getCurrentWeekPeriod();
+  if (!allWeekPeriods.includes(_cwp)) allWeekPeriods.unshift(_cwp);
 
   // Fetch ALL PD officers as the source of truth
   const allPdOfficers = await db
