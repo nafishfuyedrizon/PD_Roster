@@ -71,21 +71,26 @@ function useShiftConfigs() {
 const ALL_SHIFTS_TAB = { value: "ALL", label: "All Shifts", sub: "", icon: "◉", startHour: 0, endHour: 0, sortOrder: 0 };
 
 // ── Time hour select helper ─────────────────────────────────────────────────
+const BD_OFFSET = 6;
+
+function fmtHour12(h: number): string {
+  const hh = ((h % 24) + 24) % 24;
+  const ampm = hh < 12 ? "AM" : "PM";
+  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+  return `${h12}:00 ${ampm}`;
+}
+
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => {
-  const ampm = h < 12 ? "AM" : "PM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  const label = `${h12}:00 ${ampm} (${String(h).padStart(2, "0")}:00 UTC)`;
+  const bdH = (h + BD_OFFSET) % 24;
+  const label = `${fmtHour12(h)} (${String(h).padStart(2, "0")}:00 UTC / ${fmtHour12(bdH)} BD)`;
   return { value: h, label };
 });
 
 function shiftSub(startHour: number, endHour: number): string {
   if (startHour === 0 && endHour === 0) return "";
-  const fmt = (h: number) => {
-    const ampm = h < 12 ? "AM" : "PM";
-    const h12 = h % 12 === 0 ? 12 : h % 12;
-    return `${h12}:00 ${ampm}`;
-  };
-  return `${fmt(startHour)} – ${fmt(endHour)} UTC`;
+  const bdStart = (startHour + BD_OFFSET) % 24;
+  const bdEnd   = (endHour   + BD_OFFSET) % 24;
+  return `${fmtHour12(startHour)} – ${fmtHour12(endHour)} UTC (${fmtHour12(bdStart)} – ${fmtHour12(bdEnd)} BD)`;
 }
 
 function HourSelect({ value, onChange, placeholder }: { value: number | undefined; onChange: (h: number) => void; placeholder?: string }) {
