@@ -528,13 +528,7 @@ export default function PdDutyHourPage() {
                 </TableRow>
               ) : (
                 filteredBreakdown.map((person) => {
-                  const st = person.status ?? "";
-                  const statusBadgeCls =
-                    st === "LOA"
-                      ? "text-yellow-400 border-yellow-500/30 bg-yellow-500/10"
-                      : st === "Active"
-                      ? "text-green-400 border-green-500/30 bg-green-500/10"
-                      : "text-red-400 border-red-500/30 bg-red-500/10";
+                  const dbStatus = person.status ?? "";
 
                   const weekHoursMap: Record<string, string | null> = {};
                   for (const w of person.weeks) weekHoursMap[w.weekPeriod] = w.dutyHours;
@@ -548,6 +542,18 @@ export default function PdDutyHourPage() {
                     const weekStatuses: WeekStatus[] = wps.map((wp) => getWeekStatus(weekHoursMap[wp]));
                     monthStatuses[mo] = computeMonthlyStatus(weekStatuses);
                   }
+
+                  // STATUS column: LOA keeps its badge; others show computed current-month activity
+                  const currentMonthStatus = months[0] ? monthStatuses[months[0]] : null;
+                  const displayStatus = dbStatus === "LOA" ? "LOA" : (currentMonthStatus ?? dbStatus);
+                  const statusBadgeCls =
+                    displayStatus === "LOA"
+                      ? "text-yellow-400 border-yellow-500/30 bg-yellow-500/10"
+                      : displayStatus === "Active"
+                      ? "text-green-400 border-green-500/30 bg-green-500/10"
+                      : displayStatus === "Semi-Active"
+                      ? "text-orange-400 border-orange-500/30 bg-orange-500/10"
+                      : "text-red-400 border-red-500/30 bg-red-500/10";
 
                   return (
                     <TableRow key={person.csNumber} className="hover:bg-secondary/20 transition-colors" data-testid={`ems-row-${person.csNumber}`}>
@@ -563,7 +569,7 @@ export default function PdDutyHourPage() {
                       </TableCell>
                       <TableCell className="sticky left-[380px] bg-card z-20 min-w-[90px] border-r border-border/60">
                         <Badge variant="outline" className={`text-xs font-mono ${statusBadgeCls}`}>
-                          {st}
+                          {displayStatus}
                         </Badge>
                       </TableCell>
                       {weekPeriods.map((wp) => (
