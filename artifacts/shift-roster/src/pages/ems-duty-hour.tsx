@@ -446,7 +446,6 @@ export default function PdDutyHourPage() {
       })
       .filter((p) => p.secs > 0)
       .sort((a, b) => b.secs - a.secs)
-      .slice(0, 5)
       .map((p, i) => ({ ...p, totalHours: secsToHms(p.secs), position: i + 1 }));
   }, [breakdown, selectedWeekPeriod]);
 
@@ -464,7 +463,6 @@ export default function PdDutyHourPage() {
       })
       .filter((p) => p.secs > 0)
       .sort((a, b) => b.secs - a.secs)
-      .slice(0, 5)
       .map((p, i) => ({ ...p, totalHours: secsToHms(p.secs), position: i + 1 }));
   }, [breakdown, selectedMonth, monthWeeks]);
 
