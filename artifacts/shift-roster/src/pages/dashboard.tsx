@@ -38,6 +38,27 @@ function useDashboard(refetchInterval = 15000) {
   });
 }
 
+function secsToHms(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function LiveTimer({ onSince }: { onSince: string }) {
+  const [elapsed, setElapsed] = useState(() =>
+    Math.max(0, Math.floor((Date.now() - new Date(onSince).getTime()) / 1000))
+  );
+  useEffect(() => {
+    const start = new Date(onSince).getTime();
+    const id = setInterval(() => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [onSince]);
+  return <span className="font-mono tabular-nums">{secsToHms(elapsed)}</span>;
+}
+
 function LiveClock() {
   const [time, setTime] = useState(() => new Date());
   useEffect(() => {
@@ -131,9 +152,9 @@ export default function DashboardPage() {
                   </div>
                   <div className="font-semibold text-sm text-foreground leading-tight">{o.name}</div>
                   <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{o.rank}</div>
-                  <div className="flex items-center gap-1 text-xs font-mono text-green-300 mt-0.5">
-                    <Clock className="w-3 h-3" />
-                    {o.elapsedHms}
+                  <div className="flex items-center gap-1 text-xs text-green-300 mt-0.5">
+                    <Clock className="w-3 h-3 shrink-0" />
+                    <LiveTimer onSince={o.onSince} />
                   </div>
                 </div>
               ))}
