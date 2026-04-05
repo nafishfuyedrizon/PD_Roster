@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useListOfficers, getListOfficersQueryKey } from "@workspace/api-client-react";
+import type { Officer } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
+import { OfficerEditDialog } from "@/components/officer-edit-dialog";
 
 const RANK_ORDER: Record<string, number> = {
   "CHIEF": 1, "ASSISTANT CHIEF": 2, "SHERIFF": 2, "COLONEL": 2,
@@ -32,6 +36,8 @@ export default function FtpRosterPage() {
     { query: { queryKey: getListOfficersQueryKey({}) } }
   );
 
+  const [editing, setEditing] = useState<Officer | null>(null);
+
   const members = officers
     .filter((o) => o.ftp)
     .sort((a, b) => getRankOrder(a.rank) - getRankOrder(b.rank));
@@ -50,20 +56,21 @@ export default function FtpRosterPage() {
                 <th className="py-3 px-6 text-center font-semibold text-foreground/80 w-44">Rank</th>
                 <th className="py-3 px-6 text-center font-semibold text-foreground/80 w-40">Status</th>
                 <th className="py-3 px-6 text-center font-semibold text-foreground/80">Note</th>
+                <th className="py-3 px-2 text-center font-semibold text-foreground/80 w-14"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className={i % 2 === 0 ? "bg-card" : "bg-secondary/20"}>
-                    <td colSpan={5} className="py-3 px-6">
+                    <td colSpan={6} className="py-3 px-6">
                       <Skeleton className="h-5 w-full" />
                     </td>
                   </tr>
                 ))
               ) : members.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
                     No FTP officers found.
                   </td>
                 </tr>
@@ -95,6 +102,16 @@ export default function FtpRosterPage() {
                       <td className="py-3 px-6 text-center text-muted-foreground text-xs">
                         {o.completionStatus ?? ""}
                       </td>
+                      <td className="py-3 px-2 text-center">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => setEditing(o as Officer)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
                     </tr>
                   );
                 })
@@ -102,6 +119,13 @@ export default function FtpRosterPage() {
             </tbody>
           </table>
         </div>
+
+        <OfficerEditDialog
+          officer={editing}
+          open={!!editing}
+          onClose={() => setEditing(null)}
+          showNoteField
+        />
       </div>
     </Layout>
   );
