@@ -418,7 +418,7 @@ export default function PdDutyHourPage() {
 
   const { data: dossier, isLoading: dossierLoading } = useOfficerDuty(selectedCs);
 
-  const weekPeriods = stats?.weekPeriods ?? [];
+  const weekPeriods = (stats?.weekPeriods ?? []).slice(0, 5);
 
   const { months, monthWeeks } = useMemo(() => {
     const seen = new Set<string>();
