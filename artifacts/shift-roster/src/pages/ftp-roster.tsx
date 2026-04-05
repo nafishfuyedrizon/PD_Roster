@@ -54,7 +54,7 @@ export default function FtpRosterPage() {
   const queryClient = useQueryClient();
   const { data: officers = [], isLoading } = useListOfficers(
     {},
-    { query: { queryKey: getListOfficersQueryKey({}), refetchInterval: 30000, refetchOnWindowFocus: true } }
+    { query: { queryKey: getListOfficersQueryKey({}), refetchInterval: 60_000, refetchOnWindowFocus: true } }
   );
   const { mutate: updateOfficer } = useUpdateOfficer();
 

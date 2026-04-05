@@ -64,7 +64,7 @@ function useShiftConfigs() {
   return useQuery<ShiftConfig[]>({
     queryKey: ["shift-configs"],
     queryFn: () => fetch("/api/ems/shift-configs").then((r) => r.json()),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 }
 
@@ -391,7 +391,7 @@ function useOfficerDuty(callSign: string | null) {
       return res.json() as Promise<OfficerDutyDetail>;
     },
     enabled: !!callSign,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 }
 
@@ -475,11 +475,11 @@ export default function PdDutyHourPage() {
   const breakdownParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
 
   const { data: stats, isLoading: statsLoading } = useGetEmsStats(statsParams, {
-    query: { queryKey: getGetEmsStatsQueryKey(statsParams), refetchInterval: 30_000 },
+    query: { queryKey: getGetEmsStatsQueryKey(statsParams), refetchInterval: 60_000 },
   });
 
   const { data: breakdown = [], isLoading: breakdownLoading } = useGetEmsBreakdown(breakdownParams, {
-    query: { queryKey: getGetEmsBreakdownQueryKey(breakdownParams), refetchInterval: 30_000 },
+    query: { queryKey: getGetEmsBreakdownQueryKey(breakdownParams), refetchInterval: 60_000 },
   });
 
   const { data: dossier, isLoading: dossierLoading } = useOfficerDuty(selectedCs);

@@ -42,7 +42,7 @@ interface DashboardData {
   lowestWeekly: LowestEntry[];
 }
 
-function useDashboard(refetchInterval = 15000) {
+function useDashboard(refetchInterval = 60_000) {
   return useQuery<DashboardData>({
     queryKey: ["dashboard"],
     queryFn: () => fetch("/api/dashboard").then((r) => r.json()),

@@ -123,13 +123,13 @@ export default function AdminPage() {
   const { data: shiftConfigs = [] } = useQuery<ShiftConfig[]>({
     queryKey: ["admin", "shift-configs"],
     queryFn: fetchShiftConfigs,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   const { data: adjData, isLoading: adjLoading } = useQuery({
     queryKey: ["admin", "duty-adjustments", adjMonth, String(adjYear), adjShift],
     queryFn: () => fetchAdjustments(adjMonth, String(adjYear), adjShift),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   useEffect(() => {
