@@ -123,17 +123,6 @@ export default function StatsPage() {
                 </>
               )}
 
-              {weekPeriods.length > 0 && (
-                <>
-                  <SelectSeparator />
-                  <SelectGroup>
-                    <SelectLabel className="text-xs text-muted-foreground uppercase tracking-wider px-2">Weekly</SelectLabel>
-                    {weekPeriods.map((wp) => (
-                      <SelectItem key={wp} value={wp}>{wp}</SelectItem>
-                    ))}
-                  </SelectGroup>
-                </>
-              )}
             </SelectContent>
           </Select>
         </div>
