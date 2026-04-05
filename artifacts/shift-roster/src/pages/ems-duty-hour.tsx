@@ -96,15 +96,55 @@ function secsToHms(total: number): string {
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 }
 
+type WeekStatus = "active" | "semi" | "inactive" | "zero";
+
+function getWeekStatus(hms: string | null | undefined): WeekStatus {
+  const secs = hmsToSecs(hms);
+  if (secs === 0) return "zero";
+  if (secs >= 36000) return "active";
+  if (secs >= 18000) return "semi";
+  return "inactive";
+}
+
+function computeMonthlyStatus(statuses: WeekStatus[]): "Active" | "Semi-Active" | "Inactive" {
+  const nonZero = statuses.filter((s) => s !== "zero");
+  if (nonZero.length === 0) return "Inactive";
+  const active   = nonZero.filter((s) => s === "active").length;
+  const semi     = nonZero.filter((s) => s === "semi").length;
+  const inactive = nonZero.filter((s) => s === "inactive").length;
+  if (semi >= 3) return "Inactive";
+  if (semi === 2) return "Semi-Active";
+  if (active > semi + inactive) return "Active";
+  if (inactive > active) return "Inactive";
+  if (semi > active) return "Semi-Active";
+  return "Active";
+}
+
+function MonthlyStatusBadge({ status }: { status: "Active" | "Semi-Active" | "Inactive" }) {
+  const cls =
+    status === "Active"
+      ? "text-green-400 border-green-500/30 bg-green-500/10"
+      : status === "Semi-Active"
+      ? "text-yellow-400 border-yellow-500/30 bg-yellow-500/10"
+      : "text-red-400 border-red-500/30 bg-red-500/10";
+  return (
+    <Badge variant="outline" className={`text-[10px] font-mono whitespace-nowrap ${cls}`}>
+      {status}
+    </Badge>
+  );
+}
+
 function HoursCell({ hours }: { hours: string | null | undefined }) {
   if (!hours || hours === "0" || hours === "00:00:00") {
     return <span className="text-muted-foreground/40 font-mono text-xs">00:00:00</span>;
   }
-  const [h, m] = hours.split(":");
-  const totalMins = parseInt(h ?? "0") * 60 + parseInt(m ?? "0");
-  const isWarning = totalMins > 0 && totalMins < 300;
+  const status = getWeekStatus(hours);
+  const colorCls =
+    status === "inactive" ? "text-red-400" :
+    status === "semi"     ? "text-yellow-400" :
+    "text-foreground";
   return (
-    <span className={`font-mono text-xs tabular-nums ${isWarning ? "text-yellow-400" : "text-foreground"}`}>
+    <span className={`font-mono text-xs tabular-nums ${colorCls}`}>
       {hours}
     </span>
   );
@@ -452,9 +492,14 @@ export default function PdDutyHourPage() {
                   </TableHead>
                 ))}
                 {months.map((m) => (
-                  <TableHead key={`month-${m}`} className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-orange-400 border-l border-border/60">
-                    {m} TOTAL
-                  </TableHead>
+                  <React.Fragment key={`month-header-${m}`}>
+                    <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-orange-400 border-l border-border/60">
+                      {m} TOTAL
+                    </TableHead>
+                    <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-yellow-400/80 border-border/20">
+                      {m} STATUS
+                    </TableHead>
+                  </React.Fragment>
                 ))}
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-primary border-l border-border/60">
                   5-WK TOTAL
@@ -478,14 +523,27 @@ export default function PdDutyHourPage() {
                 </TableRow>
               ) : (
                 filteredBreakdown.map((person) => {
-                  const isInactive = person.status === "Inactive" || person.status === "LOA";
+                  const st = person.status ?? "";
+                  const statusBadgeCls =
+                    st === "LOA"
+                      ? "text-yellow-400 border-yellow-500/30 bg-yellow-500/10"
+                      : st === "Active"
+                      ? "text-green-400 border-green-500/30 bg-green-500/10"
+                      : "text-red-400 border-red-500/30 bg-red-500/10";
+
                   const weekHoursMap: Record<string, string | null> = {};
                   for (const w of person.weeks) weekHoursMap[w.weekPeriod] = w.dutyHours;
+
                   const monthTotals: Record<string, string> = {};
+                  const monthStatuses: Record<string, "Active" | "Semi-Active" | "Inactive"> = {};
                   for (const mo of months) {
-                    const secs = (monthWeeks[mo] ?? []).reduce((acc, wp) => acc + hmsToSecs(weekHoursMap[wp]), 0);
+                    const wps = monthWeeks[mo] ?? [];
+                    const secs = wps.reduce((acc, wp) => acc + hmsToSecs(weekHoursMap[wp]), 0);
                     monthTotals[mo] = secsToHms(secs);
+                    const weekStatuses = wps.map((wp) => getWeekStatus(weekHoursMap[wp]));
+                    monthStatuses[mo] = computeMonthlyStatus(weekStatuses);
                   }
+
                   return (
                     <TableRow key={person.csNumber} className="hover:bg-secondary/20 transition-colors" data-testid={`ems-row-${person.csNumber}`}>
                       <TableCell className="sticky left-0 bg-card font-mono text-sm font-bold text-primary z-20">{person.csNumber}</TableCell>
@@ -499,15 +557,22 @@ export default function PdDutyHourPage() {
                         </button>
                       </TableCell>
                       <TableCell className="sticky left-[380px] bg-card z-20 min-w-[90px] border-r border-border/60">
-                        <Badge variant="outline" className={`text-xs font-mono ${isInactive ? "text-red-400 border-red-500/30 bg-red-500/10" : "text-green-400 border-green-500/30 bg-green-500/10"}`}>
-                          {person.status}
+                        <Badge variant="outline" className={`text-xs font-mono ${statusBadgeCls}`}>
+                          {st}
                         </Badge>
                       </TableCell>
                       {weekPeriods.map((wp) => (
                         <TableCell key={wp} className="text-center"><HoursCell hours={weekHoursMap[wp]} /></TableCell>
                       ))}
                       {months.map((mo) => (
-                        <TableCell key={`mt-${mo}`} className="text-center border-l border-border/40"><HoursCell hours={monthTotals[mo]} /></TableCell>
+                        <React.Fragment key={`mt-${mo}`}>
+                          <TableCell className="text-center border-l border-border/40">
+                            <HoursCell hours={monthTotals[mo]} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <MonthlyStatusBadge status={monthStatuses[mo]!} />
+                          </TableCell>
+                        </React.Fragment>
                       ))}
                       <TableCell className="text-center border-l border-border/40">
                         <span className="font-mono text-sm font-bold text-primary tabular-nums">{person.totalHours}</span>
