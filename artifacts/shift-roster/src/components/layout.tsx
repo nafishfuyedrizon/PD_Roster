@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings } from "lucide-react";
+import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays } from "lucide-react";
 
 const DEPARTMENTS = [
   { label: "SASP", value: "SASP" },
@@ -17,8 +17,10 @@ const DEPARTMENTS = [
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [rostersOpen, setRostersOpen] = useState(true);
+  const [adminOpen, setAdminOpen] = useState(location.startsWith("/admin"));
 
   const isRosterActive = location === "/" || location.startsWith("/dept/");
+  const isAdminActive = location.startsWith("/admin");
 
   return (
     <div className="min-h-[100dvh] flex flex-col md:flex-row bg-background text-foreground dark">
@@ -151,19 +153,55 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          {/* Admin Panel */}
-          <Link href="/admin" data-testid="nav-admin">
-            <div
-              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
-                location === "/admin"
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+          {/* Admin Panel collapsible */}
+          <div>
+            <button
+              onClick={() => setAdminOpen((v) => !v)}
+              data-testid="nav-admin-toggle"
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm font-semibold rounded-md transition-colors ${
+                isAdminActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Settings className="w-4 h-4 text-teal-400" />
-              Admin Panel
-            </div>
-          </Link>
+              <span className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-teal-400" />
+                Admin Panel
+              </span>
+              {adminOpen ? (
+                <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+              )}
+            </button>
+
+            {adminOpen && (
+              <div className="mt-1 ml-2 border-l border-border pl-3 space-y-0.5">
+                <Link href="/admin" data-testid="nav-admin-channels">
+                  <div
+                    className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+                      location === "/admin"
+                        ? "bg-secondary text-secondary-foreground font-medium"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <Hash className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                    Discord Channels
+                  </div>
+                </Link>
+                <Link href="/admin/duty-logs" data-testid="nav-admin-duty-logs">
+                  <div
+                    className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+                      location === "/admin/duty-logs"
+                        ? "bg-secondary text-secondary-foreground font-medium"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <CalendarDays className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                    Duty Logs
+                  </div>
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="p-4 border-t border-border mt-auto">
