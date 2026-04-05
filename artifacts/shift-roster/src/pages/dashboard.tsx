@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Users, Clock, Zap, Trophy, RefreshCw } from "lucide-react";
+import { Activity, Users, Clock, Zap, Trophy, RefreshCw, ChevronDown } from "lucide-react";
 
 interface LiveOfficer {
   licenseId: string;
@@ -27,7 +27,7 @@ interface DashboardData {
     currentWeek: string;
   };
   rankDistribution: { rank: string; count: number }[];
-  statusOverview: { status: string; count: number; weekHours: string }[];
+  statusOverview: { status: string; count: number; weekHours: string; officers: { csNumber: string; name: string; rank: string }[] }[];
 }
 
 function useDashboard(refetchInterval = 15000) {
@@ -106,6 +106,7 @@ function titleCase(s: string) {
 
 export default function DashboardPage() {
   const { data, isLoading, refetch } = useDashboard(15000);
+  const [expandedStatus, setExpandedStatus] = useState<string | null>(null);
 
   const maxRankCount = Math.max(...(data?.rankDistribution.map((r) => r.count) ?? [1]));
 
@@ -290,18 +291,41 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-2">
               {data?.statusOverview
-                .map(({ status, count, weekHours }) => {
+                .map(({ status, count, weekHours, officers }) => {
                   const s = statusStyle(status);
                   const [h] = weekHours.split(":");
+                  const isOpen = expandedStatus === status;
                   return (
-                    <div key={status} className={`flex items-center justify-between px-4 py-3 rounded-lg border ${s.bg} ${s.border}`}>
-                      <div>
-                        <div className={`font-semibold text-sm ${s.text}`}>{status}</div>
-                        {parseInt(h ?? "0") > 0 && (
-                          <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{weekHours} duty this week</div>
-                        )}
-                      </div>
-                      <span className={`text-2xl font-bold tabular-nums ${s.text}`}>{count}</span>
+                    <div key={status} className={`rounded-lg border overflow-hidden ${s.border}`}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedStatus(isOpen ? null : status)}
+                        className={`w-full flex items-center justify-between px-4 py-3 ${s.bg} hover:brightness-110 transition-all`}
+                      >
+                        <div className="text-left">
+                          <div className={`font-semibold text-sm ${s.text}`}>{status}</div>
+                          {parseInt(h ?? "0") > 0 && (
+                            <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{weekHours} duty this week</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-2xl font-bold tabular-nums ${s.text}`}>{count}</span>
+                          {count > 0 && (
+                            <ChevronDown className={`w-4 h-4 ${s.text} transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                          )}
+                        </div>
+                      </button>
+                      {isOpen && officers.length > 0 && (
+                        <div className="bg-background/50 border-t border-border px-4 py-3 grid grid-cols-1 gap-1 max-h-60 overflow-y-auto">
+                          {officers.map((o) => (
+                            <div key={o.csNumber} className="flex items-baseline gap-2 py-0.5">
+                              <span className="text-[10px] font-mono text-muted-foreground w-16 shrink-0 truncate">{o.csNumber}</span>
+                              <span className="text-xs font-medium text-foreground truncate">{o.name}</span>
+                              {o.rank && <span className="text-[10px] font-mono text-muted-foreground ml-auto shrink-0">{o.rank}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

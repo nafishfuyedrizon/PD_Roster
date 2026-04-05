@@ -244,20 +244,23 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   }
 
   const ORDER = ["Active", "Semi-Active", "Inactive", "LOA"] as const;
-  const activityGroups: Record<string, { count: number; weekSecs: number }> = {
-    "Active":      { count: 0, weekSecs: 0 },
-    "Semi-Active": { count: 0, weekSecs: 0 },
-    "Inactive":    { count: 0, weekSecs: 0 },
-    "LOA":         { count: 0, weekSecs: 0 },
+  type ActivityGroup = { count: number; weekSecs: number; officers: { csNumber: string; name: string; rank: string }[] };
+  const activityGroups: Record<string, ActivityGroup> = {
+    "Active":      { count: 0, weekSecs: 0, officers: [] },
+    "Semi-Active": { count: 0, weekSecs: 0, officers: [] },
+    "Inactive":    { count: 0, weekSecs: 0, officers: [] },
+    "LOA":         { count: 0, weekSecs: 0, officers: [] },
   };
 
   for (const o of officers) {
     const cs = o.callSign ?? "";
     const thisWeekSecs2 = (logsByCsWeek[cs] ?? {})[currentWeek] ?? 0;
+    const entry = { csNumber: cs, name: o.name ?? cs, rank: o.rank ?? "" };
 
     if (o.status === "LOA") {
       activityGroups["LOA"]!.count++;
       activityGroups["LOA"]!.weekSecs += thisWeekSecs2;
+      activityGroups["LOA"]!.officers.push(entry);
       continue;
     }
 
@@ -267,12 +270,24 @@ router.get("/dashboard", async (req, res): Promise<void> => {
     const actStatus = computeMonthlyStatus(weekStatuses);
     activityGroups[actStatus]!.count++;
     activityGroups[actStatus]!.weekSecs += thisWeekSecs2;
+    activityGroups[actStatus]!.officers.push(entry);
+  }
+
+  // Sort each group's officers by rank then call sign
+  for (const grp of Object.values(activityGroups)) {
+    grp.officers.sort((a, b) => {
+      const ra = RANK_ORDER[a.rank.toUpperCase()] ?? 99;
+      const rb = RANK_ORDER[b.rank.toUpperCase()] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return a.csNumber.localeCompare(b.csNumber);
+    });
   }
 
   const statusOverview = ORDER.map((status) => ({
     status,
     count: activityGroups[status]!.count,
     weekHours: secsToHms(activityGroups[status]!.weekSecs),
+    officers: activityGroups[status]!.officers,
   }));
 
   res.json({
