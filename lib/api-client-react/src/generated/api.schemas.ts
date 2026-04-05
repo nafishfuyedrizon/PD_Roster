@@ -30,6 +30,7 @@ export interface Officer {
   shotgun?: boolean | null;
   rifleTierII?: boolean | null;
   ftp?: boolean | null;
+  isManagement?: boolean | null;
   strikesMajor?: string | null;
   strikesMinor?: string | null;
   discordUsername?: string | null;
@@ -63,6 +64,7 @@ export interface CreateOfficerBody {
   shotgun?: boolean | null;
   rifleTierII?: boolean | null;
   ftp?: boolean | null;
+  isManagement?: boolean | null;
   strikesMajor?: string | null;
   strikesMinor?: string | null;
   discordUsername?: string | null;
@@ -95,6 +97,7 @@ export interface UpdateOfficerBody {
   shotgun?: boolean | null;
   rifleTierII?: boolean | null;
   ftp?: boolean | null;
+  isManagement?: boolean | null;
   strikesMajor?: string | null;
   strikesMinor?: string | null;
   discordUsername?: string | null;

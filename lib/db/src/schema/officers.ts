@@ -23,6 +23,7 @@ export const officersTable = pgTable("officers", {
   shotgun: boolean("shotgun").default(false),
   rifleTierII: boolean("rifle_tier_ii").default(false),
   ftp: boolean("ftp").default(false),
+  isManagement: boolean("is_management").default(false),
   strikesMajor: text("strikes_major").default("0/4"),
   strikesMinor: text("strikes_minor").default("0/2"),
   discordUsername: text("discord_username"),

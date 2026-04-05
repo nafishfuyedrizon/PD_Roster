@@ -9,6 +9,8 @@ import RosterPage from "@/pages/roster";
 import StatsPage from "@/pages/stats";
 import FtoPairsPage from "@/pages/fto-pairs";
 import PdDutyHourPage from "@/pages/ems-duty-hour";
+import ManagementPage from "@/pages/management";
+import FtpRosterPage from "@/pages/ftp-roster";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +24,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={RosterPage} />
+      <Route path="/dept/Management" component={ManagementPage} />
+      <Route path="/dept/FTP" component={FtpRosterPage} />
       <Route path="/dept/:department" component={RosterPage} />
       <Route path="/stats" component={StatsPage} />
       <Route path="/fto-pairs" component={FtoPairsPage} />

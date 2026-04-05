@@ -27,6 +27,7 @@ export interface Officer {
   shotgun?: boolean | null;
   rifleTierII?: boolean | null;
   ftp?: boolean | null;
+  isManagement?: boolean | null;
   strikesMajor?: string | null;
   strikesMinor?: string | null;
   discordUsername?: string | null;
