@@ -154,7 +154,7 @@ router.get("/roster/week-periods", async (_req, res): Promise<void> => {
     .from(officersTable)
     .orderBy(desc(officersTable.weekPeriod));
 
-  const periods = rows.map((r) => r.weekPeriod);
+  const periods = rows.map((r) => r.weekPeriod).filter((p) => p && p.trim() !== "");
   res.json(ListWeekPeriodsResponse.parse(periods));
 });
 
