@@ -300,7 +300,7 @@ export default function PdDutyHourPage() {
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[220px] bg-secondary/50 z-20 min-w-[90px] border-r border-border">
                   Status
                 </TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[160px]">
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[160px] text-purple-400">
                   Rank
                 </TableHead>
                 {weekPeriods.map((wp) => (
@@ -378,10 +378,8 @@ export default function PdDutyHourPage() {
                           {person.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="min-w-[140px]">
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/80 leading-tight">
-                          {person.rank}
-                        </span>
+                      <TableCell className="py-2 uppercase text-[10px] font-medium min-w-[140px]">
+                        {person.rank}
                       </TableCell>
                       {weekPeriods.map((wp) => (
                         <TableCell key={wp} className="text-center">
