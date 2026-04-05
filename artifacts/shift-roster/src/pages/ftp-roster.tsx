@@ -29,12 +29,25 @@ function getRankOrder(rank: string): number {
   return RANK_ORDER[rank.toUpperCase()] ?? 99;
 }
 
+const FTP_ROLES = [
+  "Command",
+  "Field Training Supervisor",
+  "Field Training Trainer",
+  "Field Training Trainee",
+  "Field Training Program",
+];
+
 function getFtpRole(rank: string): string {
+  const upper = rank.toUpperCase();
+  if (FTP_ROLES.map((r) => r.toUpperCase()).includes(upper)) {
+    return FTP_ROLES.find((r) => r.toUpperCase() === upper) ?? rank;
+  }
   const order = getRankOrder(rank);
   if (order <= 3) return "Command";
   if (order <= 5) return "Field Training Supervisor";
   if (order <= 8) return "Field Training Trainer";
-  return "Field Training Trainee";
+  if (order <= 12) return "Field Training Trainee";
+  return "Field Training Program";
 }
 
 export default function FtpRosterPage() {
@@ -168,6 +181,9 @@ export default function FtpRosterPage() {
           open={!!editing}
           onClose={() => setEditing(null)}
           showNoteField
+          rankOptions={FTP_ROLES}
+          rankLabel="Role"
+          initialRankValue={(o) => getFtpRole(o.rank)}
         />
 
         <AddMemberDialog
