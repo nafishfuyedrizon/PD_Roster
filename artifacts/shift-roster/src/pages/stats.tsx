@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Layout } from "@/components/layout";
 import {
   useGetRosterStats,
@@ -12,6 +12,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectSeparator,
+  SelectLabel,
+  SelectGroup,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Users, UserMinus, ShieldAlert } from "lucide-react";
@@ -29,19 +32,62 @@ import {
 } from "recharts";
 
 const COLORS = ['hsl(220, 70%, 50%)', 'hsl(160, 60%, 45%)', 'hsl(30, 80%, 55%)', 'hsl(280, 65%, 60%)', 'hsl(340, 75%, 55%)'];
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function getEndMonth(wp: string): number {
+  return parseInt(wp.slice(6, 8), 10);
+}
+
+interface MonthOption {
+  value: string;
+  label: string;
+  mm: string;
+}
+
+function buildMonthOptions(weekPeriods: string[]): MonthOption[] {
+  const seen = new Set<string>();
+  const opts: MonthOption[] = [];
+  const now = new Date();
+  let scanYear = now.getFullYear();
+  let prevMm = now.getMonth() + 1;
+
+  for (const wp of weekPeriods) {
+    const mm = getEndMonth(wp);
+    if (mm > prevMm) scanYear -= 1;
+    prevMm = mm;
+    const key = `${scanYear}-${String(mm).padStart(2, "0")}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      opts.push({ value: `month:${String(mm).padStart(2, "0")}`, label: `${MONTH_NAMES[mm - 1]} ${scanYear}`, mm: String(mm).padStart(2, "0") });
+    }
+  }
+  return opts;
+}
 
 export default function StatsPage() {
-  const [weekPeriod, setWeekPeriod] = useState<string>("ALL");
+  const [period, setPeriod] = useState<string>("ALL");
 
   const { data: weekPeriods = [] } = useListWeekPeriods({
     query: { queryKey: getListWeekPeriodsQueryKey() },
   });
 
-  const queryParams = weekPeriod !== "ALL" ? { weekPeriod } : {};
+  const monthOptions = useMemo(() => buildMonthOptions(weekPeriods), [weekPeriods]);
+
+  const queryParams = useMemo(() => {
+    if (period === "ALL") return {};
+    if (period.startsWith("month:")) return { month: period.slice(6) };
+    return { weekPeriod: period };
+  }, [period]);
 
   const { data: stats, isLoading } = useGetRosterStats(queryParams, {
     query: { queryKey: getGetRosterStatsQueryKey(queryParams) },
   });
+
+  const selectedLabel = useMemo(() => {
+    if (period === "ALL") return "All Time";
+    if (period.startsWith("month:")) return monthOptions.find((m) => m.value === period)?.label ?? period;
+    return period;
+  }, [period, monthOptions]);
 
   return (
     <Layout>
@@ -58,17 +104,36 @@ export default function StatsPage() {
 
         <div className="bg-card border border-border p-2 rounded-lg flex items-center gap-4">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-2">Period</span>
-          <Select value={weekPeriod} onValueChange={setWeekPeriod}>
-            <SelectTrigger className="w-[180px]" data-testid="select-stats-week">
-              <SelectValue placeholder="Select Week" />
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[200px]" data-testid="select-stats-week">
+              <SelectValue>{selectedLabel}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Time</SelectItem>
-              {weekPeriods.map((wp) => (
-                <SelectItem key={wp} value={wp}>
-                  {wp}
-                </SelectItem>
-              ))}
+
+              {monthOptions.length > 0 && (
+                <>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground uppercase tracking-wider px-2">Monthly</SelectLabel>
+                    {monthOptions.map((mo) => (
+                      <SelectItem key={mo.value} value={mo.value}>{mo.label}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </>
+              )}
+
+              {weekPeriods.length > 0 && (
+                <>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground uppercase tracking-wider px-2">Weekly</SelectLabel>
+                    {weekPeriods.map((wp) => (
+                      <SelectItem key={wp} value={wp}>{wp}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>

@@ -65,14 +65,55 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
     return;
   }
 
-  const { weekPeriod } = parsed.data;
+  const { weekPeriod, month } = parsed.data;
 
-  const conditions = weekPeriod ? [eq(officersTable.weekPeriod, weekPeriod)] : [];
+  function parseDutyMinutes(dutyHours: string | null): number {
+    if (!dutyHours || dutyHours.trim() === "0" || dutyHours.trim() === "") return 0;
+    const hMatch = dutyHours.match(/(\d+)h/);
+    const mMatch = dutyHours.match(/(\d+)m/);
+    const hours = hMatch ? parseInt(hMatch[1]) : 0;
+    const mins = mMatch ? parseInt(mMatch[1]) : 0;
+    return hours * 60 + mins;
+  }
 
-  const officers = await db
+  // Build base conditions
+  const conditions = weekPeriod
+    ? [eq(officersTable.weekPeriod, weekPeriod)]
+    : month
+      ? [sql`SUBSTRING(${officersTable.weekPeriod}, 7, 2) = ${month}`]
+      : [];
+
+  const rawOfficers = await db
     .select()
     .from(officersTable)
     .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+  // For monthly mode: aggregate multiple weekly snapshots per officer into one merged row
+  // (sum duty hours across all weeks, use latest week's status/rank/dept for breakdowns)
+  type OfficerRow = typeof rawOfficers[0];
+  let officers: OfficerRow[];
+  if (month) {
+    const byCallSign = new Map<string, OfficerRow[]>();
+    for (const o of rawOfficers) {
+      const key = o.callSign ?? `id-${o.id}`;
+      if (!byCallSign.has(key)) byCallSign.set(key, []);
+      byCallSign.get(key)!.push(o);
+    }
+    officers = Array.from(byCallSign.values()).map((rows) => {
+      // Sort desc by weekPeriod so rows[0] is the latest snapshot
+      rows.sort((a, b) => (b.weekPeriod ?? "").localeCompare(a.weekPeriod ?? ""));
+      const latest = rows[0];
+      const totalMins = rows.reduce((sum, r) => sum + parseDutyMinutes(r.dutyHours), 0);
+      const h = Math.floor(totalMins / 60);
+      const m = totalMins % 60;
+      return {
+        ...latest,
+        dutyHours: totalMins > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : latest.dutyHours,
+      };
+    });
+  } else {
+    officers = rawOfficers;
+  }
 
   const totalOfficers = officers.length;
   const activeOfficers = officers.filter((o) => o.status === "Active").length;
@@ -88,20 +129,11 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   const departmentBreakdown = Object.entries(deptMap).map(([department, count]) => ({ department, count }));
   const rankBreakdown = Object.entries(rankMap).map(([rank, count]) => ({ rank, count }));
 
-  function parseDutyMinutes(dutyHours: string | null): number {
-    if (!dutyHours || dutyHours.trim() === "0" || dutyHours.trim() === "") return 0;
-    const hMatch = dutyHours.match(/(\d+)h/);
-    const mMatch = dutyHours.match(/(\d+)m/);
-    const hours = hMatch ? parseInt(hMatch[1]) : 0;
-    const mins = mMatch ? parseInt(mMatch[1]) : 0;
-    return hours * 60 + mins;
-  }
-
   const topDutyHours = [...officers]
     .sort((a, b) => parseDutyMinutes(b.dutyHours) - parseDutyMinutes(a.dutyHours))
     .slice(0, 10);
 
-  const effectiveWeekPeriod = weekPeriod ?? (officers[0]?.weekPeriod ?? "");
+  const effectiveWeekPeriod = weekPeriod ?? (rawOfficers[0]?.weekPeriod ?? "");
 
   const stats = {
     totalOfficers,
