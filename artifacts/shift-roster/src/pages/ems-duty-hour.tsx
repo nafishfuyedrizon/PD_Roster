@@ -378,8 +378,10 @@ export default function PdDutyHourPage() {
                           {person.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {person.rank}
+                      <TableCell className="min-w-[140px]">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/80 leading-tight">
+                          {person.rank}
+                        </span>
                       </TableCell>
                       {weekPeriods.map((wp) => (
                         <TableCell key={wp} className="text-center">
