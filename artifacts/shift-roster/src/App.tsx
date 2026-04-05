@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,12 @@ import PdDutyHourPage from "@/pages/ems-duty-hour";
 
 const queryClient = new QueryClient();
 
+function RedirectTo({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation(to); }, [to, setLocation]);
+  return null;
+}
+
 function Router() {
   return (
     <Switch>
@@ -19,6 +26,7 @@ function Router() {
       <Route path="/stats" component={StatsPage} />
       <Route path="/fto-pairs" component={FtoPairsPage} />
       <Route path="/pd-duty-hour" component={PdDutyHourPage} />
+      <Route path="/ems-duty-hour">{() => <RedirectTo to="/pd-duty-hour" />}</Route>
       <Route component={NotFound} />
     </Switch>
   );
