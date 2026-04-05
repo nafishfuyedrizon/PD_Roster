@@ -407,18 +407,29 @@ export default function PdDutyHourPage() {
   const fmtDiscord = (p: { discordUid?: string | null; discordUsername?: string | null; name: string }) =>
     p.discordUid ? `<@${p.discordUid}>` : `@${p.discordUsername ?? p.name}`;
 
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  const fmtMonthLabel = (ym: string) => {
+    const [year, mm] = ym.split("-");
+    const name = MONTH_NAMES[parseInt(mm ?? "1", 10) - 1] ?? mm;
+    return `${name?.toUpperCase()} ${year}`;
+  };
+
+  const buildAnnouncement = (title: string, officerLines: string[]) =>
+    `🏆 TOP PERFORMERS OF ${title} 🏆\n\n\n${officerLines.join("\n")}\n\n\nCongratulations to each of you on earning your place among the top performers. This achievement is a reflection of your effort, discipline, and impact.\n\n@everyone`;
+
   const handleCopyWeek = () => {
     if (!selectedWeekPeriod) return;
-    const lines = [...breakdown]
+    const officerLines = [...breakdown]
       .map((p) => {
         const wk = p.weeks.find((w) => w.weekPeriod === selectedWeekPeriod);
         return { tag: fmtDiscord(p), secs: hmsToSecs(wk?.dutyHours) };
       })
       .sort((a, b) => b.secs - a.secs)
       .slice(0, 10)
-      .map(({ tag, secs }) => `${tag} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
-      .join("\n");
-    navigator.clipboard.writeText(lines).then(() => {
+      .map(({ tag, secs }) => `${tag} - ${secs > 0 ? secsToHms(secs) : "00:00"}`);
+    const title = `THE WEEK (${selectedWeekPeriod})`;
+    navigator.clipboard.writeText(buildAnnouncement(title, officerLines)).then(() => {
       setWeekCopied(true);
       setTimeout(() => setWeekCopied(false), 2000);
     });
@@ -427,7 +438,7 @@ export default function PdDutyHourPage() {
   const handleCopyMonth = () => {
     if (!selectedMonth) return;
     const wps = monthWeeks[selectedMonth] ?? [];
-    const lines = [...breakdown]
+    const officerLines = [...breakdown]
       .map((p) => {
         const secs = wps.reduce((acc, wp) => {
           const wk = p.weeks.find((w) => w.weekPeriod === wp);
@@ -437,9 +448,8 @@ export default function PdDutyHourPage() {
       })
       .sort((a, b) => b.secs - a.secs)
       .slice(0, 10)
-      .map(({ tag, secs }) => `${tag} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
-      .join("\n");
-    navigator.clipboard.writeText(lines).then(() => {
+      .map(({ tag, secs }) => `${tag} - ${secs > 0 ? secsToHms(secs) : "00:00"}`);
+    navigator.clipboard.writeText(buildAnnouncement(fmtMonthLabel(selectedMonth), officerLines)).then(() => {
       setMonthCopied(true);
       setTimeout(() => setMonthCopied(false), 2000);
     });
