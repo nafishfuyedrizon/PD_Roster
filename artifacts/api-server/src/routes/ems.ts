@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { db, emsDutyLogsTable, officersTable } from "@workspace/db";
+import { db, emsDutyLogsTable, officersTable, shiftConfigsTable } from "@workspace/db";
 import {
   ListEmsDutyLogsQueryParams,
   ListEmsDutyLogsResponse,
@@ -311,6 +311,64 @@ router.delete("/ems/duty-logs/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  res.sendStatus(204);
+});
+
+// ── Shift Configs ───────────────────────────────────────────────────────────
+
+const DEFAULT_SHIFTS = [
+  { key: "EVENING",  label: "Evening",    sub: "8PM – 10PM", icon: "☽", startHour: 20, endHour: 22, sortOrder: 1 },
+  { key: "NIGHT",    label: "Night",      sub: "10PM – 2AM", icon: "✦", startHour: 22, endHour: 2,  sortOrder: 2 },
+  { key: "MIDNIGHT", label: "Midnight",   sub: "12AM – 6AM", icon: "◎", startHour: 0,  endHour: 6,  sortOrder: 3 },
+  { key: "FULL",     label: "Full Shift", sub: "8PM – 2AM",  icon: "⊙", startHour: 20, endHour: 2,  sortOrder: 4 },
+];
+
+router.get("/ems/shift-configs", async (_req, res): Promise<void> => {
+  let rows = await db.select().from(shiftConfigsTable).orderBy(shiftConfigsTable.sortOrder);
+  if (rows.length === 0) {
+    await db.insert(shiftConfigsTable).values(DEFAULT_SHIFTS).onConflictDoNothing();
+    rows = await db.select().from(shiftConfigsTable).orderBy(shiftConfigsTable.sortOrder);
+  }
+  res.json(rows);
+});
+
+router.post("/ems/shift-configs", async (req, res): Promise<void> => {
+  const { key, label, sub, icon, startHour, endHour, sortOrder } = req.body as {
+    key: string; label: string; sub?: string; icon?: string; startHour: number; endHour: number; sortOrder?: number;
+  };
+  if (!key || !label || startHour == null || endHour == null) {
+    res.status(400).json({ error: "key, label, startHour, endHour required" });
+    return;
+  }
+  const [row] = await db.insert(shiftConfigsTable).values({
+    key: key.toUpperCase().replace(/\s+/g, "_"),
+    label, sub: sub ?? "", icon: icon ?? "●",
+    startHour, endHour, sortOrder: sortOrder ?? 99,
+  }).returning();
+  res.status(201).json(row);
+});
+
+router.put("/ems/shift-configs/:key", async (req, res): Promise<void> => {
+  const { key } = req.params;
+  const { label, sub, icon, startHour, endHour, sortOrder } = req.body as {
+    label?: string; sub?: string; icon?: string; startHour?: number; endHour?: number; sortOrder?: number;
+  };
+  const updates: Partial<typeof shiftConfigsTable.$inferInsert> = {};
+  if (label     != null) updates.label     = label;
+  if (sub       != null) updates.sub       = sub;
+  if (icon      != null) updates.icon      = icon;
+  if (startHour != null) updates.startHour = startHour;
+  if (endHour   != null) updates.endHour   = endHour;
+  if (sortOrder != null) updates.sortOrder = sortOrder;
+  const [row] = await db.update(shiftConfigsTable).set(updates).where(eq(shiftConfigsTable.key, key)).returning();
+  if (!row) { res.status(404).json({ error: "Shift not found" }); return; }
+  res.json(row);
+});
+
+router.delete("/ems/shift-configs/:key", async (req, res): Promise<void> => {
+  const { key } = req.params;
+  const [row] = await db.delete(shiftConfigsTable).where(eq(shiftConfigsTable.key, key)).returning();
+  if (!row) { res.status(404).json({ error: "Shift not found" }); return; }
   res.sendStatus(204);
 });
 

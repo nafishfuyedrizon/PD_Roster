@@ -4,6 +4,7 @@ import {
   discordDutyEventsTable,
   emsDutyLogsTable,
   officersTable,
+  shiftConfigsTable,
 } from "@workspace/db";
 import { eq, and, asc, or } from "drizzle-orm";
 import { logger } from "./logger";
@@ -77,15 +78,22 @@ function getMessageTexts(msg: Message): string[] {
   return texts;
 }
 
-// ── Shift window definitions ────────────────────────────────────────────────
-// [startHour, endHour] in UTC. endHour < startHour means it wraps midnight.
-
-const SHIFT_WINDOWS: Record<string, [number, number]> = {
-  EVENING:  [20, 22],  // 8PM – 10PM
-  NIGHT:    [22, 2],   // 10PM – 2AM
-  MIDNIGHT: [0,  6],   // 12AM – 6AM
-  FULL:     [20, 2],   // 8PM – 2AM
+// ── Shift window definitions (loaded from DB) ───────────────────────────────
+// Fallback used only if DB is empty
+const DEFAULT_SHIFT_WINDOWS: Record<string, [number, number]> = {
+  EVENING:  [20, 22],
+  NIGHT:    [22, 2],
+  MIDNIGHT: [0,  6],
+  FULL:     [20, 2],
 };
+
+async function getShiftWindows(): Promise<Record<string, [number, number]>> {
+  const rows = await db.select().from(shiftConfigsTable);
+  if (rows.length === 0) return DEFAULT_SHIFT_WINDOWS;
+  const map: Record<string, [number, number]> = {};
+  for (const r of rows) map[r.key] = [r.startHour, r.endHour];
+  return map;
+}
 
 function computeShiftOverlapSecs(
   sessionStart: Date,
@@ -174,8 +182,10 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
   }
 
   // Compute total and per-shift seconds
+  const SHIFT_WINDOWS = await getShiftWindows();
   let totalSecs = 0;
-  const shiftSecs: Record<string, number> = { EVENING: 0, NIGHT: 0, MIDNIGHT: 0, FULL: 0 };
+  const shiftSecs: Record<string, number> = {};
+  for (const key of Object.keys(SHIFT_WINDOWS)) shiftSecs[key] = 0;
   for (const { start, end } of sessions) {
     totalSecs += Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
     for (const [st, [sh, eh]] of Object.entries(SHIFT_WINDOWS)) {

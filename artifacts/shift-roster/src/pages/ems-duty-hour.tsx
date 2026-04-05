@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useGetEmsStats,
   getGetEmsStatsQueryKey,
@@ -8,7 +8,9 @@ import {
 } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -24,7 +26,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Clock, TrendingUp, Users, Trophy, Search, Shield, Calendar, Hash, ChevronRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Clock, TrendingUp, Users, Trophy, Search, Shield, Calendar, Hash, ChevronRight, Settings, Pencil, Trash2, Plus } from "lucide-react";
 
 interface OfficerDutyDetail {
   csNumber: string;
@@ -47,13 +56,155 @@ interface OfficerDutyDetail {
   weeks: { weekPeriod: string; shifts: Record<string, string> }[];
 }
 
-const SHIFT_TYPES = [
-  { value: "ALL",     label: "All Shifts",  sub: "",           icon: "◉" },
-  { value: "EVENING", label: "Evening",     sub: "8PM – 10PM", icon: "☽" },
-  { value: "NIGHT",   label: "Night",       sub: "10PM – 2AM", icon: "✦" },
-  { value: "MIDNIGHT",label: "Midnight",    sub: "12AM – 6AM", icon: "◎" },
-  { value: "FULL",    label: "Full Shift",  sub: "8PM – 2AM",  icon: "⊙" },
-];
+interface ShiftConfig {
+  key: string; label: string; sub: string; icon: string; startHour: number; endHour: number; sortOrder: number;
+}
+
+function useShiftConfigs() {
+  return useQuery<ShiftConfig[]>({
+    queryKey: ["shift-configs"],
+    queryFn: () => fetch("/api/ems/shift-configs").then((r) => r.json()),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+const ALL_SHIFTS_TAB = { value: "ALL", label: "All Shifts", sub: "", icon: "◉", startHour: 0, endHour: 0, sortOrder: 0 };
+
+// ── Shift Config Modal ─────────────────────────────────────────────────────
+
+function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { data: configs = [], isLoading } = useShiftConfigs();
+  const [editing, setEditing] = useState<ShiftConfig | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState<Partial<ShiftConfig>>({});
+  const [saving, setSaving] = useState(false);
+
+  function openEdit(s: ShiftConfig) { setEditing(s); setAdding(false); setForm({ ...s }); }
+  function openAdd() { setAdding(true); setEditing(null); setForm({ icon: "●", sub: "", sortOrder: 99 }); }
+  function closeForm() { setEditing(null); setAdding(false); setForm({}); }
+
+  async function save() {
+    setSaving(true);
+    try {
+      if (adding) {
+        await fetch("/api/ems/shift-configs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      } else if (editing) {
+        await fetch(`/api/ems/shift-configs/${editing.key}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      }
+      qc.invalidateQueries({ queryKey: ["shift-configs"] });
+      closeForm();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(key: string) {
+    if (!confirm("Delete this shift?")) return;
+    await fetch(`/api/ems/shift-configs/${key}`, { method: "DELETE" });
+    qc.invalidateQueries({ queryKey: ["shift-configs"] });
+  }
+
+  const showForm = adding || !!editing;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="w-4 h-4" /> Manage Shift Types
+          </DialogTitle>
+        </DialogHeader>
+        {!showForm ? (
+          <div className="space-y-2">
+            {isLoading ? (
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
+            ) : (
+              configs.map((s) => (
+                <div key={s.key} className="flex items-center gap-3 px-3 py-2 rounded border border-border bg-secondary/20">
+                  <span className="text-lg w-6 text-center">{s.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm text-foreground">{s.label}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground">{s.sub} · {s.startHour}:00 – {s.endHour}:00 UTC</div>
+                  </div>
+                  <button onClick={() => openEdit(s)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => remove(s.key)} className="p-1 text-muted-foreground hover:text-red-400 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+            <button
+              onClick={openAdd}
+              className="w-full flex items-center justify-center gap-2 py-2 rounded border border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors text-sm mt-1"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Shift
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs">Key (ID) {editing && <span className="text-muted-foreground">— cannot change</span>}</Label>
+                <Input
+                  value={adding ? (form.key ?? "") : editing!.key}
+                  disabled={!!editing}
+                  onChange={(e) => setForm((f) => ({ ...f, key: e.target.value.toUpperCase().replace(/\s+/g, "_") }))}
+                  className="font-mono text-sm"
+                  placeholder="e.g. MORNING"
+                />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs">Display Name</Label>
+                <Input value={form.label ?? ""} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} placeholder="e.g. Morning Shift" className="text-sm" />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <Label className="text-xs">Time Range Label (shown under button)</Label>
+                <Input value={form.sub ?? ""} onChange={(e) => setForm((f) => ({ ...f, sub: e.target.value }))} placeholder="e.g. 6AM – 2PM" className="font-mono text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Start Hour (UTC 0–23)</Label>
+                <Input type="number" min={0} max={23} value={form.startHour ?? ""} onChange={(e) => setForm((f) => ({ ...f, startHour: Number(e.target.value) }))} className="font-mono text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">End Hour (UTC 0–23)</Label>
+                <Input type="number" min={0} max={23} value={form.endHour ?? ""} onChange={(e) => setForm((f) => ({ ...f, endHour: Number(e.target.value) }))} className="font-mono text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Icon</Label>
+                <Input value={form.icon ?? ""} onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))} className="font-mono text-sm" placeholder="●" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Sort Order</Label>
+                <Input type="number" value={form.sortOrder ?? ""} onChange={(e) => setForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} className="font-mono text-sm" />
+              </div>
+            </div>
+          </div>
+        )}
+        <DialogFooter className="gap-2">
+          {showForm ? (
+            <>
+              <Button variant="outline" onClick={closeForm} disabled={saving}>Back</Button>
+              <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+            </>
+          ) : (
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const MEDAL_COLORS = ["text-yellow-400", "text-slate-300", "text-orange-400"];
 
@@ -212,6 +363,10 @@ export default function PdDutyHourPage() {
   const [monthNav, setMonthNav] = useState(0);
   const [selectedCs, setSelectedCs] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"ALL" | "Active" | "Semi-Active" | "Inactive" | "LOA">("ALL");
+  const [shiftConfigOpen, setShiftConfigOpen] = useState(false);
+
+  const { data: shiftConfigs = [] } = useShiftConfigs();
+  const SHIFT_TYPES = [ALL_SHIFTS_TAB, ...shiftConfigs.map((s) => ({ value: s.key, label: s.label, sub: s.sub, icon: s.icon, startHour: s.startHour, endHour: s.endHour, sortOrder: s.sortOrder }))];
 
   const statsParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
   const breakdownParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
@@ -348,7 +503,7 @@ export default function PdDutyHourPage() {
       </div>
 
       {/* Shift type filter */}
-      <div className="flex flex-wrap gap-2" data-testid="shift-type-filters">
+      <div className="flex flex-wrap items-center gap-2" data-testid="shift-type-filters">
         {SHIFT_TYPES.map((s) => (
           <button
             key={s.value}
@@ -369,7 +524,16 @@ export default function PdDutyHourPage() {
             </span>
           </button>
         ))}
+        <button
+          onClick={() => setShiftConfigOpen(true)}
+          title="Edit shift types"
+          className="p-2 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors ml-1"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
+
+      <ShiftConfigModal open={shiftConfigOpen} onClose={() => setShiftConfigOpen(false)} />
 
       {/* Top performers — 2 columns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
