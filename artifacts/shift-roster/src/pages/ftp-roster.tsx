@@ -134,10 +134,16 @@ export default function FtpRosterPage() {
                       <td className="py-3 px-6 text-center">
                         <span
                           className={`inline-block px-4 py-0.5 rounded text-sm font-semibold ${
-                            isActive
+                            o.status === "Active"
                               ? "bg-green-600 text-white"
+                              : o.status === "Semi-Active"
+                              ? "bg-orange-500/80 text-white"
                               : o.status === "LOA"
-                              ? "bg-purple-500/80 text-white"
+                              ? "bg-yellow-500/80 text-white"
+                              : o.status === "Suspended"
+                              ? "bg-red-700 text-white"
+                              : o.status === "Vacant"
+                              ? "bg-muted text-muted-foreground"
                               : "bg-red-600/80 text-white"
                           }`}
                         >

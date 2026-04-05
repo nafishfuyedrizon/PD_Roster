@@ -126,11 +126,12 @@ const DEPT_COLORS: Record<string, { bg: string; border: string; text: string }> 
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  "Active": "text-green-400 border-green-500/30 bg-green-500/10",
-  "LOA": "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
-  "Inactive": "text-red-400 border-red-500/30 bg-red-500/10",
-  "Suspended": "text-red-500 border-red-600/30 bg-red-600/10",
-  "Semi-Active": "text-blue-400 border-blue-500/30 bg-blue-500/10",
+  "Active":      "text-green-400 border-green-500/30 bg-green-500/10",
+  "Semi-Active": "text-orange-400 border-orange-500/30 bg-orange-500/10",
+  "Inactive":    "text-red-400 border-red-500/30 bg-red-500/10",
+  "Suspended":   "text-red-500 border-red-600/30 bg-red-600/10",
+  "LOA":         "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
+  "Vacant":      "text-muted-foreground border-border bg-muted/20",
 };
 
 function QualDot({ value }: { value: boolean | null | undefined }) {

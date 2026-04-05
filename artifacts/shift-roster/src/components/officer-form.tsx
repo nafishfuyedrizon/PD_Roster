@@ -305,7 +305,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl><SelectTrigger data-testid="select-status"><SelectValue /></SelectTrigger></FormControl>
                 <SelectContent>
-                  {["Active","LOA","Inactive","Suspended","Semi-Active"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  {["Active","Semi-Active","Inactive","Suspended","LOA","Vacant"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />

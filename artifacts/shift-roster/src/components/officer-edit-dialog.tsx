@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const STATUS_OPTIONS = ["Active", "LOA", "Inactive", "Terminated"];
+const STATUS_OPTIONS = ["Active", "Semi-Active", "Inactive", "Suspended", "LOA", "Vacant"];
 
 const ALL_RANK_OPTIONS = [
   "Chief",
