@@ -248,13 +248,19 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
           <FormField control={form.control} name="division" render={({ field }) => (
             <FormItem>
               <FormLabel className="text-xs">Division</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value ?? ""}>
+              <Select
+                onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
+                value={field.value || "__none__"}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select division" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
+                  <SelectItem value="__none__">
+                    <span className="text-muted-foreground italic">— None —</span>
+                  </SelectItem>
                   <SelectItem value="High Command">High Command</SelectItem>
                   <SelectItem value="Low Command (HR)">Low Command (HR)</SelectItem>
                   <SelectItem value="Field Training Supervisor">Field Training Supervisor</SelectItem>
