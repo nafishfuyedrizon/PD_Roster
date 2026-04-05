@@ -33,7 +33,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Clock, TrendingUp, Users, Trophy, Search, Shield, Calendar, Hash, ChevronRight, Settings, Pencil, Trash2, Plus } from "lucide-react";
+import { Clock, TrendingUp, Users, Trophy, Search, Shield, Calendar, Hash, ChevronRight, Settings, Pencil, Trash2, Plus, Copy, Check } from "lucide-react";
 
 interface OfficerDutyDetail {
   csNumber: string;
@@ -401,6 +401,44 @@ export default function PdDutyHourPage() {
   const [selectedCs, setSelectedCs] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"ALL" | "Active" | "Semi-Active" | "Inactive" | "LOA">("ALL");
   const [shiftConfigOpen, setShiftConfigOpen] = useState(false);
+  const [weekCopied, setWeekCopied] = useState(false);
+  const [monthCopied, setMonthCopied] = useState(false);
+
+  const handleCopyWeek = () => {
+    if (!selectedWeekPeriod) return;
+    const lines = [...breakdown]
+      .map((p) => {
+        const wk = p.weeks.find((w) => w.weekPeriod === selectedWeekPeriod);
+        return { name: p.name, secs: hmsToSecs(wk?.dutyHours) };
+      })
+      .sort((a, b) => b.secs - a.secs)
+      .map(({ name, secs }) => `@${name} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
+      .join("\n");
+    navigator.clipboard.writeText(lines).then(() => {
+      setWeekCopied(true);
+      setTimeout(() => setWeekCopied(false), 2000);
+    });
+  };
+
+  const handleCopyMonth = () => {
+    if (!selectedMonth) return;
+    const wps = monthWeeks[selectedMonth] ?? [];
+    const lines = [...breakdown]
+      .map((p) => {
+        const secs = wps.reduce((acc, wp) => {
+          const wk = p.weeks.find((w) => w.weekPeriod === wp);
+          return acc + hmsToSecs(wk?.dutyHours);
+        }, 0);
+        return { name: p.name, secs };
+      })
+      .sort((a, b) => b.secs - a.secs)
+      .map(({ name, secs }) => `@${name} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
+      .join("\n");
+    navigator.clipboard.writeText(lines).then(() => {
+      setMonthCopied(true);
+      setTimeout(() => setMonthCopied(false), 2000);
+    });
+  };
 
   const { data: shiftConfigs = [] } = useShiftConfigs();
   const SHIFT_TYPES = [ALL_SHIFTS_TAB, ...shiftConfigs.map((s) => ({ value: s.key, label: s.label, sub: s.sub, icon: s.icon, startHour: s.startHour, endHour: s.endHour, sortOrder: s.sortOrder }))];
@@ -606,6 +644,13 @@ export default function PdDutyHourPage() {
               >
                 Prev Week
               </button>
+              <button
+                onClick={handleCopyWeek}
+                title="Copy Discord format"
+                className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                {weekCopied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+              </button>
             </div>
           </div>
           {breakdownLoading ? (
@@ -658,6 +703,13 @@ export default function PdDutyHourPage() {
                 }`}
               >
                 Prev Month
+              </button>
+              <button
+                onClick={handleCopyMonth}
+                title="Copy Discord format"
+                className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                {monthCopied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
               </button>
             </div>
           </div>
