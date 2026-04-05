@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Users, Clock, Zap, Trophy, RefreshCw, ChevronDown } from "lucide-react";
+import { Activity, Users, Clock, Zap, Trophy, RefreshCw, ChevronDown, TrendingDown } from "lucide-react";
 
 interface LiveOfficer {
   licenseId: string;
@@ -11,6 +11,15 @@ interface LiveOfficer {
   rank: string;
   onSince: string;
   elapsedHms: string;
+}
+
+interface LowestEntry {
+  csNumber: string;
+  name: string;
+  rank: string;
+  status: string;
+  weekSecs: number;
+  weekHours: string;
 }
 
 interface DashboardData {
@@ -28,6 +37,7 @@ interface DashboardData {
   };
   rankDistribution: { rank: string; count: number }[];
   statusOverview: { status: string; count: number; weekHours: string; officers: { csNumber: string; name: string; rank: string }[] }[];
+  lowestWeekly: LowestEntry[];
 }
 
 function useDashboard(refetchInterval = 15000) {
@@ -332,6 +342,56 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Lowest Duty Hours This Week */}
+      <div className="bg-card border border-border rounded-lg overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
+          <TrendingDown className="w-4 h-4 text-red-400" />
+          <span className="font-semibold text-sm tracking-wide uppercase">Lowest Duty This Week</span>
+          {data?.stats.currentWeek && (
+            <span className="ml-auto text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+              {data.stats.currentWeek.replace("-", " – ")}
+            </span>
+          )}
+        </div>
+        {isLoading ? (
+          <div className="p-4 space-y-2">{[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-9 w-full" />)}</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-secondary/30">
+                <th className="px-4 py-2.5 text-left text-[11px] font-mono uppercase text-muted-foreground w-8">#</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-mono uppercase text-muted-foreground">Call Sign</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-mono uppercase text-muted-foreground">Name</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-mono uppercase text-muted-foreground hidden md:table-cell">Rank</th>
+                <th className="px-4 py-2.5 text-right text-[11px] font-mono uppercase text-muted-foreground">Duty Hours</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {(data?.lowestWeekly ?? []).map((o, i) => (
+                <tr key={o.csNumber || i} className="hover:bg-secondary/20 transition-colors">
+                  <td className="px-4 py-2.5 text-[11px] font-mono text-muted-foreground">{i + 1}</td>
+                  <td className="px-4 py-2.5">
+                    <span className="font-mono text-xs font-bold text-primary">{o.csNumber || "—"}</span>
+                  </td>
+                  <td className="px-4 py-2.5 font-medium text-foreground text-sm">{o.name}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground hidden md:table-cell">{o.rank}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <span className={`font-mono text-xs font-bold tabular-nums ${o.weekSecs === 0 ? "text-red-400" : o.weekSecs < 18000 ? "text-orange-400" : "text-foreground"}`}>
+                      {o.weekHours}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {(data?.lowestWeekly ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">No data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </Layout>
   );
