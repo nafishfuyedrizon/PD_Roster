@@ -19,6 +19,7 @@ interface LowestEntry {
   rank: string;
   status: string;
   discordUsername: string | null;
+  discordUid: string | null;
   weekSecs: number;
   weekHours: string;
 }
@@ -124,7 +125,10 @@ export default function DashboardPage() {
     const list = data?.lowestWeekly ?? [];
     if (list.length === 0) return;
     const text = list
-      .map((o) => `@${o.discordUsername ?? o.name} - ${o.weekHours}`)
+      .map((o) => {
+        const mention = o.discordUid ? `<@${o.discordUid}>` : `@${o.discordUsername ?? o.name}`;
+        return `${mention} - ${o.weekHours}`;
+      })
       .join("\n");
     navigator.clipboard.writeText(text).then(() => {
       setCopiedList(true);

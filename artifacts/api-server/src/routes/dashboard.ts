@@ -198,6 +198,7 @@ router.get("/dashboard", async (req, res): Promise<void> => {
       rank: o.rank ?? "",
       status: o.status ?? "",
       discordUsername: o.discordUsername ?? null,
+      discordUid: o.discordUid ?? null,
       weekSecs: weekPerOfficer[o.callSign ?? ""] ?? 0,
     }))
     .filter((o) => o.weekSecs < 18000)
