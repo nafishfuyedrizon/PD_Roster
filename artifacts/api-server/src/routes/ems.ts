@@ -199,6 +199,7 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     status: o.status,
     rank: o.rank,
     discordUsername: o.discordUsername ?? null,
+    discordUid: o.discordUid ?? null,
     totalHours: secondsToHms(logSecsMap[o.callSign] ?? 0),
     weeks: allWeekPeriods.map((wp) => ({
       weekPeriod: wp,

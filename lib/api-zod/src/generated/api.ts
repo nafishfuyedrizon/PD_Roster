@@ -387,6 +387,7 @@ export const GetEmsBreakdownResponseItem = zod.object({
   status: zod.string(),
   rank: zod.string(),
   discordUsername: zod.string().nullish(),
+  discordUid: zod.string().nullish(),
   weeks: zod.array(
     zod.object({
       weekPeriod: zod.string(),

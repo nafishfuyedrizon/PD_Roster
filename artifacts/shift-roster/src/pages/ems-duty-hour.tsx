@@ -404,15 +404,18 @@ export default function PdDutyHourPage() {
   const [weekCopied, setWeekCopied] = useState(false);
   const [monthCopied, setMonthCopied] = useState(false);
 
+  const fmtDiscord = (p: { discordUid?: string | null; discordUsername?: string | null; name: string }) =>
+    p.discordUid ? `<@${p.discordUid}>` : `@${p.discordUsername ?? p.name}`;
+
   const handleCopyWeek = () => {
     if (!selectedWeekPeriod) return;
     const lines = [...breakdown]
       .map((p) => {
         const wk = p.weeks.find((w) => w.weekPeriod === selectedWeekPeriod);
-        return { displayName: p.discordUsername ?? p.name, secs: hmsToSecs(wk?.dutyHours) };
+        return { tag: fmtDiscord(p), secs: hmsToSecs(wk?.dutyHours) };
       })
       .sort((a, b) => b.secs - a.secs)
-      .map(({ displayName, secs }) => `@${displayName} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
+      .map(({ tag, secs }) => `${tag} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
       .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
       setWeekCopied(true);
@@ -429,10 +432,10 @@ export default function PdDutyHourPage() {
           const wk = p.weeks.find((w) => w.weekPeriod === wp);
           return acc + hmsToSecs(wk?.dutyHours);
         }, 0);
-        return { displayName: p.discordUsername ?? p.name, secs };
+        return { tag: fmtDiscord(p), secs };
       })
       .sort((a, b) => b.secs - a.secs)
-      .map(({ displayName, secs }) => `@${displayName} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
+      .map(({ tag, secs }) => `${tag} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
       .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
       setMonthCopied(true);

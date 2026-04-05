@@ -187,6 +187,7 @@ export interface EmsPersonnelWeekly {
   status: string;
   rank: string;
   discordUsername?: string | null;
+  discordUid?: string | null;
   weeks: EmsPersonnelWeeklyWeeksItem[];
   totalHours: string;
 }
