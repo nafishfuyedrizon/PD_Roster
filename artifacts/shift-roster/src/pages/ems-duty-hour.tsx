@@ -415,6 +415,7 @@ export default function PdDutyHourPage() {
         return { tag: fmtDiscord(p), secs: hmsToSecs(wk?.dutyHours) };
       })
       .sort((a, b) => b.secs - a.secs)
+      .slice(0, 10)
       .map(({ tag, secs }) => `${tag} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
       .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
@@ -435,6 +436,7 @@ export default function PdDutyHourPage() {
         return { tag: fmtDiscord(p), secs };
       })
       .sort((a, b) => b.secs - a.secs)
+      .slice(0, 10)
       .map(({ tag, secs }) => `${tag} - ${secs > 0 ? secsToHms(secs) : "00:00"}`)
       .join("\n");
     navigator.clipboard.writeText(lines).then(() => {
