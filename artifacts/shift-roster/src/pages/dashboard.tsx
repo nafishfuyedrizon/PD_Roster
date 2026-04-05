@@ -128,7 +128,7 @@ export default function DashboardPage() {
         <div className="px-4 py-2.5 flex items-center gap-2.5 border-b border-green-900/50">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
           <span className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-green-400 flex items-center gap-1.5">
-            <span className="text-green-600 font-normal">({">>"})</span>
+            <img src={`${import.meta.env.BASE_URL}live-icon.png`} alt="live" className="w-4 h-4 shrink-0" style={{ filter: "brightness(0) saturate(100%) invert(58%) sepia(91%) saturate(403%) hue-rotate(86deg) brightness(95%) contrast(94%)" }} />
             LIVE ON DUTY
           </span>
           {!isLoading && (
