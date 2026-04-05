@@ -94,6 +94,14 @@ const DEPT_LABELS: Record<string, string> = {
   PTA: "PTA",
 };
 
+const DEPT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  SAHP:          { bg: "rgba(10,83,168,0.18)",  border: "#0a53a8", text: "#5b9be8" },
+  SASP:          { bg: "rgba(84,144,243,0.18)", border: "#5490f3", text: "#7aabf5" },
+  BCSO:          { bg: "rgba(180,124,45,0.18)", border: "#b47c2d", text: "#d4a455" },
+  PTA:           { bg: "rgba(191,225,246,0.15)",border: "#bfe1f6", text: "#bfe1f6" },
+  SWAT:          { bg: "rgba(135,135,135,0.18)",border: "#878787", text: "#a8a8a8" },
+};
+
 const STATUS_STYLES: Record<string, string> = {
   "Active": "text-green-400 border-green-500/30 bg-green-500/10",
   "LOA": "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
@@ -327,9 +335,21 @@ export default function RosterPage() {
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground py-2">{o.phoneNumber ?? "—"}</TableCell>
                     <TableCell className="py-2">
-                      <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
-                        {o.department}
-                      </Badge>
+                      {(() => {
+                        const c = DEPT_COLORS[o.department];
+                        return c ? (
+                          <span
+                            className="font-mono text-[10px] px-1.5 py-0.5 rounded border font-semibold"
+                            style={{ background: c.bg, borderColor: c.border, color: c.text }}
+                          >
+                            {o.department}
+                          </span>
+                        ) : (
+                          <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0">
+                            {o.department}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="py-2 uppercase text-[10px] font-medium">{o.rank}</TableCell>
                     <TableCell className="py-2 text-muted-foreground">{o.division ?? "—"}</TableCell>
