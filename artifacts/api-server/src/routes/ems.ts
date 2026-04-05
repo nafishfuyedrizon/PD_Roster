@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { db, emsDutyLogsTable, officersTable, shiftConfigsTable } from "@workspace/db";
+import { db, emsDutyLogsTable, officersTable, shiftConfigsTable, dutyAdjustmentsTable } from "@workspace/db";
 import {
   ListEmsDutyLogsQueryParams,
   ListEmsDutyLogsResponse,
@@ -127,6 +127,18 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
       pdLogSecs[l.csNumber] = (pdLogSecs[l.csNumber] ?? 0) + parseHms(l.dutyHours);
     }
   }
+
+  // Incorporate duty adjustments into monthly totals
+  const allAdjustments = await db
+    .select()
+    .from(dutyAdjustmentsTable)
+    .where(eq(dutyAdjustmentsTable.shiftType, resolvedShift));
+  for (const adj of allAdjustments) {
+    if (pdMap[adj.officerCs]) {
+      pdLogSecs[adj.officerCs] = (pdLogSecs[adj.officerCs] ?? 0) + adj.adjustmentSeconds;
+    }
+  }
+
   const monthlyTotalSecs = Object.values(pdLogSecs).reduce((a, b) => a + b, 0);
 
   // Top performers this week — PD officers only
@@ -193,6 +205,22 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     logSecsMap[l.csNumber] = (logSecsMap[l.csNumber] ?? 0) + parseHms(l.dutyHours);
   }
 
+  // Fetch duty adjustments and build per-officer, per-month maps
+  const allAdjustments = await db
+    .select()
+    .from(dutyAdjustmentsTable)
+    .where(eq(dutyAdjustmentsTable.shiftType, resolvedShift));
+
+  // adjMonthMap[csNumber][MONTH] = total adjustment seconds for that month
+  const adjMonthMap: Record<string, Record<string, number>> = {};
+  for (const adj of allAdjustments) {
+    if (!adjMonthMap[adj.officerCs]) adjMonthMap[adj.officerCs] = {};
+    adjMonthMap[adj.officerCs]![adj.dutyMonth] =
+      (adjMonthMap[adj.officerCs]![adj.dutyMonth] ?? 0) + adj.adjustmentSeconds;
+    // Also add to officer's total seconds
+    logSecsMap[adj.officerCs] = (logSecsMap[adj.officerCs] ?? 0) + adj.adjustmentSeconds;
+  }
+
   const breakdown = allPdOfficers.map((o) => ({
     csNumber: o.callSign,
     name: o.name ?? o.callSign,
@@ -200,7 +228,8 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     rank: o.rank,
     discordUsername: o.discordUsername ?? null,
     discordUid: o.discordUid ?? null,
-    totalHours: secondsToHms(logSecsMap[o.callSign] ?? 0),
+    totalHours: secondsToHms(Math.max(0, logSecsMap[o.callSign] ?? 0)),
+    monthAdjustments: adjMonthMap[o.callSign] ?? {},
     weeks: allWeekPeriods.map((wp) => ({
       weekPeriod: wp,
       dutyHours: logMap[o.callSign]?.[wp] ?? null,

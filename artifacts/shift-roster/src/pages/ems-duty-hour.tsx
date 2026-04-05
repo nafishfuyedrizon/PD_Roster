@@ -515,16 +515,18 @@ export default function PdDutyHourPage() {
       .map((p, i) => ({ ...p, totalHours: secsToHms(p.secs), position: i + 1 }));
   }, [breakdown, selectedWeekPeriod]);
 
-  // Top performers for selected month — computed from breakdown
+  // Top performers for selected month — computed from breakdown (including adjustments)
   const monthTopPerformers = useMemo(() => {
     if (!selectedMonth) return [];
     const wps = monthWeeks[selectedMonth] ?? [];
     return breakdown
       .map((p) => {
-        const secs = wps.reduce((acc, wp) => {
+        const rawSecs = wps.reduce((acc, wp) => {
           const wk = p.weeks.find((w) => w.weekPeriod === wp);
           return acc + hmsToSecs(wk?.dutyHours);
         }, 0);
+        const adjSecs = (p.monthAdjustments as Record<string, number> | undefined)?.[selectedMonth] ?? 0;
+        const secs = Math.max(0, rawSecs + adjSecs);
         return { csNumber: p.csNumber, name: p.name, rank: p.rank, secs };
       })
       .filter((p) => p.secs > 0)
@@ -861,7 +863,9 @@ export default function PdDutyHourPage() {
                   const monthStatuses: Record<string, "Active" | "Semi-Active" | "Inactive" | null> = {};
                   for (const mo of months) {
                     const wps = monthWeeks[mo] ?? [];
-                    const secs = wps.reduce((acc, wp) => acc + hmsToSecs(weekHoursMap[wp]), 0);
+                    const rawSecs = wps.reduce((acc, wp) => acc + hmsToSecs(weekHoursMap[wp]), 0);
+                    const adjSecs = (person.monthAdjustments as Record<string, number> | undefined)?.[mo] ?? 0;
+                    const secs = Math.max(0, rawSecs + adjSecs);
                     monthTotals[mo] = secsToHms(secs);
                     const weekStatuses: WeekStatus[] = wps.map((wp) => getWeekStatus(weekHoursMap[wp]));
                     monthStatuses[mo] = computeMonthlyStatus(weekStatuses);

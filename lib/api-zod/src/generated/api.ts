@@ -395,6 +395,7 @@ export const GetEmsBreakdownResponseItem = zod.object({
     }),
   ),
   totalHours: zod.string(),
+  monthAdjustments: zod.record(zod.string(), zod.number()).optional(),
 });
 export const GetEmsBreakdownResponse = zod.array(GetEmsBreakdownResponseItem);
 
