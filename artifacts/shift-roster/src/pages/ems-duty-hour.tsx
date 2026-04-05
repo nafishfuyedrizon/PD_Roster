@@ -742,20 +742,20 @@ export default function PdDutyHourPage() {
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-secondary/50 z-20 min-w-[160px] text-purple-400">Rank</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[240px] bg-secondary/50 z-20 min-w-[140px]">Name</TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[380px] bg-secondary/50 z-20 min-w-[90px] border-r border-border">Status</TableHead>
-                {weekPeriods.map((wp) => (
-                  <TableHead key={wp} className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[100px]">
-                    {wp}
-                  </TableHead>
-                ))}
                 {months.map((m) => (
                   <React.Fragment key={`month-header-${m}`}>
                     <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-orange-400 border-l border-border/60">
                       {m} TOTAL
                     </TableHead>
-                    <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-yellow-400/80 border-border/20">
+                    <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-yellow-400/80 border-r border-border/40">
                       {m} STATUS
                     </TableHead>
                   </React.Fragment>
+                ))}
+                {weekPeriods.map((wp) => (
+                  <TableHead key={wp} className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[100px]">
+                    {wp}
+                  </TableHead>
                 ))}
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-primary border-l border-border/60">
                   5-WK TOTAL
@@ -823,18 +823,18 @@ export default function PdDutyHourPage() {
                           {displayStatus}
                         </Badge>
                       </TableCell>
-                      {weekPeriods.map((wp) => (
-                        <TableCell key={wp} className="text-center"><HoursCell hours={weekHoursMap[wp]} isLoa={dbStatus === "LOA"} /></TableCell>
-                      ))}
                       {months.map((mo) => (
                         <React.Fragment key={`mt-${mo}`}>
                           <TableCell className="text-center border-l border-border/40">
                             <HoursCell hours={monthTotals[mo]} isLoa={dbStatus === "LOA"} />
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="text-center border-r border-border/30">
                             <MonthlyStatusBadge status={monthStatuses[mo]!} />
                           </TableCell>
                         </React.Fragment>
+                      ))}
+                      {weekPeriods.map((wp) => (
+                        <TableCell key={wp} className="text-center"><HoursCell hours={weekHoursMap[wp]} isLoa={dbStatus === "LOA"} /></TableCell>
                       ))}
                       <TableCell className="text-center border-l border-border/40">
                         <span className="font-mono text-sm font-bold text-primary tabular-nums">{person.totalHours}</span>
