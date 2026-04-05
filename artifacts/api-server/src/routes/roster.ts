@@ -101,13 +101,12 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   const logConditions = weekPeriod
     ? [eq(emsDutyLogsTable.weekPeriod, weekPeriod)]
     : month && year
-      ? [
-          sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}`,
-          eq(emsDutyLogsTable.dutyYear, year),
-        ]
+      ? [sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}`, eq(emsDutyLogsTable.dutyYear, year)]
       : month
         ? [sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}`]
-        : [];
+        : year
+          ? [eq(emsDutyLogsTable.dutyYear, year)]
+          : [];
 
   const dutyLogs = await db
     .select()

@@ -42,27 +42,40 @@ interface MonthOption {
   value: string;
   label: string;
   mm: string;
+  year: string;
 }
 
-function buildMonthOptions(weekPeriods: string[]): MonthOption[] {
-  const seen = new Set<string>();
-  const opts: MonthOption[] = [];
+interface YearGroup {
+  year: string;
+  months: MonthOption[];
+}
+
+function buildYearGroups(weekPeriods: string[]): YearGroup[] {
   const now = new Date();
   let scanYear = now.getFullYear();
   let prevMm = now.getMonth() + 1;
+  const groupMap = new Map<string, MonthOption[]>();
+  const yearOrder: string[] = [];
+  const seenMonth = new Set<string>();
 
   for (const wp of weekPeriods) {
     const mm = getEndMonth(wp);
     if (mm > prevMm) scanYear -= 1;
     prevMm = mm;
-    const key = `${scanYear}-${String(mm).padStart(2, "0")}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      // value encodes both year and month so server can filter precisely
-      opts.push({ value: `month:${scanYear}-${String(mm).padStart(2, "0")}`, label: `${MONTH_NAMES[mm - 1]} ${scanYear}`, mm: String(mm).padStart(2, "0") });
+    const yr = String(scanYear);
+    const key = `${yr}-${String(mm).padStart(2, "0")}`;
+    if (!seenMonth.has(key)) {
+      seenMonth.add(key);
+      if (!groupMap.has(yr)) { groupMap.set(yr, []); yearOrder.push(yr); }
+      groupMap.get(yr)!.push({
+        value: `month:${yr}-${String(mm).padStart(2, "0")}`,
+        label: `${MONTH_NAMES[mm - 1]} ${yr}`,
+        mm: String(mm).padStart(2, "0"),
+        year: yr,
+      });
     }
   }
-  return opts;
+  return yearOrder.map((yr) => ({ year: yr, months: groupMap.get(yr)! }));
 }
 
 export default function StatsPage() {
@@ -72,12 +85,12 @@ export default function StatsPage() {
     query: { queryKey: getListWeekPeriodsQueryKey() },
   });
 
-  const monthOptions = useMemo(() => buildMonthOptions(weekPeriods), [weekPeriods]);
+  const yearGroups = useMemo(() => buildYearGroups(weekPeriods), [weekPeriods]);
 
   const queryParams = useMemo(() => {
     if (period === "ALL") return {};
+    if (period.startsWith("year:")) return { year: period.slice(5) };
     if (period.startsWith("month:")) {
-      // value format is "month:YYYY-MM"
       const [yearPart, mmPart] = period.slice(6).split("-");
       return { month: mmPart, year: yearPart };
     }
@@ -90,9 +103,16 @@ export default function StatsPage() {
 
   const selectedLabel = useMemo(() => {
     if (period === "ALL") return "All Time";
-    if (period.startsWith("month:")) return monthOptions.find((m) => m.value === period)?.label ?? period.slice(6);
+    if (period.startsWith("year:")) return `${period.slice(5)} — All`;
+    if (period.startsWith("month:")) {
+      for (const yg of yearGroups) {
+        const mo = yg.months.find((m) => m.value === period);
+        if (mo) return mo.label;
+      }
+      return period.slice(6);
+    }
     return period;
-  }, [period, monthOptions]);
+  }, [period, yearGroups]);
 
   return (
     <Layout>
@@ -116,17 +136,18 @@ export default function StatsPage() {
             <SelectContent>
               <SelectItem value="ALL">All Time</SelectItem>
 
-              {monthOptions.length > 0 && (
-                <>
+              {yearGroups.map((yg) => (
+                <React.Fragment key={yg.year}>
                   <SelectSeparator />
                   <SelectGroup>
-                    <SelectLabel className="text-xs text-muted-foreground uppercase tracking-wider px-2">Monthly</SelectLabel>
-                    {monthOptions.map((mo) => (
-                      <SelectItem key={mo.value} value={mo.value}>{mo.label}</SelectItem>
+                    <SelectLabel className="text-xs text-muted-foreground uppercase tracking-wider px-2">{yg.year}</SelectLabel>
+                    <SelectItem value={`year:${yg.year}`}>{yg.year} — All</SelectItem>
+                    {yg.months.map((mo) => (
+                      <SelectItem key={mo.value} value={mo.value} className="pl-6">{mo.label}</SelectItem>
                     ))}
                   </SelectGroup>
-                </>
-              )}
+                </React.Fragment>
+              ))}
 
             </SelectContent>
           </Select>
