@@ -1024,20 +1024,21 @@ export default function PdDutyHourPage() {
                             <span className="font-mono text-xs font-bold text-primary tabular-nums">{w.shifts["ALL"] ?? "00:00:00"}</span>
                           </div>
                           {/* Shift breakdown grid */}
-                          <div className="grid grid-cols-4 divide-x divide-border/40 bg-card">
-                            {[
-                              { key: "EVENING",  label: "Evening",  sub: "8PM–10PM",  color: "text-amber-400" },
-                              { key: "NIGHT",    label: "Night",    sub: "10PM–2AM",  color: "text-blue-400" },
-                              { key: "MIDNIGHT", label: "Midnight", sub: "12AM–6AM",  color: "text-indigo-400" },
-                              { key: "FULL",     label: "Full",     sub: "8PM–2AM",   color: "text-emerald-400" },
-                            ].map(({ key, label, sub, color }) => (
-                              <div key={key} className="px-2 py-2 text-center">
-                                <p className={`text-[9px] font-mono uppercase tracking-wider ${color} mb-0.5`}>{label}</p>
-                                <p className="text-[9px] text-muted-foreground/60 mb-1">{sub}</p>
-                                <p className="font-mono text-xs tabular-nums text-foreground/90">{w.shifts[key] ?? "00:00:00"}</p>
+                          {(() => {
+                            const SHIFT_COLORS = ["text-amber-400","text-blue-400","text-indigo-400","text-emerald-400","text-rose-400","text-cyan-400","text-violet-400","text-orange-400"];
+                            const cols = shiftConfigs.length || 4;
+                            return (
+                              <div className={`grid divide-x divide-border/40 bg-card`} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                                {shiftConfigs.map((s, i) => (
+                                  <div key={s.key} className="px-2 py-2 text-center">
+                                    <p className={`text-[9px] font-mono uppercase tracking-wider ${SHIFT_COLORS[i % SHIFT_COLORS.length]} mb-0.5`}>{s.label}</p>
+                                    <p className="text-[9px] text-muted-foreground/60 mb-1">{s.sub}</p>
+                                    <p className="font-mono text-xs tabular-nums text-foreground/90">{w.shifts[s.key] ?? "00:00:00"}</p>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })()}
                         </div>
                       ))
                     )}
