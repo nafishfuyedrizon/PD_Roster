@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -62,6 +62,61 @@ interface OfficerFormProps {
   isSubmitting?: boolean;
 }
 
+const DEPT_RANKS: Record<string, string[]> = {
+  SASP: [
+    "CHIEF","ASSISTANT CHIEF","SENIOR DEPUTY CHIEF","DEPUTY CHIEF",
+    "CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR TROOPER","TROOPER FIRST CLASS","TROOPER","PROBATIONARY OFFICER","CADET",
+  ],
+  BCSO: [
+    "SHERIFF","UNDERSHERIFF","ASSISTANT SHERIFF",
+    "CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR DEPUTY","DEPUTY FIRST CLASS","DEPUTY","TRAINEE",
+  ],
+  SAHP: [
+    "COLONEL","ASSISTANT COLONEL","DEPUTY COLONEL",
+    "CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR STATE TROOPER","STATE TROOPER FIRST CLASS","STATE TROOPER","CADET",
+  ],
+  PTA: [
+    "CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR TROOPER","TROOPER FIRST CLASS","TROOPER","PROBATIONARY OFFICER","CADET","TRAINEE",
+  ],
+  IA: [
+    "CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR TROOPER","TROOPER FIRST CLASS","TROOPER",
+  ],
+  SWAT: [
+    "CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR TROOPER","TROOPER FIRST CLASS","TROOPER",
+  ],
+  FIB: [
+    "CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR TROOPER","TROOPER FIRST CLASS","TROOPER",
+  ],
+  "Game Wardens": [
+    "CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR DEPUTY","DEPUTY FIRST CLASS","DEPUTY","TRAINEE",
+  ],
+  Management: [
+    "CHIEF","ASSISTANT CHIEF","SHERIFF","COLONEL",
+    "SENIOR DEPUTY CHIEF","UNDERSHERIFF","ASSISTANT COLONEL",
+    "DEPUTY CHIEF","ASSISTANT SHERIFF","DEPUTY COLONEL","CAPTAIN",
+  ],
+  FTP: [
+    "LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL",
+    "SENIOR TROOPER","TROOPER FIRST CLASS","TROOPER","PROBATIONARY OFFICER","CADET","TRAINEE",
+  ],
+};
+
+const ALL_RANKS = [
+  "CHIEF","ASSISTANT CHIEF","SHERIFF","COLONEL","SENIOR DEPUTY CHIEF","UNDERSHERIFF",
+  "ASSISTANT COLONEL","DEPUTY CHIEF","ASSISTANT SHERIFF","DEPUTY COLONEL","CAPTAIN",
+  "LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL","SENIOR TROOPER","SENIOR DEPUTY",
+  "SENIOR STATE TROOPER","TROOPER FIRST CLASS","DEPUTY FIRST CLASS","STATE TROOPER FIRST CLASS",
+  "TROOPER","DEPUTY","STATE TROOPER","PROBATIONARY OFFICER","CADET","TRAINEE",
+];
+
 const QUAL_FIELDS: { key: keyof OfficerFormValues; label: string }[] = [
   { key: "pilot", label: "Pilot" },
   { key: "mdt", label: "MDT" },
@@ -108,6 +163,16 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
       completionStatus: defaultValues?.completionStatus ?? "",
     },
   });
+
+  const selectedDept = useWatch({ control: form.control, name: "department" });
+  const availableRanks = DEPT_RANKS[selectedDept] ?? ALL_RANKS;
+
+  useEffect(() => {
+    const currentRank = form.getValues("rank");
+    if (currentRank && !availableRanks.includes(currentRank)) {
+      form.setValue("rank", availableRanks[availableRanks.length - 1]);
+    }
+  }, [selectedDept]);
 
   const handleSubmit = (values: OfficerFormValues) => {
     onSubmit({
@@ -219,7 +284,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl><SelectTrigger data-testid="input-rank"><SelectValue /></SelectTrigger></FormControl>
                 <SelectContent className="max-h-[260px] overflow-y-auto">
-                  {["CHIEF","ASSISTANT CHIEF","SHERIFF","COLONEL","SENIOR DEPUTY CHIEF","UNDERSHERIFF","ASSISTANT COLONEL","DEPUTY CHIEF","ASSISTANT SHERIFF","DEPUTY COLONEL","CAPTAIN","LIEUTENANT","SERGEANT FIRST CLASS","SERGEANT","CORPORAL","SENIOR TROOPER","SENIOR DEPUTY","SENIOR STATE TROOPER","TROOPER FIRST CLASS","DEPUTY FIRST CLASS","STATE TROOPER FIRST CLASS","TROOPER","DEPUTY","STATE TROOPER","PROBATIONARY OFFICER","CADET","TRAINEE"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  {availableRanks.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />
