@@ -274,6 +274,47 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
   const weekDateStart = `${startYear}-${startMm}-${startDd}`;
   const weekDateEnd   = `${dutyYear2}-${endMm}-${endDd}`;
 
+  // Load shift config labels to assign the correct shift to each session
+  const shiftConfigRows = await db
+    .select({ key: shiftConfigsTable.key, label: shiftConfigsTable.label })
+    .from(shiftConfigsTable);
+  const shiftLabelMap = Object.fromEntries(shiftConfigRows.map((r) => [r.key, r.label]));
+
+  // Determine the shift label for a session.
+  // "Atomic" shifts are all but the widest window (the widest is the composite).
+  // If a session overlaps only one atomic shift → use that label.
+  // If it overlaps multiple atomic shifts → use the composite label.
+  // If it overlaps no atomic shift → fall back to composite/default.
+  function sessionShiftLabel(start: Date, end: Date): string {
+    // Use 40% of session duration as the threshold (capped at 15 min) so
+    // even very short sessions get classified correctly.
+    const sessionSecs = Math.max(1, Math.floor((end.getTime() - start.getTime()) / 1000));
+    const MIN_OVERLAP = Math.min(900, Math.floor(sessionSecs * 0.4));
+    const entries = Object.entries(SHIFT_WINDOWS) as [string, [number, number]][];
+    const sized = entries.map(([key, [sh, eh]]) => ({
+      key,
+      size: eh >= sh ? eh - sh : 24 - sh + eh,
+      overlap: computeShiftOverlapSecs(start, end, sh, eh),
+    })).sort((a, b) => a.size - b.size);
+
+    const maxSize = sized[sized.length - 1]?.size ?? 0;
+    // Atomic = all shifts except the widest (the composite "Full Shift")
+    const atomicShifts = sized.filter((s) => s.size < maxSize);
+    const matched = atomicShifts.filter((s) => s.overlap >= MIN_OVERLAP);
+
+    if (matched.length === 1) {
+      return shiftLabelMap[matched[0]!.key] ?? "Full";
+    }
+    if (matched.length > 1) {
+      // Session spans multiple atomic shifts — use the composite label
+      const composite = sized.find((s) => s.size === maxSize && s.overlap > 0);
+      return composite ? (shiftLabelMap[composite.key] ?? "Full Shift") : "Full Shift";
+    }
+    // No atomic shift overlap — session is outside defined shift windows
+    const composite = sized.find((s) => s.size === maxSize && s.overlap > 0);
+    return composite ? (shiftLabelMap[composite.key] ?? "Full") : "Full";
+  }
+
   // Replace all bot-imported sessions for this officer + week
   await db
     .delete(pdDutyLogsTable)
@@ -295,7 +336,7 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
         csNumber:    cs,
         officerName: name,
         rank,
-        shiftType:   "Full",
+        shiftType:   sessionShiftLabel(start, end),
         duration:    secsToHms(Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))),
         notes:       "discord",
       }))
