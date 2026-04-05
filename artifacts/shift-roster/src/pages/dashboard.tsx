@@ -344,11 +344,16 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Lowest Duty Hours This Week */}
+      {/* Under 10 Hours This Week */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
           <TrendingDown className="w-4 h-4 text-red-400" />
-          <span className="font-semibold text-sm tracking-wide uppercase">Lowest Duty This Week</span>
+          <span className="font-semibold text-sm tracking-wide uppercase">Under 10 Hours This Week</span>
+          {(data?.lowestWeekly ?? []).length > 0 && (
+            <span className="text-[11px] font-mono font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+              {data!.lowestWeekly.length} officer{data!.lowestWeekly.length !== 1 ? "s" : ""}
+            </span>
+          )}
           {data?.stats.currentWeek && (
             <span className="ml-auto text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
               {data.stats.currentWeek.replace("-", " – ")}
@@ -386,7 +391,7 @@ export default function DashboardPage() {
               ))}
               {(data?.lowestWeekly ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">No data available</td>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">All officers have 10+ hours this week</td>
                 </tr>
               )}
             </tbody>

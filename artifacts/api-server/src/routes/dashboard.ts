@@ -189,7 +189,7 @@ router.get("/dashboard", async (req, res): Promise<void> => {
     ? { csNumber: topCs[0], name: officers.find((o) => o.callSign === topCs[0])?.name ?? topCs[0], hours: secsToHms(topCs[1]) }
     : null;
 
-  // Bottom 10 this week (least duty hours, excluding LOA)
+  // All active officers with < 10 hours this week (excluding LOA), sorted lowest first
   const lowestWeekly = officers
     .filter((o) => o.status !== "LOA")
     .map((o) => ({
@@ -199,8 +199,8 @@ router.get("/dashboard", async (req, res): Promise<void> => {
       status: o.status ?? "",
       weekSecs: weekPerOfficer[o.callSign ?? ""] ?? 0,
     }))
+    .filter((o) => o.weekSecs < 36000)
     .sort((a, b) => a.weekSecs - b.weekSecs)
-    .slice(0, 10)
     .map((o) => ({ ...o, weekHours: secsToHms(o.weekSecs) }));
 
   // ── Rank distribution ──────────────────────────────────────────────────────
