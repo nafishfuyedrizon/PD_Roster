@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, officersTable } from "@workspace/db";
+import { db, officersTable, emsDutyLogsTable } from "@workspace/db";
 import {
   ListOfficersQueryParams,
   ListOfficersResponse,
@@ -191,6 +191,13 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  // Fetch current record so we know the old callSign before any update
+  const [existing] = await db.select().from(officersTable).where(eq(officersTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Officer not found" });
+    return;
+  }
+
   const [officer] = await db
     .update(officersTable)
     .set(parsed.data)
@@ -200,6 +207,19 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
   if (!officer) {
     res.status(404).json({ error: "Officer not found" });
     return;
+  }
+
+  // Cascade name/rank/status changes to ems_duty_logs.
+  // If call sign changed, also move the stored csNumber to keep rows linked.
+  const oldCs = existing.callSign ?? "";
+  const newCs = officer.callSign ?? oldCs;
+  if (oldCs) {
+    await db.update(emsDutyLogsTable).set({
+      ...(newCs !== oldCs ? { csNumber: newCs } : {}),
+      name: officer.name ?? "",
+      rank: officer.rank ?? "",
+      status: officer.status ?? "Active",
+    }).where(eq(emsDutyLogsTable.csNumber, oldCs));
   }
 
   res.json(UpdateOfficerResponse.parse(officer));

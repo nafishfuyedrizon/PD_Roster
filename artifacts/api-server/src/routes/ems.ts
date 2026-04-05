@@ -47,13 +47,20 @@ router.get("/ems/duty-logs", async (req, res): Promise<void> => {
   const conditions = [eq(emsDutyLogsTable.shiftType, resolvedShift)];
   if (weekPeriod) conditions.push(eq(emsDutyLogsTable.weekPeriod, weekPeriod));
 
-  const logs = await db
-    .select()
-    .from(emsDutyLogsTable)
-    .where(and(...conditions))
-    .orderBy(emsDutyLogsTable.csNumber, emsDutyLogsTable.weekPeriod);
+  const [logs, allOfficers] = await Promise.all([
+    db.select().from(emsDutyLogsTable).where(and(...conditions)).orderBy(emsDutyLogsTable.csNumber, emsDutyLogsTable.weekPeriod),
+    db.select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status }).from(officersTable),
+  ]);
 
-  res.json(ListEmsDutyLogsResponse.parse(logs));
+  const officerByCs = new Map(allOfficers.filter((o) => o.callSign).map((o) => [o.callSign!, o]));
+
+  const enriched = logs.map((l) => {
+    const o = officerByCs.get(l.csNumber);
+    if (!o) return l;
+    return { ...l, name: o.name ?? l.name, rank: o.rank ?? l.rank, status: o.status ?? l.status };
+  });
+
+  res.json(ListEmsDutyLogsResponse.parse(enriched));
 });
 
 router.post("/ems/duty-logs", async (req, res): Promise<void> => {
