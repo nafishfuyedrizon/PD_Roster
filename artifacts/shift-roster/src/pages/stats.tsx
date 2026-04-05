@@ -58,7 +58,8 @@ function buildMonthOptions(weekPeriods: string[]): MonthOption[] {
     const key = `${scanYear}-${String(mm).padStart(2, "0")}`;
     if (!seen.has(key)) {
       seen.add(key);
-      opts.push({ value: `month:${String(mm).padStart(2, "0")}`, label: `${MONTH_NAMES[mm - 1]} ${scanYear}`, mm: String(mm).padStart(2, "0") });
+      // value encodes both year and month so server can filter precisely
+      opts.push({ value: `month:${scanYear}-${String(mm).padStart(2, "0")}`, label: `${MONTH_NAMES[mm - 1]} ${scanYear}`, mm: String(mm).padStart(2, "0") });
     }
   }
   return opts;
@@ -75,7 +76,11 @@ export default function StatsPage() {
 
   const queryParams = useMemo(() => {
     if (period === "ALL") return {};
-    if (period.startsWith("month:")) return { month: period.slice(6) };
+    if (period.startsWith("month:")) {
+      // value format is "month:YYYY-MM"
+      const [yearPart, mmPart] = period.slice(6).split("-");
+      return { month: mmPart, year: yearPart };
+    }
     return { weekPeriod: period };
   }, [period]);
 
@@ -85,7 +90,7 @@ export default function StatsPage() {
 
   const selectedLabel = useMemo(() => {
     if (period === "ALL") return "All Time";
-    if (period.startsWith("month:")) return monthOptions.find((m) => m.value === period)?.label ?? period;
+    if (period.startsWith("month:")) return monthOptions.find((m) => m.value === period)?.label ?? period.slice(6);
     return period;
   }, [period, monthOptions]);
 

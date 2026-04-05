@@ -102,6 +102,7 @@ export const CreateOfficerBody = zod.object({
 export const GetRosterStatsQueryParams = zod.object({
   weekPeriod: zod.coerce.string().optional(),
   month: zod.coerce.string().optional(),
+  year: zod.coerce.string().optional(),
 });
 
 export const GetRosterStatsResponse = zod.object({

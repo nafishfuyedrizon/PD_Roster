@@ -149,8 +149,15 @@ async function upsertDutyLog(
       .set({ dutyHours })
       .where(eq(emsDutyLogsTable.id, existing.id));
   } else {
+    // Determine duty year: extract end-month from "MM/DD-MM/DD" and compare to current month
+    // If end-month > current month, the data belongs to the previous year
+    const now = new Date();
+    const endMonth = parseInt(weekPeriod.slice(6, 8), 10);
+    const dutyYear = endMonth > now.getMonth() + 1
+      ? String(now.getFullYear() - 1)
+      : String(now.getFullYear());
     await db.insert(emsDutyLogsTable).values({
-      csNumber: callSign, name, rank, status, weekPeriod, dutyHours, shiftType,
+      csNumber: callSign, name, rank, status, weekPeriod, dutyYear, dutyHours, shiftType,
     });
   }
 }

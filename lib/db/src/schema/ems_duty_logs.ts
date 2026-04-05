@@ -9,6 +9,7 @@ export const emsDutyLogsTable = pgTable("ems_duty_logs", {
   status: text("status").notNull().default("Active"),
   rank: text("rank").notNull(),
   weekPeriod: text("week_period").notNull(),
+  dutyYear: text("duty_year"),
   dutyHours: text("duty_hours"),
   shiftType: text("shift_type").notNull().default("ALL"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

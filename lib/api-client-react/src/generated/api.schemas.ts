@@ -215,6 +215,7 @@ export type ListOfficersParams = {
 export type GetRosterStatsParams = {
   weekPeriod?: string;
   month?: string;
+  year?: string;
 };
 
 export type GetFtoPairsParams = {

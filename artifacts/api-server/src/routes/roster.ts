@@ -65,7 +65,7 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
     return;
   }
 
-  const { weekPeriod, month } = parsed.data;
+  const { weekPeriod, month, year } = parsed.data;
 
   function parseDutyMinutes(dutyHours: string | null): number {
     if (!dutyHours || dutyHours.trim() === "0" || dutyHours.trim() === "") return 0;
@@ -96,11 +96,18 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   const rankBreakdown = Object.entries(rankMap).map(([rank, count]) => ({ rank, count }));
 
   // Top performers come from ems_duty_logs, filtered by period when specified
+  // weekPeriod format: "MM/DD-MM/DD" — end-month at chars 7-8 (SQL 1-indexed)
+  // dutyYear column stores the 4-digit year for cross-year correctness
   const logConditions = weekPeriod
     ? [eq(emsDutyLogsTable.weekPeriod, weekPeriod)]
-    : month
-      ? [sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}`]
-      : [];
+    : month && year
+      ? [
+          sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}`,
+          eq(emsDutyLogsTable.dutyYear, year),
+        ]
+      : month
+        ? [sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}`]
+        : [];
 
   const dutyLogs = await db
     .select()
