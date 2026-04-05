@@ -180,7 +180,7 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
 
   // Fetch ALL PD officers as the source of truth
   const allPdOfficers = await db
-    .select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status })
+    .select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status, discordUsername: officersTable.discordUsername, discordUid: officersTable.discordUid })
     .from(officersTable)
     .orderBy(officersTable.rank, officersTable.callSign);
 
