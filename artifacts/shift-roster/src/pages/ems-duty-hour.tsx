@@ -291,13 +291,13 @@ export default function PdDutyHourPage() {
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary/50 z-10 min-w-[80px]">
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary/50 z-20 min-w-[80px]">
                   CS
                 </TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[140px]">
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-secondary/50 z-20 min-w-[140px]">
                   Name
                 </TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[80px]">
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[220px] bg-secondary/50 z-20 min-w-[90px] border-r border-border">
                   Status
                 </TableHead>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[160px]">
@@ -360,13 +360,13 @@ export default function PdDutyHourPage() {
                       className="hover:bg-secondary/20 transition-colors"
                       data-testid={`ems-row-${person.csNumber}`}
                     >
-                      <TableCell className="sticky left-0 bg-card font-mono text-sm font-bold text-primary z-10">
+                      <TableCell className="sticky left-0 bg-card font-mono text-sm font-bold text-primary z-20">
                         {person.csNumber}
                       </TableCell>
-                      <TableCell className="font-semibold text-foreground text-sm">
+                      <TableCell className="sticky left-[80px] bg-card font-semibold text-foreground text-sm z-20 min-w-[140px]">
                         {person.name}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="sticky left-[220px] bg-card z-20 min-w-[90px] border-r border-border/60">
                         <Badge
                           variant="outline"
                           className={`text-xs font-mono ${
