@@ -24,6 +24,9 @@ function getRankOrder(rank: string): number {
 }
 
 function getManagementRole(rank: string): string {
+  const upper = rank.toUpperCase();
+  if (upper === "COMMAND") return "Command";
+  if (upper === "MEMBER") return "Member";
   const order = getRankOrder(rank);
   if (order <= 3) return "Command";
   return "Member";
@@ -119,6 +122,9 @@ export default function ManagementPage() {
           officer={editing}
           open={!!editing}
           onClose={() => setEditing(null)}
+          rankOptions={["Command", "Member"]}
+          rankLabel="Role"
+          initialRankValue={(o) => getManagementRole(o.rank)}
         />
       </div>
     </Layout>

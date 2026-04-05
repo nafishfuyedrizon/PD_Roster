@@ -22,7 +22,7 @@ import {
 
 const STATUS_OPTIONS = ["Active", "LOA", "Inactive", "Terminated"];
 
-const RANK_OPTIONS = [
+const ALL_RANK_OPTIONS = [
   "Chief",
   "Assistant Chief",
   "Sheriff",
@@ -58,6 +58,9 @@ interface OfficerEditDialogProps {
   open: boolean;
   onClose: () => void;
   showNoteField?: boolean;
+  rankOptions?: string[];
+  rankLabel?: string;
+  initialRankValue?: (officer: Officer) => string;
 }
 
 export function OfficerEditDialog({
@@ -65,6 +68,9 @@ export function OfficerEditDialog({
   open,
   onClose,
   showNoteField = false,
+  rankOptions,
+  rankLabel = "Rank",
+  initialRankValue,
 }: OfficerEditDialogProps) {
   const queryClient = useQueryClient();
   const { mutate: updateOfficer, isPending } = useUpdateOfficer();
@@ -76,10 +82,12 @@ export function OfficerEditDialog({
   useEffect(() => {
     if (officer) {
       setStatus(officer.status ?? "Active");
-      setRank(officer.rank ?? "");
+      setRank(initialRankValue ? initialRankValue(officer) : (officer.rank ?? ""));
       setNote(officer.completionStatus ?? "");
     }
   }, [officer]);
+
+  const options = rankOptions ?? ALL_RANK_OPTIONS;
 
   function handleSave() {
     if (!officer) return;
@@ -128,13 +136,13 @@ export function OfficerEditDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Rank</Label>
+            <Label>{rankLabel}</Label>
             <Select value={rank} onValueChange={setRank}>
               <SelectTrigger>
-                <SelectValue placeholder="Select rank" />
+                <SelectValue placeholder={`Select ${rankLabel.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent className="max-h-64">
-                {RANK_OPTIONS.map((r) => (
+                {options.map((r) => (
                   <SelectItem key={r} value={r}>
                     {r}
                   </SelectItem>
