@@ -10,7 +10,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Clock, Flame, CalendarDays, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Clock, CalendarDays, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PdDutyLog {
@@ -34,14 +34,17 @@ interface OfficerOption {
   rank: string | null;
 }
 
-const SHIFT_TYPES = ["All", "Evening", "Night", "Midnight", "Full"];
-const SHIFT_ICONS: Record<string, React.ReactNode> = {
-  Full: <Flame className="w-3 h-3 text-orange-400" />,
-  Evening: <span className="text-[11px]">🌆</span>,
-  Night: <span className="text-[11px]">🌙</span>,
-  Midnight: <span className="text-[11px]">🌃</span>,
-  All: null,
-};
+interface ShiftConfig {
+  key: string; label: string; sub: string; icon: string; startHour: number; endHour: number; sortOrder: number;
+}
+
+function useShiftConfigs() {
+  return useQuery<ShiftConfig[]>({
+    queryKey: ["shift-configs"],
+    queryFn: () => fetch("/api/ems/shift-configs").then((r) => r.json()),
+    staleTime: 1000 * 60 * 5,
+  });
+}
 
 
 
@@ -96,6 +99,9 @@ export default function AdminDutyLogsPage() {
     queryKey: ["admin", "officers-list"],
     queryFn: () => fetch(`/api/admin/officers-list`).then((r) => r.json()),
   });
+
+  const { data: shiftConfigs = [] } = useShiftConfigs();
+  const shiftFilterTabs = [{ label: "All", icon: "", sub: "" }, ...shiftConfigs];
 
   const totalSecs = useMemo(() => logs.reduce((s, l) => s + parseHms(l.duration), 0), [logs]);
 
@@ -216,18 +222,18 @@ export default function AdminDutyLogsPage() {
         {/* Shift filter */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-mono text-muted-foreground uppercase mr-1">Shift</span>
-          {SHIFT_TYPES.map((s) => (
+          {shiftFilterTabs.map((s) => (
             <button
-              key={s}
-              onClick={() => setActiveShift(s)}
+              key={s.label}
+              onClick={() => setActiveShift(s.label)}
               className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors border ${
-                activeShift === s
+                activeShift === s.label
                   ? "bg-teal-600 border-teal-500 text-white"
                   : "bg-secondary border-border text-muted-foreground hover:text-foreground"
               }`}
             >
-              {SHIFT_ICONS[s]}
-              {s}
+              {s.label === "All" ? null : <span className="text-[11px]">{s.icon}</span>}
+              {s.label}
             </button>
           ))}
           {/* Total */}
@@ -275,7 +281,7 @@ export default function AdminDutyLogsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-1.5 text-sm">
-                      {SHIFT_ICONS[log.shiftType] ?? null}
+                      {shiftConfigs.find((s) => s.label === log.shiftType)?.icon}
                       {log.shiftType}
                     </span>
                   </td>
@@ -362,8 +368,14 @@ export default function AdminDutyLogsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SHIFT_TYPES.filter((s) => s !== "All").map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  {shiftConfigs.map((s) => (
+                    <SelectItem key={s.key} value={s.label}>
+                      <span className="flex items-center gap-1.5">
+                        <span>{s.icon}</span>
+                        <span>{s.label}</span>
+                        {s.sub && <span className="text-muted-foreground text-xs">{s.sub}</span>}
+                      </span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

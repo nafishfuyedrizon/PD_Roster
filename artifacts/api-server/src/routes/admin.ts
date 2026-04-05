@@ -69,13 +69,28 @@ router.get("/admin/duty-logs", async (req, res): Promise<void> => {
     conditions.push(or(ilike(pdDutyLogsTable.officerName, s), ilike(pdDutyLogsTable.csNumber, s))!);
   }
 
-  const logs = await db
-    .select()
-    .from(pdDutyLogsTable)
-    .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(pdDutyLogsTable.logDate), desc(pdDutyLogsTable.createdAt));
+  const [logs, allOfficers] = await Promise.all([
+    db
+      .select()
+      .from(pdDutyLogsTable)
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(desc(pdDutyLogsTable.logDate), desc(pdDutyLogsTable.createdAt)),
+    db.select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank }).from(officersTable),
+  ]);
 
-  res.json(logs);
+  // Build a live callSign → {name, rank} lookup so displayed values always
+  // reflect the current officer record, even after rank or name changes.
+  const officerByCs = new Map(
+    allOfficers.filter((o) => o.callSign).map((o) => [o.callSign!, o])
+  );
+
+  const enriched = logs.map((l) => {
+    const officer = officerByCs.get(l.csNumber);
+    if (!officer) return l;
+    return { ...l, officerName: officer.name ?? l.officerName, rank: officer.rank ?? l.rank };
+  });
+
+  res.json(enriched);
 });
 
 router.post("/admin/duty-logs", async (req, res): Promise<void> => {
