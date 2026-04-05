@@ -26,8 +26,9 @@ function getRankOrder(rank: string): number {
 function getFtpRole(rank: string): string {
   const order = getRankOrder(rank);
   if (order <= 3) return "Command";
-  if (order <= 5) return "Supervisor";
-  return "Senior Trainer";
+  if (order <= 5) return "Field Training Supervisor";
+  if (order <= 8) return "Field Training Trainer";
+  return "Field Training Trainee";
 }
 
 export default function FtpRosterPage() {
@@ -45,7 +46,7 @@ export default function FtpRosterPage() {
   return (
     <Layout>
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-6">FTP Roster</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-6">Field Training Program</h1>
 
         <div className="rounded-lg overflow-hidden border border-border">
           <table className="w-full text-sm">
