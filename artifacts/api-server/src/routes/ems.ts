@@ -139,14 +139,12 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
   const weeklyTopPerformers = Object.entries(weekLogSecs)
     .map(([cs, secs]) => ({ csNumber: cs, name: pdMap[cs]!.name, rank: pdMap[cs]!.rank, totalSecs: secs }))
     .sort((a, b) => b.totalSecs - a.totalSecs)
-    .slice(0, 5)
     .map((p, i) => ({ ...p, totalHours: secondsToHms(p.totalSecs), position: i + 1 }));
 
   // Top performers monthly — PD officers only
   const monthlyTopPerformers = Object.entries(pdLogSecs)
     .map(([cs, secs]) => ({ csNumber: cs, name: pdMap[cs]!.name, rank: pdMap[cs]!.rank, totalSecs: secs }))
     .sort((a, b) => b.totalSecs - a.totalSecs)
-    .slice(0, 5)
     .map((p, i) => ({ ...p, totalHours: secondsToHms(p.totalSecs), position: i + 1 }));
 
   const stats = {

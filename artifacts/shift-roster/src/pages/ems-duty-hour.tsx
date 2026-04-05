@@ -617,7 +617,7 @@ export default function PdDutyHourPage() {
           ) : weekTopPerformers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-xs font-mono">No duty data for this period</div>
           ) : (
-            <div className="space-y-1">
+            <div className="h-[340px] overflow-y-auto space-y-1 pr-1">
               {weekTopPerformers.map((p) => (
                 <TopPerformerRow key={p.csNumber} {...p} isTop={p.position === 1} />
               ))}
@@ -670,7 +670,7 @@ export default function PdDutyHourPage() {
           ) : monthTopPerformers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-xs font-mono">No duty data for this period</div>
           ) : (
-            <div className="space-y-1">
+            <div className="h-[340px] overflow-y-auto space-y-1 pr-1">
               {monthTopPerformers.map((p) => (
                 <TopPerformerRow key={p.csNumber} {...p} isTop={p.position === 1} />
               ))}
