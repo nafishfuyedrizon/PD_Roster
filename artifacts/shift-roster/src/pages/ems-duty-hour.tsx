@@ -29,6 +29,22 @@ const SHIFT_TYPES = [
 
 const MEDAL_COLORS = ["text-yellow-400", "text-slate-300", "text-orange-400"];
 
+const RANK_ORDER: Record<string, number> = {
+  "CHIEF": 1, "ASSISTANT CHIEF": 2, "SHERIFF": 2, "COLONEL": 2,
+  "SENIOR DEPUTY CHIEF": 3, "UNDERSHERIFF": 3, "ASSISTANT COLONEL": 3,
+  "DEPUTY CHIEF": 4, "ASSISTANT SHERIFF": 4, "DEPUTY COLONEL": 4,
+  "CAPTAIN": 5, "LIEUTENANT": 6, "SERGEANT FIRST CLASS": 7,
+  "SERGEANT": 8, "CORPORAL": 9,
+  "SENIOR TROOPER": 10, "SENIOR DEPUTY": 10, "SENIOR STATE TROOPER": 10,
+  "TROOPER FIRST CLASS": 11, "DEPUTY FIRST CLASS": 11, "STATE TROOPER FIRST CLASS": 11,
+  "TROOPER": 12, "DEPUTY": 12, "STATE TROOPER": 12,
+  "PROBATIONARY OFFICER": 13, "CADET": 14, "TRAINEE": 15, "STUDENT": 15,
+};
+
+function getRankOrder(rank: string): number {
+  return RANK_ORDER[(rank ?? "").toUpperCase()] ?? 99;
+}
+
 const MONTH_NAMES = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 
 function weekEndMonth(wp: string): string {
@@ -171,13 +187,19 @@ export default function PdDutyHourPage() {
       .map((p, i) => ({ ...p, totalHours: secsToHms(p.secs), position: i + 1 }));
   }, [breakdown, selectedMonth, monthWeeks]);
 
-  // Filtered breakdown by search
+  // Filtered + rank-sorted breakdown
   const filteredBreakdown = useMemo(() => {
-    if (!search.trim()) return breakdown;
-    const q = search.toLowerCase();
-    return breakdown.filter(
-      (p) => p.csNumber.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
-    );
+    const list = search.trim()
+      ? breakdown.filter((p) => {
+          const q = search.toLowerCase();
+          return p.csNumber.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
+        })
+      : breakdown;
+    return [...list].sort((a, b) => {
+      const diff = getRankOrder(a.rank) - getRankOrder(b.rank);
+      if (diff !== 0) return diff;
+      return a.csNumber.localeCompare(b.csNumber);
+    });
   }, [breakdown, search]);
 
   const weekLabel = weekNav === 0 ? "THIS WEEK" : weekNav === 1 ? "PREV WEEK" : `WEEK -${weekNav}`;
@@ -378,9 +400,9 @@ export default function PdDutyHourPage() {
             <TableHeader className="bg-secondary/50">
               <TableRow>
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-0 bg-secondary/50 z-20 min-w-[80px]">CS</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-secondary/50 z-20 min-w-[140px]">Name</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[220px] bg-secondary/50 z-20 min-w-[90px] border-r border-border">Status</TableHead>
-                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider min-w-[160px] text-purple-400">Rank</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[80px] bg-secondary/50 z-20 min-w-[160px] text-purple-400">Rank</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[240px] bg-secondary/50 z-20 min-w-[140px]">Name</TableHead>
+                <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider sticky left-[380px] bg-secondary/50 z-20 min-w-[90px] border-r border-border">Status</TableHead>
                 {weekPeriods.map((wp) => (
                   <TableHead key={wp} className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[100px]">
                     {wp}
@@ -424,13 +446,13 @@ export default function PdDutyHourPage() {
                   return (
                     <TableRow key={person.csNumber} className="hover:bg-secondary/20 transition-colors" data-testid={`ems-row-${person.csNumber}`}>
                       <TableCell className="sticky left-0 bg-card font-mono text-sm font-bold text-primary z-20">{person.csNumber}</TableCell>
-                      <TableCell className="sticky left-[80px] bg-card font-semibold text-foreground text-sm z-20 min-w-[140px]">{person.name}</TableCell>
-                      <TableCell className="sticky left-[220px] bg-card z-20 min-w-[90px] border-r border-border/60">
+                      <TableCell className="sticky left-[80px] bg-card z-20 min-w-[160px] py-2 uppercase text-[10px] font-medium text-purple-300">{person.rank}</TableCell>
+                      <TableCell className="sticky left-[240px] bg-card font-semibold text-foreground text-sm z-20 min-w-[140px]">{person.name}</TableCell>
+                      <TableCell className="sticky left-[380px] bg-card z-20 min-w-[90px] border-r border-border/60">
                         <Badge variant="outline" className={`text-xs font-mono ${isInactive ? "text-red-400 border-red-500/30 bg-red-500/10" : "text-green-400 border-green-500/30 bg-green-500/10"}`}>
                           {person.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="py-2 uppercase text-[10px] font-medium min-w-[140px]">{person.rank}</TableCell>
                       {weekPeriods.map((wp) => (
                         <TableCell key={wp} className="text-center"><HoursCell hours={weekHoursMap[wp]} /></TableCell>
                       ))}
