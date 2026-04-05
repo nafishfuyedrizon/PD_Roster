@@ -139,7 +139,12 @@ function MonthlyStatusBadge({ status }: { status: "Active" | "Semi-Active" | "In
 
 function HoursCell({ hours }: { hours: string | null | undefined }) {
   if (!hours || hours === "0" || hours === "00:00:00") {
-    return <span className="text-muted-foreground/40 font-mono text-xs">00:00:00</span>;
+    return (
+      <span className="inline-flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+        <span className="text-muted-foreground/40 font-mono text-xs">00:00:00</span>
+      </span>
+    );
   }
   const status = getWeekStatus(hours);
   const colorCls =
