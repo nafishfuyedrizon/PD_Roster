@@ -25,7 +25,7 @@ import type { Officer, CreateOfficerBody } from "@workspace/api-client-react";
 const officerSchema = z.object({
   callSign: z.string().min(1, "Call Sign is required"),
   citizenId: z.string().optional(),
-  name: z.string().optional(),
+  name: z.string().min(1, "Name is required"),
   phoneNumber: z.string().optional(),
   department: z.string().min(1, "Department is required"),
   rank: z.string().min(1, "Rank is required"),
@@ -45,9 +45,9 @@ const officerSchema = z.object({
   strikesMajor: z.string().optional(),
   strikesMinor: z.string().optional(),
   discordUsername: z.string().optional(),
-  discordUid: z.string().optional(),
+  discordUid: z.string().min(1, "Discord UID is required"),
   discordId: z.string().optional(),
-  rockstarLicenseId: z.string().optional(),
+  rockstarLicenseId: z.string().min(1, "Rockstar License ID is required"),
   appointedFto: z.string().optional(),
   weekPeriod: z.string().optional(),
   dutyHours: z.string().optional(),
@@ -241,7 +241,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
         <div className="grid grid-cols-2 gap-3">
           <FormField control={form.control} name="name" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs">Name</FormLabel>
+              <FormLabel className="text-xs">Name *</FormLabel>
               <FormControl><Input placeholder="Ricardo Lance" {...field} data-testid="input-name" /></FormControl>
             </FormItem>
           )} />
@@ -406,7 +406,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
           )} />
           <FormField control={form.control} name="discordUid" render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs">Discord UID</FormLabel>
+              <FormLabel className="text-xs">Discord UID *</FormLabel>
               <FormControl><Input placeholder="442421398913155092" {...field} /></FormControl>
             </FormItem>
           )} />
@@ -415,7 +415,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
         {/* Rockstar License */}
         <FormField control={form.control} name="rockstarLicenseId" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs">Rockstar License ID</FormLabel>
+            <FormLabel className="text-xs">Rockstar License ID *</FormLabel>
             <FormControl>
               <div className="flex items-center rounded-md border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring">
                 <span className="px-2 py-2 text-xs font-mono text-muted-foreground bg-muted border-r border-input select-none whitespace-nowrap">
