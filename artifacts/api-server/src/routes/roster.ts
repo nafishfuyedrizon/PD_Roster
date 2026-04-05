@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, officersTable, emsDutyLogsTable } from "@workspace/db";
+import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable } from "@workspace/db";
 import {
   ListOfficersQueryParams,
   ListOfficersResponse,
@@ -67,6 +67,13 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
 
   const { weekPeriod, month, year } = parsed.data;
 
+  // Convert 2-digit month number → full uppercase month name used in duty_adjustments
+  const MONTH_NAMES = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+  function monthNumToName(m: string): string {
+    const idx = parseInt(m, 10) - 1;
+    return idx >= 0 && idx < 12 ? MONTH_NAMES[idx] : m.toUpperCase();
+  }
+
   function parseDutyMinutes(dutyHours: string | null): number {
     if (!dutyHours || dutyHours.trim() === "0" || dutyHours.trim() === "") return 0;
     // "HH:MM:SS" format (e.g. "25:56:18") — primary format in ems_duty_logs
@@ -107,10 +114,30 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
     if (year)  logConditions.push(eq(emsDutyLogsTable.dutyYear, year));
   }
 
-  const dutyLogs = await db
-    .select()
-    .from(emsDutyLogsTable)
-    .where(and(...logConditions));
+  // Build adjustment conditions matching the same period
+  const adjConditions: ReturnType<typeof eq>[] = [eq(dutyAdjustmentsTable.shiftType, "ALL")];
+  if (month) {
+    adjConditions.push(eq(dutyAdjustmentsTable.dutyMonth, monthNumToName(month)));
+    if (year) adjConditions.push(eq(dutyAdjustmentsTable.dutyYear, year));
+  } else if (year) {
+    adjConditions.push(eq(dutyAdjustmentsTable.dutyYear, year));
+  }
+  // For weekPeriod, extract end-month from "MM/DD-MM/DD" and use it
+  if (weekPeriod) {
+    const endMonthNum = weekPeriod.slice(6, 8);
+    adjConditions.push(eq(dutyAdjustmentsTable.dutyMonth, monthNumToName(endMonthNum)));
+  }
+
+  const [dutyLogs, adjustments] = await Promise.all([
+    db.select().from(emsDutyLogsTable).where(and(...logConditions)),
+    db.select().from(dutyAdjustmentsTable).where(and(...adjConditions)),
+  ]);
+
+  // Group adjustments by officerCs → net seconds
+  const adjSecsByCs = new Map<string, number>();
+  for (const a of adjustments) {
+    adjSecsByCs.set(a.officerCs, (adjSecsByCs.get(a.officerCs) ?? 0) + a.adjustmentSeconds);
+  }
 
   // Group by csNumber, sum duty hours, use latest name/rank per officer
   const byCs = new Map<string, { name: string; rank: string; department: string; id: number; totalMins: number }>();
@@ -133,6 +160,14 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
       });
     } else {
       existing.totalMins += mins;
+    }
+  }
+
+  // Apply manual adjustments (stored as seconds → convert to minutes)
+  for (const [cs, adjSecs] of adjSecsByCs.entries()) {
+    const entry = byCs.get(cs);
+    if (entry) {
+      entry.totalMins = Math.max(0, entry.totalMins + Math.round(adjSecs / 60));
     }
   }
 
