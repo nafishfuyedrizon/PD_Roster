@@ -120,13 +120,22 @@ export type RosterStatsRankBreakdownItem = {
   count: number;
 };
 
+export interface TopPerformer {
+  id: number;
+  callSign: string;
+  name?: string | null;
+  department: string;
+  rank: string;
+  dutyHours?: string | null;
+}
+
 export interface RosterStats {
   totalOfficers: number;
   activeOfficers: number;
   loaOfficers: number;
   departmentBreakdown: RosterStatsDepartmentBreakdownItem[];
   rankBreakdown: RosterStatsRankBreakdownItem[];
-  topDutyHours: Officer[];
+  topDutyHours: TopPerformer[];
   weekPeriod: string;
 }
 
