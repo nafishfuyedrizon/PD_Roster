@@ -135,10 +135,10 @@ function MonthlyStatusBadge({ status }: { status: "Active" | "Semi-Active" | "In
   );
 }
 
-function HoursCell({ hours }: { hours: string | null | undefined }) {
+function HoursCell({ hours, isLoa }: { hours: string | null | undefined; isLoa?: boolean }) {
   if (!hours || hours === "0" || hours === "00:00:00") {
     return (
-      <span className="font-mono text-xs tabular-nums text-red-400">
+      <span className={`font-mono text-xs tabular-nums ${isLoa ? "text-yellow-400" : "text-red-400"}`}>
         00:00:00
       </span>
     );
@@ -573,12 +573,12 @@ export default function PdDutyHourPage() {
                         </Badge>
                       </TableCell>
                       {weekPeriods.map((wp) => (
-                        <TableCell key={wp} className="text-center"><HoursCell hours={weekHoursMap[wp]} /></TableCell>
+                        <TableCell key={wp} className="text-center"><HoursCell hours={weekHoursMap[wp]} isLoa={dbStatus === "LOA"} /></TableCell>
                       ))}
                       {months.map((mo) => (
                         <React.Fragment key={`mt-${mo}`}>
                           <TableCell className="text-center border-l border-border/40">
-                            <HoursCell hours={monthTotals[mo]} />
+                            <HoursCell hours={monthTotals[mo]} isLoa={dbStatus === "LOA"} />
                           </TableCell>
                           <TableCell className="text-center">
                             <MonthlyStatusBadge status={monthStatuses[mo]!} />
