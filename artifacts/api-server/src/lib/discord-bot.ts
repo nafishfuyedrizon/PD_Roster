@@ -3,10 +3,11 @@ import { db } from "@workspace/db";
 import {
   discordDutyEventsTable,
   emsDutyLogsTable,
+  pdDutyLogsTable,
   officersTable,
   shiftConfigsTable,
 } from "@workspace/db";
-import { eq, and, asc, desc, or, lt } from "drizzle-orm";
+import { eq, and, asc, desc, or, lt, gte, lte } from "drizzle-orm";
 import { logger } from "./logger";
 
 const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID!;
@@ -253,6 +254,52 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
   await upsertDutyLog(cs, name, rank, status, weekPeriod, "ALL", secsToHms(totalSecs));
   for (const st of Object.keys(SHIFT_WINDOWS)) {
     await upsertDutyLog(cs, name, rank, status, weekPeriod, st, secsToHms(shiftSecs[st]!));
+  }
+
+  // ── Sync individual sessions to pd_duty_logs ──────────────────────────────
+  // Derive duty year from weekPeriod (same logic as upsertDutyLog)
+  const now2 = new Date();
+  const endMonthWp = parseInt(weekPeriod.slice(6, 8), 10);
+  const dutyYear2 = endMonthWp > now2.getMonth() + 1
+    ? String(now2.getFullYear() - 1)
+    : String(now2.getFullYear());
+
+  // Build ISO date strings for Monday and Sunday of this week
+  const [startMm, startDd] = [weekPeriod.slice(0, 2), weekPeriod.slice(3, 5)];
+  const [endMm, endDd] = [weekPeriod.slice(6, 8), weekPeriod.slice(9, 11)];
+  // Cross-year: if Monday month > Sunday month (e.g. "12/30-01/05"), Monday is prior year
+  const startYear = parseInt(startMm) > endMonthWp
+    ? String(parseInt(dutyYear2) - 1)
+    : dutyYear2;
+  const weekDateStart = `${startYear}-${startMm}-${startDd}`;
+  const weekDateEnd   = `${dutyYear2}-${endMm}-${endDd}`;
+
+  // Replace all bot-imported sessions for this officer + week
+  await db
+    .delete(pdDutyLogsTable)
+    .where(
+      and(
+        eq(pdDutyLogsTable.csNumber, cs),
+        eq(pdDutyLogsTable.notes, "discord"),
+        gte(pdDutyLogsTable.logDate, weekDateStart),
+        lte(pdDutyLogsTable.logDate, weekDateEnd)
+      )
+    );
+
+  if (sessions.length > 0) {
+    await db.insert(pdDutyLogsTable).values(
+      sessions.map(({ start, end }) => ({
+        logDate:     start.toISOString().split("T")[0]!,
+        startTime:   start.toISOString().substring(11, 16),
+        endTime:     end.toISOString().substring(11, 16),
+        csNumber:    cs,
+        officerName: name,
+        rank,
+        shiftType:   "Full",
+        duration:    secsToHms(Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))),
+        notes:       "discord",
+      }))
+    );
   }
 
   logger.info({ licenseId, weekPeriod, totalSecs }, "Updated duty hours");
