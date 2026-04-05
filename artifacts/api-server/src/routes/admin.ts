@@ -1,7 +1,29 @@
 import { Router } from "express";
-import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable } from "@workspace/db";
+import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable, emsDutyLogsTable, dutyAdjustmentsTable } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or } from "drizzle-orm";
 import { desc, asc } from "drizzle-orm";
+
+const MONTH_NAMES = ["","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+
+function weekEndMonthNum(wp: string): number {
+  const end = wp.split("-")[1] ?? "";
+  return parseInt(end.split("/")[0] ?? "0", 10);
+}
+
+function parseHmsLocal(h: string | null | undefined): number {
+  if (!h || h === "0" || h.trim() === "") return 0;
+  const parts = h.trim().split(":").map(Number);
+  if (parts.length === 3) return (parts[0] ?? 0) * 3600 + (parts[1] ?? 0) * 60 + (parts[2] ?? 0);
+  if (parts.length === 2) return (parts[0] ?? 0) * 3600 + (parts[1] ?? 0) * 60;
+  return 0;
+}
+
+function secsToHmsAdj(s: number): string {
+  const abs = Math.abs(s);
+  const h = Math.floor(abs / 3600), m = Math.floor((abs % 3600) / 60), sec = abs % 60;
+  const hms = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return s < 0 ? `-${hms}` : `+${hms}`;
+}
 
 function secsToHms(s: number): string {
   if (s <= 0) return "00:00:00";
@@ -249,6 +271,102 @@ router.post("/admin/duty-logs/import-discord", async (req, res): Promise<void> =
   }
 
   res.json({ imported: newLogs.length });
+});
+
+// ── Duty Adjustments ─────────────────────────────────────────────────────────
+
+router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
+  const { month, year } = req.query as { month?: string; year?: string };
+  if (!month || !year) { res.status(400).json({ error: "month and year required" }); return; }
+
+  const monthNum = MONTH_NAMES.indexOf(month.toUpperCase());
+  if (monthNum < 1) { res.status(400).json({ error: "Invalid month" }); return; }
+
+  const [allOfficers, allLogs, adjustments] = await Promise.all([
+    db.select({
+      callSign: officersTable.callSign,
+      name: officersTable.name,
+      rank: officersTable.rank,
+      status: officersTable.status,
+    }).from(officersTable).orderBy(asc(officersTable.callSign)),
+    db.select().from(emsDutyLogsTable).where(eq(emsDutyLogsTable.dutyYear, year)),
+    db.select().from(dutyAdjustmentsTable)
+      .where(and(eq(dutyAdjustmentsTable.dutyMonth, month.toUpperCase()), eq(dutyAdjustmentsTable.dutyYear, year)))
+      .orderBy(desc(dutyAdjustmentsTable.createdAt)),
+  ]);
+
+  const officerMap = new Map(allOfficers.filter((o) => o.callSign).map((o) => [o.callSign!, o]));
+
+  const baseSecs: Record<string, number> = {};
+  for (const l of allLogs) {
+    if (!officerMap.has(l.csNumber)) continue;
+    if (weekEndMonthNum(l.weekPeriod) !== monthNum) continue;
+    baseSecs[l.csNumber] = (baseSecs[l.csNumber] ?? 0) + parseHmsLocal(l.dutyHours);
+  }
+
+  const adjSecs: Record<string, number> = {};
+  for (const a of adjustments) {
+    adjSecs[a.officerCs] = (adjSecs[a.officerCs] ?? 0) + a.adjustmentSeconds;
+  }
+
+  const officers = allOfficers.map((o) => {
+    const cs = o.callSign!;
+    const base = baseSecs[cs] ?? 0;
+    const adj = adjSecs[cs] ?? 0;
+    const total = Math.max(0, base + adj);
+    return {
+      cs,
+      name: o.name ?? cs,
+      rank: o.rank,
+      status: o.status,
+      baseSecs: base,
+      adjustSecs: adj,
+      totalSecs: total,
+      baseTotal: secsToHms(base),
+      adjustTotal: adj === 0 ? "+00:00:00" : secsToHmsAdj(adj),
+      grandTotal: secsToHms(total),
+    };
+  });
+
+  res.json({
+    month: month.toUpperCase(),
+    year,
+    officers,
+    adjustments: adjustments.map((a) => ({
+      id: a.id,
+      officerCs: a.officerCs,
+      officerName: a.officerName,
+      adjustmentSeconds: a.adjustmentSeconds,
+      adjustDisplay: secsToHmsAdj(a.adjustmentSeconds),
+      note: a.note,
+      createdAt: a.createdAt,
+    })),
+  });
+});
+
+router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
+  const { officerCs, officerName, dutyMonth, dutyYear, adjustmentSeconds, note } = req.body as {
+    officerCs?: string; officerName?: string; dutyMonth?: string; dutyYear?: string;
+    adjustmentSeconds?: number; note?: string;
+  };
+  if (!officerCs?.trim() || !dutyMonth?.trim() || !dutyYear?.trim() || typeof adjustmentSeconds !== "number" || adjustmentSeconds === 0) {
+    res.status(400).json({ error: "officerCs, dutyMonth, dutyYear, adjustmentSeconds (non-zero) required" }); return;
+  }
+  const [created] = await db.insert(dutyAdjustmentsTable).values({
+    officerCs: officerCs.trim(),
+    officerName: officerName?.trim() || null,
+    dutyMonth: dutyMonth.trim().toUpperCase(),
+    dutyYear: dutyYear.trim(),
+    adjustmentSeconds,
+    note: note?.trim() || null,
+  }).returning();
+  res.status(201).json(created);
+});
+
+router.delete("/admin/duty-adjustments/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  await db.delete(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id));
+  res.status(204).end();
 });
 
 export default router;
