@@ -747,6 +747,11 @@ export default function PdDutyHourPage() {
                     {wp}
                   </TableHead>
                 ))}
+                {months.map((m) => (
+                  <TableHead key={`mh-${m}`} className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-orange-400 border-l border-border/60">
+                    {m} TOTAL
+                  </TableHead>
+                ))}
                 <TableHead className="font-mono text-xs font-semibold uppercase tracking-wider text-center min-w-[110px] text-primary border-l border-border/60">
                   5-WK TOTAL
                 </TableHead>
@@ -815,6 +820,11 @@ export default function PdDutyHourPage() {
                       </TableCell>
                       {weekPeriods.map((wp) => (
                         <TableCell key={wp} className="text-center"><HoursCell hours={weekHoursMap[wp]} isLoa={dbStatus === "LOA"} /></TableCell>
+                      ))}
+                      {months.map((mo) => (
+                        <TableCell key={`mt-${mo}`} className="text-center border-l border-border/40">
+                          <HoursCell hours={monthTotals[mo]} isLoa={dbStatus === "LOA"} />
+                        </TableCell>
                       ))}
                       <TableCell className="text-center border-l border-border/40">
                         <span className="font-mono text-sm font-bold text-primary tabular-nums">{person.totalHours}</span>
