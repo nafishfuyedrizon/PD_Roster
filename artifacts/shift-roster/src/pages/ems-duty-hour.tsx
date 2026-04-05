@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useGetEmsStats,
@@ -405,6 +405,17 @@ export default function PdDutyHourPage() {
   const [shiftConfigOpen, setShiftConfigOpen] = useState(false);
   const [weekCopied, setWeekCopied] = useState(false);
   const [monthCopied, setMonthCopied] = useState(false);
+
+  const qcMain = useQueryClient();
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      qcMain.invalidateQueries({ queryKey: ["/api/ems/stats"] });
+      qcMain.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      qcMain.invalidateQueries({ queryKey: ["officer-duty"] });
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [qcMain]);
 
   const fmtDiscord = (p: { discordUid?: string | null; discordUsername?: string | null; name: string }) =>
     p.discordUid ? `<@${p.discordUid}>` : `@${p.discordUsername ?? p.name}`;
