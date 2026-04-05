@@ -106,9 +106,9 @@ function getWeekStatus(hms: string | null | undefined): WeekStatus {
   return "inactive";
 }
 
-function computeMonthlyStatus(statuses: WeekStatus[]): "Active" | "Semi-Active" | "Inactive" {
+function computeMonthlyStatus(statuses: WeekStatus[]): "Active" | "Semi-Active" | "Inactive" | null {
   const nonZero = statuses.filter((s) => s !== "zero");
-  if (nonZero.length === 0) return "Inactive";
+  if (nonZero.length === 0) return null;
   const active   = nonZero.filter((s) => s === "active").length;
   const semi     = nonZero.filter((s) => s === "semi").length;
   const inactive = nonZero.filter((s) => s === "inactive").length;
@@ -120,7 +120,10 @@ function computeMonthlyStatus(statuses: WeekStatus[]): "Active" | "Semi-Active" 
   return "Active";
 }
 
-function MonthlyStatusBadge({ status }: { status: "Active" | "Semi-Active" | "Inactive" }) {
+function MonthlyStatusBadge({ status }: { status: "Active" | "Semi-Active" | "Inactive" | null }) {
+  if (!status) {
+    return <span className="text-muted-foreground/30 font-mono text-xs">—</span>;
+  }
   const cls =
     status === "Active"
       ? "text-green-400 border-green-500/30 bg-green-500/10"
@@ -535,7 +538,7 @@ export default function PdDutyHourPage() {
                   for (const w of person.weeks) weekHoursMap[w.weekPeriod] = w.dutyHours;
 
                   const monthTotals: Record<string, string> = {};
-                  const monthStatuses: Record<string, "Active" | "Semi-Active" | "Inactive"> = {};
+                  const monthStatuses: Record<string, "Active" | "Semi-Active" | "Inactive" | null> = {};
                   for (const mo of months) {
                     const wps = monthWeeks[mo] ?? [];
                     const secs = wps.reduce((acc, wp) => acc + hmsToSecs(weekHoursMap[wp]), 0);
