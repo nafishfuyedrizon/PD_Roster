@@ -49,10 +49,47 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   for (const o of officers) {
     if (o.rockstarLicenseId) licenseToOfficer.set(o.rockstarLicenseId, o);
   }
+
+  // Multi-strategy fuzzy matching for officers without a stored license ID
+  function norm(s: string) { return s.toLowerCase().replace(/[-_.\s]/g, ""); }
+  function tokens(s: string) { return s.toLowerCase().split(/[\s\-_]+/).filter(Boolean); }
+
+  function findOfficerByName(evName: string): typeof officers[0] | null {
+    const evNorm = norm(evName);
+    const evTokens = tokens(evName);
+
+    const candidates: typeof officers[0][] = [];
+
+    for (const o of officers) {
+      const rosterNorm = norm(o.name ?? "");
+      const discordNorm = norm(o.discordUsername ?? "");
+      const rosterTokens = tokens(o.name ?? "");
+
+      // Exact full name
+      if (rosterNorm === evNorm) return o;
+
+      // Event name is a substring of discord_username or vice-versa
+      if (evNorm.length >= 3 && (discordNorm.includes(evNorm) || evNorm.includes(discordNorm))) {
+        candidates.push(o);
+        continue;
+      }
+
+      // Any event token (len≥3) appears in discord_username OR matches roster first-name token
+      const matched = evTokens.some((t) => {
+        if (t.length < 3) return false;
+        return discordNorm.includes(t) || rosterTokens[0] === t;
+      });
+      if (matched) { candidates.push(o); continue; }
+    }
+
+    // Only accept if exactly one candidate to avoid wrong matches
+    return candidates.length === 1 ? candidates[0]! : null;
+  }
+
   const liveOnDuty = [...latestByLicense.values()]
     .filter((ev) => ev.eventType === "on")
     .map((ev) => {
-      const o = licenseToOfficer.get(ev.licenseId);
+      const o = licenseToOfficer.get(ev.licenseId) ?? findOfficerByName(ev.officerName) ?? null;
       const elapsedSecs = Math.max(0, Math.floor((now.getTime() - ev.eventAt.getTime()) / 1000));
       return {
         licenseId: ev.licenseId,
