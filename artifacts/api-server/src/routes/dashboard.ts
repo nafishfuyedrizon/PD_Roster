@@ -142,8 +142,34 @@ router.get("/dashboard", async (req, res): Promise<void> => {
       onSince: ev.eventAt.toISOString(),
       elapsedHms: secsToHms(elapsedSecs),
     };
-  })
-    .sort((a, b) => a.onSince.localeCompare(b.onSince));
+  });
+
+  // Rank priority: lower number = higher rank = appears first
+  const RANK_ORDER: Record<string, number> = {
+    "CHIEF": 1,
+    "ASSISTANT CHIEF": 2,
+    "UNDERSHERIFF": 3,
+    "CAPTAIN": 4,
+    "LIEUTENANT": 5,
+    "SERGEANT FIRST CLASS": 6,
+    "SENIOR STATE TROOPER": 7,
+    "STATE TROOPER FIRST CLASS": 8,
+    "TROOPER FIRST CLASS": 9,
+    "CORPORAL": 10,
+    "DEPUTY FIRST CLASS": 11,
+    "SENIOR DEPUTY": 12,
+    "SENIOR TROOPER": 13,
+    "STATE TROOPER": 14,
+    "DEPUTY": 15,
+    "CADET": 16,
+  };
+
+  liveOnDuty.sort((a, b) => {
+    const ra = RANK_ORDER[(a.rank ?? "").toUpperCase()] ?? 99;
+    const rb = RANK_ORDER[(b.rank ?? "").toUpperCase()] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return a.onSince.localeCompare(b.onSince);
+  });
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const totalMembers = officers.length;
