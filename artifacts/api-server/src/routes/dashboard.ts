@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { desc, eq } from "drizzle-orm";
 import { db, discordDutyEventsTable, emsDutyLogsTable, officersTable } from "@workspace/db";
+import { getAllSettings } from "./settings";
 
 const router: IRouter = Router();
 
@@ -34,11 +35,17 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   const now = new Date();
   const currentWeek = getWeekPeriod(now);
 
-  const [officers, allEvents, allLogs] = await Promise.all([
+  const [officers, allEvents, allLogs, siteSettings] = await Promise.all([
     db.select().from(officersTable),
     db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt)),
     db.select().from(emsDutyLogsTable).where(eq(emsDutyLogsTable.shiftType, "ALL")),
+    getAllSettings(),
   ]);
+
+  // Build rank order map from DB settings (index = priority, lower = higher rank)
+  const ranksFromSettings = (siteSettings.ranks as string[] | undefined) ?? [];
+  const RANK_ORDER: Record<string, number> = {};
+  ranksFromSettings.forEach((r, i) => { RANK_ORDER[r.toUpperCase()] = i + 1; });
 
   // ── Live on duty ───────────────────────────────────────────────────────────
   const latestByLicense = new Map<string, typeof allEvents[0]>();
@@ -145,25 +152,6 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   });
 
   // Rank priority: lower number = higher rank = appears first
-  const RANK_ORDER: Record<string, number> = {
-    "CHIEF": 1,
-    "ASSISTANT CHIEF": 2,
-    "UNDERSHERIFF": 3,
-    "CAPTAIN": 4,
-    "LIEUTENANT": 5,
-    "SERGEANT FIRST CLASS": 6,
-    "SENIOR STATE TROOPER": 7,
-    "STATE TROOPER FIRST CLASS": 8,
-    "TROOPER FIRST CLASS": 9,
-    "CORPORAL": 10,
-    "DEPUTY FIRST CLASS": 11,
-    "SENIOR DEPUTY": 12,
-    "SENIOR TROOPER": 13,
-    "STATE TROOPER": 14,
-    "DEPUTY": 15,
-    "CADET": 16,
-  };
-
   liveOnDuty.sort((a, b) => {
     const ra = RANK_ORDER[(a.rank ?? "").toUpperCase()] ?? 99;
     const rb = RANK_ORDER[(b.rank ?? "").toUpperCase()] ?? 99;

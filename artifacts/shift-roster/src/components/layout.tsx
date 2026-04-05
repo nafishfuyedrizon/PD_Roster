@@ -1,26 +1,21 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays } from "lucide-react";
-
-const DEPARTMENTS = [
-  { label: "SASP", value: "SASP" },
-  { label: "BCSO", value: "BCSO" },
-  { label: "SAHP", value: "SAHP" },
-  { label: "IA", value: "IA" },
-  { label: "FTP", value: "FTP" },
-  { label: "Management", value: "Management" },
-  { label: "SWAT", value: "SWAT" },
-  { label: "FIB", value: "FIB" },
-  { label: "Game Wardens", value: "Game Wardens" },
-];
+import { useSettings } from "@/hooks/useSettings";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [rostersOpen, setRostersOpen] = useState(true);
   const [adminOpen, setAdminOpen] = useState(location.startsWith("/admin"));
+  const { data: settings } = useSettings();
 
   const isRosterActive = location === "/" || location.startsWith("/dept/");
   const isAdminActive = location.startsWith("/admin");
+
+  const orgName    = settings?.org_name    ?? "POLICE DEPARTMENT";
+  const orgAcronym = settings?.org_acronym ?? "PD";
+  const orgSubtitle = settings?.org_subtitle ?? "Shift Roster";
+  const departments = settings?.departments ?? ["SASP","BCSO","SAHP","IA","FTP","Management","SWAT","FIB","Game Wardens"];
 
   return (
     <div className="min-h-[100dvh] flex flex-col md:flex-row bg-background text-foreground dark">
@@ -28,11 +23,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <aside className="w-full md:w-60 border-b md:border-r border-border bg-card flex flex-col shrink-0">
         <div className="p-4 border-b border-border flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm tracking-tighter">
-            PD
+            {orgAcronym}
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-sm tracking-tight leading-none">POLICE DEPARTMENT</span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono">Shift Roster</span>
+            <span className="font-bold text-sm tracking-tight leading-none">{orgName.toUpperCase()}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono">{orgSubtitle}</span>
           </div>
         </div>
 
@@ -61,7 +56,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             {rostersOpen && (
               <div className="mt-1 ml-2 border-l border-border pl-3 space-y-0.5">
-                {/* All Officers link */}
                 <Link href="/" data-testid="nav-roster-all">
                   <div
                     className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
@@ -75,11 +69,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </div>
                 </Link>
 
-                {DEPARTMENTS.map((dept) => {
-                  const href = `/dept/${dept.value}`;
+                {departments.map((dept) => {
+                  const href = `/dept/${dept}`;
                   const isActive = location === href;
                   return (
-                    <Link key={dept.value} href={href} data-testid={`nav-dept-${dept.value.toLowerCase()}`}>
+                    <Link key={dept} href={href} data-testid={`nav-dept-${dept.toLowerCase()}`}>
                       <div
                         className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
                           isActive
@@ -88,7 +82,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         }`}
                       >
                         <Shield className="w-3.5 h-3.5 shrink-0" />
-                        {dept.label}
+                        {dept}
                       </div>
                     </Link>
                   );
@@ -197,6 +191,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <CalendarDays className="w-3.5 h-3.5 shrink-0 text-teal-400" />
                     Duty Logs
+                  </div>
+                </Link>
+                <Link href="/admin/settings" data-testid="nav-admin-settings">
+                  <div
+                    className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+                      location === "/admin/settings"
+                        ? "bg-secondary text-secondary-foreground font-medium"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <Settings className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                    Site Settings
                   </div>
                 </Link>
               </div>

@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { z } from "zod";
 import { useForm, useWatch } from "react-hook-form";
+import { useSettings } from "@/hooks/useSettings";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
@@ -167,13 +168,16 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
     },
   });
 
+  const { data: settings } = useSettings();
   const selectedDept = useWatch({ control: form.control, name: "department" });
-  const availableRanks = DEPT_RANKS[selectedDept] ?? ALL_RANKS;
+  const availableRanks = settings?.ranks ?? ALL_RANKS;
+  const availableDepts = settings?.departments ?? ["SASP","BCSO","SAHP","IA","FTP","Management","SWAT","FIB","Game Wardens"];
+  const availableDivisions = settings?.divisions ?? ["High Command","Low Command (HR)","Field Training Supervisor","Field Training Officer","Field Training Trainee","Training Academy"];
 
   useEffect(() => {
     const currentRank = form.getValues("rank");
     if (currentRank && !availableRanks.includes(currentRank)) {
-      form.setValue("rank", availableRanks[availableRanks.length - 1]);
+      form.setValue("rank", availableRanks[availableRanks.length - 1] ?? "CADET");
     }
   }, [selectedDept]);
 
@@ -261,12 +265,9 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
                   <SelectItem value="__none__">
                     <span className="text-muted-foreground italic">— None —</span>
                   </SelectItem>
-                  <SelectItem value="High Command">High Command</SelectItem>
-                  <SelectItem value="Low Command (HR)">Low Command (HR)</SelectItem>
-                  <SelectItem value="Field Training Supervisor">Field Training Supervisor</SelectItem>
-                  <SelectItem value="Field Training Officer">Field Training Officer</SelectItem>
-                  <SelectItem value="Field Training Trainee">Field Training Trainee</SelectItem>
-                  <SelectItem value="Training Academy">Training Academy</SelectItem>
+                  {availableDivisions.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </FormItem>
@@ -281,7 +282,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl><SelectTrigger data-testid="select-department"><SelectValue /></SelectTrigger></FormControl>
                 <SelectContent>
-                  {["SASP","BCSO","SAHP","PTA","IA","SWAT","FIB","Game Wardens","Management","FTP"].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  {availableDepts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                 </SelectContent>
               </Select>
               <FormMessage />

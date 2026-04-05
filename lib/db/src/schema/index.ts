@@ -4,3 +4,4 @@ export * from "./discord_duty_events";
 export * from "./shift_configs";
 export * from "./discord_channels";
 export * from "./pd_duty_logs";
+export * from "./site_settings";
