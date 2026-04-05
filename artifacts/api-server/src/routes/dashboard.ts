@@ -47,7 +47,11 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   }
   const licenseToOfficer = new Map<string, typeof officers[0]>();
   for (const o of officers) {
-    if (o.rockstarLicenseId) licenseToOfficer.set(o.rockstarLicenseId, o);
+    if (o.rockstarLicenseId) {
+      // Strip optional "license:" prefix so raw hashes from Discord events match
+      const rawId = o.rockstarLicenseId.replace(/^license:/, "");
+      licenseToOfficer.set(rawId, o);
+    }
   }
 
   // Multi-strategy fuzzy matching for officers without a stored license ID
