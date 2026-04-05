@@ -14,6 +14,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={RosterPage} />
+      <Route path="/dept/:department" component={RosterPage} />
       <Route path="/stats" component={StatsPage} />
       <Route path="/fto-pairs" component={FtoPairsPage} />
       <Route component={NotFound} />
