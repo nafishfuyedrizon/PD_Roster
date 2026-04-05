@@ -396,7 +396,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
           )} />
         </div>
 
-        {/* Discord + License */}
+        {/* Discord */}
         <div className="grid grid-cols-2 gap-3">
           <FormField control={form.control} name="discordUsername" render={({ field }) => (
             <FormItem>
@@ -411,12 +411,6 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
             </FormItem>
           )} />
         </div>
-        <FormField control={form.control} name="rockstarLicenseId" render={({ field }) => (
-          <FormItem>
-            <FormLabel className="text-xs">Rockstar License ID</FormLabel>
-            <FormControl><Input placeholder="license:..." {...field} className="font-mono text-xs" /></FormControl>
-          </FormItem>
-        )} />
 
         <div className="flex justify-end gap-2 pt-2 sticky bottom-0 bg-background pb-1">
           <Button type="submit" disabled={isSubmitting} data-testid="button-submit-officer">
