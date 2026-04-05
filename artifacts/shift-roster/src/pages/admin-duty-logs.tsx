@@ -10,7 +10,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Search, Clock, Flame, CalendarDays } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Clock, Flame, CalendarDays, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PdDutyLog {
@@ -41,7 +41,7 @@ const SHIFT_ICONS: Record<string, React.ReactNode> = {
   All: null,
 };
 
-const API = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 
 function parseHms(h: string): number {
   const parts = h.trim().split(":").map(Number);
@@ -86,13 +86,13 @@ export default function AdminDutyLogsPage() {
 
   const { data: logs = [], isLoading } = useQuery<PdDutyLog[]>({
     queryKey: ["admin", "duty-logs", search, dateFrom, dateTo, activeShift],
-    queryFn: () => fetch(`${API}/api/admin/duty-logs?${params}`).then((r) => r.json()),
+    queryFn: () => fetch(`/api/admin/duty-logs?${params}`).then((r) => r.json()),
     refetchOnWindowFocus: false,
   });
 
   const { data: officers = [] } = useQuery<OfficerOption[]>({
     queryKey: ["admin", "officers-list"],
-    queryFn: () => fetch(`${API}/api/admin/officers-list`).then((r) => r.json()),
+    queryFn: () => fetch(`/api/admin/officers-list`).then((r) => r.json()),
   });
 
   const totalSecs = useMemo(() => logs.reduce((s, l) => s + parseHms(l.duration), 0), [logs]);
@@ -121,9 +121,22 @@ export default function AdminDutyLogsPage() {
     setOfficerSearch(`${o.callSign} ${o.name}`);
   }
 
+  const importMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/admin/duty-logs/import-discord`, { method: "POST" });
+      if (!res.ok) throw new Error("Import failed");
+      return res.json() as Promise<{ imported: number }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "duty-logs"] });
+      toast({ title: "Import complete", description: `${data.imported} duty sessions imported from Discord.` });
+    },
+    onError: (e: Error) => toast({ title: "Import failed", description: e.message, variant: "destructive" }),
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const url = editLog ? `${API}/api/admin/duty-logs/${editLog.id}` : `${API}/api/admin/duty-logs`;
+      const url = editLog ? `/api/admin/duty-logs/${editLog.id}` : `/api/admin/duty-logs`;
       const method = editLog ? "PUT" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as { error?: string }).error ?? "Failed"); }
@@ -139,7 +152,7 @@ export default function AdminDutyLogsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`${API}/api/admin/duty-logs/${id}`, { method: "DELETE" });
+      await fetch(`/api/admin/duty-logs/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-logs"] });
@@ -160,10 +173,21 @@ export default function AdminDutyLogsPage() {
           </h1>
           <p className="text-sm text-muted-foreground">Manage and track officer duty log entries.</p>
         </div>
-        <Button onClick={openAdd} className="gap-1.5 bg-teal-600 hover:bg-teal-500 text-white">
-          <Plus className="w-4 h-4" />
-          Add Duty Log
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => importMutation.mutate()}
+            disabled={importMutation.isPending}
+            className="gap-1.5 border-teal-700 text-teal-400 hover:bg-teal-950/40"
+          >
+            <Download className="w-4 h-4" />
+            {importMutation.isPending ? "Importing…" : "Import from Discord"}
+          </Button>
+          <Button onClick={openAdd} className="gap-1.5 bg-teal-600 hover:bg-teal-500 text-white">
+            <Plus className="w-4 h-4" />
+            Add Duty Log
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

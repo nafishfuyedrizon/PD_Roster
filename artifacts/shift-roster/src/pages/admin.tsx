@@ -15,10 +15,10 @@ interface DiscordChannel {
   createdAt: string;
 }
 
-const API = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 
 async function fetchChannels(): Promise<DiscordChannel[]> {
-  const res = await fetch(`${API}/api/admin/channels`);
+  const res = await fetch(`/api/admin/channels`);
   if (!res.ok) throw new Error("Failed to fetch channels");
   return res.json();
 }
@@ -37,7 +37,7 @@ export default function AdminPage() {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${API}/api/admin/channels`, {
+      const res = await fetch(`/api/admin/channels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channelId: channelId.trim(), channelName: channelName.trim() }),
@@ -61,7 +61,7 @@ export default function AdminPage() {
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const res = await fetch(`${API}/api/admin/channels/${id}`, {
+      const res = await fetch(`/api/admin/channels/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive }),
@@ -76,7 +76,7 @@ export default function AdminPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`${API}/api/admin/channels/${id}`, { method: "DELETE" });
+      await fetch(`/api/admin/channels/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "channels"] });
