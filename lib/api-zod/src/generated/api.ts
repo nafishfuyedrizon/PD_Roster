@@ -14,3 +14,177 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List all officers
+ */
+export const ListOfficersQueryParams = zod.object({
+  department: zod.coerce.string().optional(),
+  status: zod.coerce.string().optional(),
+  weekPeriod: zod.coerce.string().optional(),
+});
+
+export const ListOfficersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  discordId: zod.string(),
+  rank: zod.string(),
+  department: zod.string(),
+  status: zod.string(),
+  dutyHours: zod.string().nullish(),
+  completionStatus: zod.string().nullish(),
+  appointedFto: zod.string().nullish(),
+  weekPeriod: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListOfficersResponse = zod.array(ListOfficersResponseItem);
+
+/**
+ * @summary Add a new officer
+ */
+export const CreateOfficerBody = zod.object({
+  name: zod.string(),
+  discordId: zod.string(),
+  rank: zod.string(),
+  department: zod.string(),
+  status: zod.string(),
+  dutyHours: zod.string().nullish(),
+  completionStatus: zod.string().nullish(),
+  appointedFto: zod.string().nullish(),
+  weekPeriod: zod.string(),
+});
+
+/**
+ * @summary Get roster statistics
+ */
+export const GetRosterStatsQueryParams = zod.object({
+  weekPeriod: zod.coerce.string().optional(),
+});
+
+export const GetRosterStatsResponse = zod.object({
+  totalOfficers: zod.number(),
+  activeOfficers: zod.number(),
+  loaOfficers: zod.number(),
+  departmentBreakdown: zod.array(
+    zod.object({
+      department: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  rankBreakdown: zod.array(
+    zod.object({
+      rank: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  topDutyHours: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      discordId: zod.string(),
+      rank: zod.string(),
+      department: zod.string(),
+      status: zod.string(),
+      dutyHours: zod.string().nullish(),
+      completionStatus: zod.string().nullish(),
+      appointedFto: zod.string().nullish(),
+      weekPeriod: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  weekPeriod: zod.string(),
+});
+
+/**
+ * @summary Get FTO-trainee pairings
+ */
+export const GetFtoPairsQueryParams = zod.object({
+  weekPeriod: zod.coerce.string().optional(),
+});
+
+export const GetFtoPairsResponseItem = zod.object({
+  ftoName: zod.string(),
+  trainees: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      discordId: zod.string(),
+      rank: zod.string(),
+      department: zod.string(),
+      status: zod.string(),
+      dutyHours: zod.string().nullish(),
+      completionStatus: zod.string().nullish(),
+      appointedFto: zod.string().nullish(),
+      weekPeriod: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+export const GetFtoPairsResponse = zod.array(GetFtoPairsResponseItem);
+
+/**
+ * @summary List all available week periods
+ */
+export const ListWeekPeriodsResponseItem = zod.string();
+export const ListWeekPeriodsResponse = zod.array(ListWeekPeriodsResponseItem);
+
+/**
+ * @summary Get a single officer
+ */
+export const GetOfficerParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOfficerResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  discordId: zod.string(),
+  rank: zod.string(),
+  department: zod.string(),
+  status: zod.string(),
+  dutyHours: zod.string().nullish(),
+  completionStatus: zod.string().nullish(),
+  appointedFto: zod.string().nullish(),
+  weekPeriod: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update an officer
+ */
+export const UpdateOfficerParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateOfficerBody = zod.object({
+  name: zod.string().optional(),
+  discordId: zod.string().optional(),
+  rank: zod.string().optional(),
+  department: zod.string().optional(),
+  status: zod.string().optional(),
+  dutyHours: zod.string().nullish(),
+  completionStatus: zod.string().nullish(),
+  appointedFto: zod.string().nullish(),
+  weekPeriod: zod.string().optional(),
+});
+
+export const UpdateOfficerResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  discordId: zod.string(),
+  rank: zod.string(),
+  department: zod.string(),
+  status: zod.string(),
+  dutyHours: zod.string().nullish(),
+  completionStatus: zod.string().nullish(),
+  appointedFto: zod.string().nullish(),
+  weekPeriod: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete an officer
+ */
+export const DeleteOfficerParams = zod.object({
+  id: zod.coerce.number(),
+});

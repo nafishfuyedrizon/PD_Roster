@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: roster
+    description: Shift roster operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,162 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /roster:
+    get:
+      operationId: listOfficers
+      tags: [roster]
+      summary: List all officers
+      parameters:
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: weekPeriod
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of officers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Officer"
+    post:
+      operationId: createOfficer
+      tags: [roster]
+      summary: Add a new officer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOfficerBody"
+      responses:
+        "201":
+          description: Officer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Officer"
+
+  /roster/stats:
+    get:
+      operationId: getRosterStats
+      tags: [roster]
+      summary: Get roster statistics
+      parameters:
+        - name: weekPeriod
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Roster statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RosterStats"
+
+  /roster/fto-pairs:
+    get:
+      operationId: getFtoPairs
+      tags: [roster]
+      summary: Get FTO-trainee pairings
+      parameters:
+        - name: weekPeriod
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: FTO pairings grouped by FTO
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FtoPairing"
+
+  /roster/week-periods:
+    get:
+      operationId: listWeekPeriods
+      tags: [roster]
+      summary: List all available week periods
+      responses:
+        "200":
+          description: List of week periods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /roster/{id}:
+    get:
+      operationId: getOfficer
+      tags: [roster]
+      summary: Get a single officer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Officer details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Officer"
+        "404":
+          description: Officer not found
+    put:
+      operationId: updateOfficer
+      tags: [roster]
+      summary: Update an officer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOfficerBody"
+      responses:
+        "200":
+          description: Officer updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Officer"
+    delete:
+      operationId: deleteOfficer
+      tags: [roster]
+      summary: Delete an officer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Officer deleted
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +192,159 @@ components:
       required:
         - status
 
+    Officer:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        discordId:
+          type: string
+        rank:
+          type: string
+        department:
+          type: string
+        status:
+          type: string
+        dutyHours:
+          type: string
+          nullable: true
+        completionStatus:
+          type: string
+          nullable: true
+        appointedFto:
+          type: string
+          nullable: true
+        weekPeriod:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - discordId
+        - rank
+        - department
+        - status
+        - weekPeriod
+        - createdAt
+
+    CreateOfficerBody:
+      type: object
+      properties:
+        name:
+          type: string
+        discordId:
+          type: string
+        rank:
+          type: string
+        department:
+          type: string
+        status:
+          type: string
+        dutyHours:
+          type: string
+          nullable: true
+        completionStatus:
+          type: string
+          nullable: true
+        appointedFto:
+          type: string
+          nullable: true
+        weekPeriod:
+          type: string
+      required:
+        - name
+        - discordId
+        - rank
+        - department
+        - status
+        - weekPeriod
+
+    UpdateOfficerBody:
+      type: object
+      properties:
+        name:
+          type: string
+        discordId:
+          type: string
+        rank:
+          type: string
+        department:
+          type: string
+        status:
+          type: string
+        dutyHours:
+          type: string
+          nullable: true
+        completionStatus:
+          type: string
+          nullable: true
+        appointedFto:
+          type: string
+          nullable: true
+        weekPeriod:
+          type: string
+
+    RosterStats:
+      type: object
+      properties:
+        totalOfficers:
+          type: integer
+        activeOfficers:
+          type: integer
+        loaOfficers:
+          type: integer
+        departmentBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              department:
+                type: string
+              count:
+                type: integer
+            required:
+              - department
+              - count
+        rankBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              rank:
+                type: string
+              count:
+                type: integer
+            required:
+              - rank
+              - count
+        topDutyHours:
+          type: array
+          items:
+            $ref: "#/components/schemas/Officer"
+        weekPeriod:
+          type: string
+      required:
+        - totalOfficers
+        - activeOfficers
+        - loaOfficers
+        - departmentBreakdown
+        - rankBreakdown
+        - topDutyHours
+        - weekPeriod
+
+    FtoPairing:
+      type: object
+      properties:
+        ftoName:
+          type: string
+        trainees:
+          type: array
+          items:
+            $ref: "#/components/schemas/Officer"
+      required:
+        - ftoName
+        - trainees

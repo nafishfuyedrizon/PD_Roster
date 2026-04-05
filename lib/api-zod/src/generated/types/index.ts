@@ -6,4 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./createOfficerBody";
+export * from "./ftoPairing";
+export * from "./getFtoPairsParams";
+export * from "./getRosterStatsParams";
 export * from "./healthStatus";
+export * from "./listOfficersParams";
+export * from "./officer";
+export * from "./rosterStats";
+export * from "./rosterStatsDepartmentBreakdownItem";
+export * from "./rosterStatsRankBreakdownItem";
+export * from "./updateOfficerBody";

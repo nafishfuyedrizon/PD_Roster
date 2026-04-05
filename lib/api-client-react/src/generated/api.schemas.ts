@@ -8,3 +8,80 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface Officer {
+  id: number;
+  name: string;
+  discordId: string;
+  rank: string;
+  department: string;
+  status: string;
+  dutyHours?: string | null;
+  completionStatus?: string | null;
+  appointedFto?: string | null;
+  weekPeriod: string;
+  createdAt: string;
+}
+
+export interface CreateOfficerBody {
+  name: string;
+  discordId: string;
+  rank: string;
+  department: string;
+  status: string;
+  dutyHours?: string | null;
+  completionStatus?: string | null;
+  appointedFto?: string | null;
+  weekPeriod: string;
+}
+
+export interface UpdateOfficerBody {
+  name?: string;
+  discordId?: string;
+  rank?: string;
+  department?: string;
+  status?: string;
+  dutyHours?: string | null;
+  completionStatus?: string | null;
+  appointedFto?: string | null;
+  weekPeriod?: string;
+}
+
+export type RosterStatsDepartmentBreakdownItem = {
+  department: string;
+  count: number;
+};
+
+export type RosterStatsRankBreakdownItem = {
+  rank: string;
+  count: number;
+};
+
+export interface RosterStats {
+  totalOfficers: number;
+  activeOfficers: number;
+  loaOfficers: number;
+  departmentBreakdown: RosterStatsDepartmentBreakdownItem[];
+  rankBreakdown: RosterStatsRankBreakdownItem[];
+  topDutyHours: Officer[];
+  weekPeriod: string;
+}
+
+export interface FtoPairing {
+  ftoName: string;
+  trainees: Officer[];
+}
+
+export type ListOfficersParams = {
+  department?: string;
+  status?: string;
+  weekPeriod?: string;
+};
+
+export type GetRosterStatsParams = {
+  weekPeriod?: string;
+};
+
+export type GetFtoPairsParams = {
+  weekPeriod?: string;
+};

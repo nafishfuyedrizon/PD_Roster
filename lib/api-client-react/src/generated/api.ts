@@ -5,18 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  CreateOfficerBody,
+  FtoPairing,
+  GetFtoPairsParams,
+  GetRosterStatsParams,
+  HealthStatus,
+  ListOfficersParams,
+  Officer,
+  RosterStats,
+  UpdateOfficerBody,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +112,704 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all officers
+ */
+export const getListOfficersUrl = (params?: ListOfficersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/roster?${stringifiedParams}`
+    : `/api/roster`;
+};
+
+export const listOfficers = async (
+  params?: ListOfficersParams,
+  options?: RequestInit,
+): Promise<Officer[]> => {
+  return customFetch<Officer[]>(getListOfficersUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListOfficersQueryKey = (params?: ListOfficersParams) => {
+  return [`/api/roster`, ...(params ? [params] : [])] as const;
+};
+
+export const getListOfficersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOfficers>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListOfficersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOfficers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListOfficersQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listOfficers>>> = ({
+    signal,
+  }) => listOfficers(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOfficers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListOfficersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOfficers>>
+>;
+export type ListOfficersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all officers
+ */
+
+export function useListOfficers<
+  TData = Awaited<ReturnType<typeof listOfficers>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListOfficersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOfficers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListOfficersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a new officer
+ */
+export const getCreateOfficerUrl = () => {
+  return `/api/roster`;
+};
+
+export const createOfficer = async (
+  createOfficerBody: CreateOfficerBody,
+  options?: RequestInit,
+): Promise<Officer> => {
+  return customFetch<Officer>(getCreateOfficerUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createOfficerBody),
+  });
+};
+
+export const getCreateOfficerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOfficer>>,
+    TError,
+    { data: BodyType<CreateOfficerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOfficer>>,
+  TError,
+  { data: BodyType<CreateOfficerBody> },
+  TContext
+> => {
+  const mutationKey = ["createOfficer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOfficer>>,
+    { data: BodyType<CreateOfficerBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createOfficer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOfficerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOfficer>>
+>;
+export type CreateOfficerMutationBody = BodyType<CreateOfficerBody>;
+export type CreateOfficerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a new officer
+ */
+export const useCreateOfficer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOfficer>>,
+    TError,
+    { data: BodyType<CreateOfficerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOfficer>>,
+  TError,
+  { data: BodyType<CreateOfficerBody> },
+  TContext
+> => {
+  return useMutation(getCreateOfficerMutationOptions(options));
+};
+
+/**
+ * @summary Get roster statistics
+ */
+export const getGetRosterStatsUrl = (params?: GetRosterStatsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/roster/stats?${stringifiedParams}`
+    : `/api/roster/stats`;
+};
+
+export const getRosterStats = async (
+  params?: GetRosterStatsParams,
+  options?: RequestInit,
+): Promise<RosterStats> => {
+  return customFetch<RosterStats>(getGetRosterStatsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRosterStatsQueryKey = (params?: GetRosterStatsParams) => {
+  return [`/api/roster/stats`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetRosterStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRosterStats>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetRosterStatsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRosterStats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRosterStatsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRosterStats>>> = ({
+    signal,
+  }) => getRosterStats(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRosterStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRosterStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRosterStats>>
+>;
+export type GetRosterStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get roster statistics
+ */
+
+export function useGetRosterStats<
+  TData = Awaited<ReturnType<typeof getRosterStats>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetRosterStatsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRosterStats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRosterStatsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get FTO-trainee pairings
+ */
+export const getGetFtoPairsUrl = (params?: GetFtoPairsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/roster/fto-pairs?${stringifiedParams}`
+    : `/api/roster/fto-pairs`;
+};
+
+export const getFtoPairs = async (
+  params?: GetFtoPairsParams,
+  options?: RequestInit,
+): Promise<FtoPairing[]> => {
+  return customFetch<FtoPairing[]>(getGetFtoPairsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFtoPairsQueryKey = (params?: GetFtoPairsParams) => {
+  return [`/api/roster/fto-pairs`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetFtoPairsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFtoPairs>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetFtoPairsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFtoPairs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFtoPairsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFtoPairs>>> = ({
+    signal,
+  }) => getFtoPairs(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFtoPairs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFtoPairsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFtoPairs>>
+>;
+export type GetFtoPairsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get FTO-trainee pairings
+ */
+
+export function useGetFtoPairs<
+  TData = Awaited<ReturnType<typeof getFtoPairs>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetFtoPairsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFtoPairs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFtoPairsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all available week periods
+ */
+export const getListWeekPeriodsUrl = () => {
+  return `/api/roster/week-periods`;
+};
+
+export const listWeekPeriods = async (
+  options?: RequestInit,
+): Promise<string[]> => {
+  return customFetch<string[]>(getListWeekPeriodsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWeekPeriodsQueryKey = () => {
+  return [`/api/roster/week-periods`] as const;
+};
+
+export const getListWeekPeriodsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWeekPeriods>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWeekPeriods>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWeekPeriodsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listWeekPeriods>>> = ({
+    signal,
+  }) => listWeekPeriods({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWeekPeriods>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWeekPeriodsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWeekPeriods>>
+>;
+export type ListWeekPeriodsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all available week periods
+ */
+
+export function useListWeekPeriods<
+  TData = Awaited<ReturnType<typeof listWeekPeriods>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWeekPeriods>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWeekPeriodsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single officer
+ */
+export const getGetOfficerUrl = (id: number) => {
+  return `/api/roster/${id}`;
+};
+
+export const getOfficer = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Officer> => {
+  return customFetch<Officer>(getGetOfficerUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOfficerQueryKey = (id: number) => {
+  return [`/api/roster/${id}`] as const;
+};
+
+export const getGetOfficerQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOfficer>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOfficer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOfficerQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOfficer>>> = ({
+    signal,
+  }) => getOfficer(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOfficer>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOfficerQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOfficer>>
+>;
+export type GetOfficerQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a single officer
+ */
+
+export function useGetOfficer<
+  TData = Awaited<ReturnType<typeof getOfficer>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOfficer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOfficerQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update an officer
+ */
+export const getUpdateOfficerUrl = (id: number) => {
+  return `/api/roster/${id}`;
+};
+
+export const updateOfficer = async (
+  id: number,
+  updateOfficerBody: UpdateOfficerBody,
+  options?: RequestInit,
+): Promise<Officer> => {
+  return customFetch<Officer>(getUpdateOfficerUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateOfficerBody),
+  });
+};
+
+export const getUpdateOfficerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOfficer>>,
+    TError,
+    { id: number; data: BodyType<UpdateOfficerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateOfficer>>,
+  TError,
+  { id: number; data: BodyType<UpdateOfficerBody> },
+  TContext
+> => {
+  const mutationKey = ["updateOfficer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateOfficer>>,
+    { id: number; data: BodyType<UpdateOfficerBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateOfficer(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOfficerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateOfficer>>
+>;
+export type UpdateOfficerMutationBody = BodyType<UpdateOfficerBody>;
+export type UpdateOfficerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an officer
+ */
+export const useUpdateOfficer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOfficer>>,
+    TError,
+    { id: number; data: BodyType<UpdateOfficerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateOfficer>>,
+  TError,
+  { id: number; data: BodyType<UpdateOfficerBody> },
+  TContext
+> => {
+  return useMutation(getUpdateOfficerMutationOptions(options));
+};
+
+/**
+ * @summary Delete an officer
+ */
+export const getDeleteOfficerUrl = (id: number) => {
+  return `/api/roster/${id}`;
+};
+
+export const deleteOfficer = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteOfficerUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteOfficerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOfficer>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteOfficer>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteOfficer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteOfficer>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteOfficer(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteOfficerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteOfficer>>
+>;
+
+export type DeleteOfficerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an officer
+ */
+export const useDeleteOfficer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOfficer>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteOfficer>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteOfficerMutationOptions(options));
+};

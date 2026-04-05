@@ -1,0 +1,200 @@
+import React, { useState } from "react";
+import { Layout } from "@/components/layout";
+import {
+  useGetRosterStats,
+  getGetRosterStatsQueryKey,
+  useListWeekPeriods,
+  getListWeekPeriodsQueryKey,
+} from "@workspace/api-client-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Activity, Users, UserMinus, ShieldAlert } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+
+const COLORS = ['hsl(220, 70%, 50%)', 'hsl(160, 60%, 45%)', 'hsl(30, 80%, 55%)', 'hsl(280, 65%, 60%)', 'hsl(340, 75%, 55%)'];
+
+export default function StatsPage() {
+  const [weekPeriod, setWeekPeriod] = useState<string>("ALL");
+
+  const { data: weekPeriods = [] } = useListWeekPeriods({
+    query: { queryKey: getListWeekPeriodsQueryKey() },
+  });
+
+  const queryParams = weekPeriod !== "ALL" ? { weekPeriod } : {};
+
+  const { data: stats, isLoading } = useGetRosterStats(queryParams, {
+    query: { queryKey: getGetRosterStatsQueryKey(queryParams) },
+  });
+
+  return (
+    <Layout>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Activity className="w-8 h-8 text-primary" />
+            Department Statistics
+          </h1>
+          <p className="text-muted-foreground mt-1 font-mono text-sm">
+            Analytical overview and duty distribution
+          </p>
+        </div>
+
+        <div className="bg-card border border-border p-2 rounded-lg flex items-center gap-4">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-2">Period</span>
+          <Select value={weekPeriod} onValueChange={setWeekPeriod}>
+            <SelectTrigger className="w-[180px]" data-testid="select-stats-week">
+              <SelectValue placeholder="Select Week" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Time</SelectItem>
+              {weekPeriods.map((wp) => (
+                <SelectItem key={wp} value={wp}>
+                  {wp}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {isLoading || !stats ? (
+        <div className="h-64 flex items-center justify-center text-muted-foreground font-mono">
+          Loading statistics data...
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="bg-card border-border">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Total Force</CardTitle>
+                <Users className="w-4 h-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold" data-testid="stat-total">{stats.totalOfficers}</div>
+                <p className="text-xs text-muted-foreground mt-1 font-mono">Registered personnel</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Active Duty</CardTitle>
+                <ShieldAlert className="w-4 h-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-green-500" data-testid="stat-active">{stats.activeOfficers}</div>
+                <p className="text-xs text-muted-foreground mt-1 font-mono">Available for deployment</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Leave of Absence</CardTitle>
+                <UserMinus className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-4xl font-bold text-muted-foreground" data-testid="stat-loa">{stats.loaOfficers}</div>
+                <p className="text-xs text-muted-foreground mt-1 font-mono">Inactive personnel</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="font-mono text-sm uppercase tracking-wider">Department Distribution</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stats.departmentBreakdown}
+                      dataKey="count"
+                      nameKey="department"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {stats.departmentBreakdown.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="font-mono text-sm uppercase tracking-wider">Rank Hierarchy</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.rankBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="rank" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip 
+                      cursor={{ fill: 'hsl(var(--secondary))' }}
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }}
+                    />
+                    <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="font-mono text-sm uppercase tracking-wider">Top Performers (Duty Hours)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {stats.topDutyHours.length === 0 ? (
+                  <p className="text-sm text-muted-foreground font-mono">No duty hours recorded.</p>
+                ) : (
+                  stats.topDutyHours.map((officer, i) => (
+                    <div key={officer.id} className="flex items-center justify-between p-3 rounded bg-secondary/30 border border-border" data-testid={`stat-top-${i}`}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">
+                          {i + 1}
+                        </div>
+                        <div>
+                          <div className="font-semibold">{officer.name}</div>
+                          <div className="text-xs text-muted-foreground font-mono">{officer.department} • {officer.rank}</div>
+                        </div>
+                      </div>
+                      <div className="font-mono font-bold text-primary text-lg">
+                        {officer.dutyHours}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </Layout>
+  );
+}
