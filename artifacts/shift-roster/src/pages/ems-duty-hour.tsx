@@ -149,7 +149,7 @@ export default function PdDutyHourPage() {
       if (!mwMap[m]) mwMap[m] = [];
       mwMap[m].push(wp);
     }
-    return { months: monthList, monthWeeks: mwMap };
+    return { months: monthList.slice(0, 2), monthWeeks: mwMap };
   }, [weekPeriods]);
 
   const selectedWeekPeriod = weekPeriods[weekNav] ?? null;
