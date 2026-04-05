@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Users, Clock, Zap, Trophy, RefreshCw, ChevronDown, TrendingDown } from "lucide-react";
+import { Activity, Users, Clock, Zap, Trophy, RefreshCw, ChevronDown, TrendingDown, Copy, Check } from "lucide-react";
 
 interface LiveOfficer {
   licenseId: string;
@@ -18,6 +18,7 @@ interface LowestEntry {
   name: string;
   rank: string;
   status: string;
+  discordUsername: string | null;
   weekSecs: number;
   weekHours: string;
 }
@@ -117,6 +118,19 @@ function titleCase(s: string) {
 export default function DashboardPage() {
   const { data, isLoading, refetch } = useDashboard(15000);
   const [expandedStatus, setExpandedStatus] = useState<string | null>(null);
+  const [copiedList, setCopiedList] = useState(false);
+
+  function copyLowDutyList() {
+    const list = data?.lowestWeekly ?? [];
+    if (list.length === 0) return;
+    const text = list
+      .map((o) => `@${o.discordUsername ?? o.name} - ${o.weekHours}`)
+      .join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedList(true);
+      setTimeout(() => setCopiedList(false), 2000);
+    });
+  }
 
   const maxRankCount = Math.max(...(data?.rankDistribution.map((r) => r.count) ?? [1]));
 
@@ -344,21 +358,37 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Under 10 Hours This Week */}
+      {/* Under 5 Hours This Week */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
           <TrendingDown className="w-4 h-4 text-red-400" />
-          <span className="font-semibold text-sm tracking-wide uppercase">Under 10 Hours This Week</span>
+          <span className="font-semibold text-sm tracking-wide uppercase">Under 5 Hours This Week</span>
           {(data?.lowestWeekly ?? []).length > 0 && (
             <span className="text-[11px] font-mono font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
               {data!.lowestWeekly.length} officer{data!.lowestWeekly.length !== 1 ? "s" : ""}
             </span>
           )}
-          {data?.stats.currentWeek && (
-            <span className="ml-auto text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-              {data.stats.currentWeek.replace("-", " – ")}
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {data?.stats.currentWeek && (
+              <span className="text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                {data.stats.currentWeek.replace("-", " – ")}
+              </span>
+            )}
+            {(data?.lowestWeekly ?? []).length > 0 && (
+              <button
+                onClick={copyLowDutyList}
+                title="Copy list for Discord"
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono font-semibold transition-all border ${
+                  copiedList
+                    ? "bg-green-500/20 border-green-500/40 text-green-400"
+                    : "bg-secondary/60 border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                }`}
+              >
+                {copiedList ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copiedList ? "Copied!" : "Copy"}
+              </button>
+            )}
+          </div>
         </div>
         {isLoading ? (
           <div className="p-4 space-y-2">{[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-9 w-full" />)}</div>
@@ -383,7 +413,7 @@ export default function DashboardPage() {
                   <td className="px-4 py-2.5 font-medium text-foreground text-sm">{o.name}</td>
                   <td className="px-4 py-2.5 text-xs text-muted-foreground hidden md:table-cell">{o.rank}</td>
                   <td className="px-4 py-2.5 text-right">
-                    <span className={`font-mono text-xs font-bold tabular-nums ${o.weekSecs === 0 ? "text-red-400" : o.weekSecs < 18000 ? "text-orange-400" : "text-foreground"}`}>
+                    <span className={`font-mono text-xs font-bold tabular-nums ${o.weekSecs === 0 ? "text-red-400" : "text-orange-400"}`}>
                       {o.weekHours}
                     </span>
                   </td>
@@ -391,7 +421,7 @@ export default function DashboardPage() {
               ))}
               {(data?.lowestWeekly ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">All officers have 10+ hours this week</td>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">All officers have 5+ hours this week</td>
                 </tr>
               )}
             </tbody>
