@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 interface PdDutyLog {
   id: number;
   logDate: string;
+  startTime: string | null;
+  endTime: string | null;
   csNumber: string;
   officerName: string;
   rank: string;
@@ -62,7 +64,7 @@ function weeksAgoIso(n: number) {
   return d.toISOString().split("T")[0]!;
 }
 
-const EMPTY_FORM = { logDate: todayIso(), csNumber: "", officerName: "", rank: "", shiftType: "Full", duration: "00:00:00", notes: "" };
+const EMPTY_FORM = { logDate: todayIso(), startTime: "", endTime: "", csNumber: "", officerName: "", rank: "", shiftType: "Full", duration: "00:00:00", notes: "" };
 
 export default function AdminDutyLogsPage() {
   const queryClient = useQueryClient();
@@ -112,7 +114,7 @@ export default function AdminDutyLogsPage() {
   }
   function openEdit(log: PdDutyLog) {
     setEditLog(log);
-    setForm({ logDate: log.logDate, csNumber: log.csNumber, officerName: log.officerName, rank: log.rank, shiftType: log.shiftType, duration: log.duration, notes: log.notes ?? "" });
+    setForm({ logDate: log.logDate, startTime: log.startTime ?? "", endTime: log.endTime ?? "", csNumber: log.csNumber, officerName: log.officerName, rank: log.rank, shiftType: log.shiftType, duration: log.duration, notes: log.notes ?? "" });
     setOfficerSearch(`${log.csNumber} ${log.officerName}`);
     setDialogOpen(true);
   }
@@ -257,7 +259,14 @@ export default function AdminDutyLogsPage() {
                 <tr><td colSpan={5} className="text-center py-12 text-muted-foreground font-mono text-sm">No logs found. Add one above.</td></tr>
               ) : logs.map((log) => (
                 <tr key={log.id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="px-4 py-3 font-mono text-sm text-muted-foreground">{log.logDate}</td>
+                  <td className="px-4 py-3">
+                    <div className="font-mono text-sm text-muted-foreground">{log.logDate}</div>
+                    {(log.startTime || log.endTime) && (
+                      <div className="font-mono text-xs text-teal-500 mt-0.5">
+                        {log.startTime ?? "??:??"} → {log.endTime ?? "??:??"}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="font-mono text-teal-400 font-semibold">[{log.csNumber}]</span>
                     {" "}
@@ -300,10 +309,20 @@ export default function AdminDutyLogsPage() {
             <DialogTitle>{editLog ? "Edit Duty Log" : "Add Duty Log"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {/* Date */}
+            {/* Date + Time */}
             <div className="space-y-1.5">
               <Label>Date</Label>
               <Input type="date" value={form.logDate} onChange={(e) => setForm((f) => ({ ...f, logDate: e.target.value }))} className="h-9" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Start Time <span className="text-muted-foreground text-xs">(HH:MM)</span></Label>
+                <Input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} className="h-9 font-mono" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>End Time <span className="text-muted-foreground text-xs">(HH:MM)</span></Label>
+                <Input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="h-9 font-mono" />
+              </div>
             </div>
             {/* Officer search */}
             <div className="space-y-1.5">

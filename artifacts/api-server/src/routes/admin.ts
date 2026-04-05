@@ -200,8 +200,12 @@ router.post("/admin/duty-logs/import-discord", async (req, res): Promise<void> =
         const durationSecs = Math.floor((ev.eventAt.getTime() - pendingOn.eventAt.getTime()) / 1000);
         if (durationSecs > 30) {  // skip spurious sub-30s sessions
           const logDate = pendingOn.eventAt.toISOString().split("T")[0]!;
+          const startTime = pendingOn.eventAt.toISOString().substring(11, 16); // "HH:MM" UTC
+          const endTime = ev.eventAt.toISOString().substring(11, 16);
           newLogs.push({
             logDate,
+            startTime,
+            endTime,
             csNumber: officer?.callSign ?? "",
             officerName: officer?.name ?? pendingOn.officerName,
             rank: officer?.rank ?? pendingOn.rank ?? "",

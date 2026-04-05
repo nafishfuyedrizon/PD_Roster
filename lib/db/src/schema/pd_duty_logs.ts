@@ -3,6 +3,8 @@ import { pgTable, serial, text, date, timestamp } from "drizzle-orm/pg-core";
 export const pdDutyLogsTable = pgTable("pd_duty_logs", {
   id: serial("id").primaryKey(),
   logDate: date("log_date").notNull(),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
   csNumber: text("cs_number").notNull(),
   officerName: text("officer_name").notNull(),
   rank: text("rank").notNull().default(""),
