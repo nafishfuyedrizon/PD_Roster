@@ -349,7 +349,7 @@ export default function AdminPage() {
                         <Input
                           value={adjInputs[o.cs] ?? ""}
                           onChange={(e) => setAdjInputs((prev) => ({ ...prev, [o.cs]: e.target.value }))}
-                          placeholder="1h 30m"
+                          placeholder="00:00:00"
                           className="h-7 w-24 text-xs font-mono px-2"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") applyAdjMutation.mutate({ officer: o, sign: 1 });
