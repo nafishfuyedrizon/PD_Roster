@@ -67,6 +67,26 @@ const RANK_ORDER: Record<string, number> = {
   "PROBATIONARY OFFICER": 13,
   "CADET": 14,
   "TRAINEE": 15,
+  "STUDENT": 15,
+};
+
+// Canonical display label for each rank tier
+const RANK_TIER_LABEL: Record<number, string> = {
+  1:  "Chief",
+  2:  "Assistant Chief  ·  Sheriff  ·  Colonel",
+  3:  "Senior Deputy Chief  ·  Undersheriff  ·  Assistant Colonel",
+  4:  "Deputy Chief  ·  Assistant Sheriff  ·  Deputy Colonel",
+  5:  "Captain",
+  6:  "Lieutenant",
+  7:  "Sergeant First Class",
+  8:  "Sergeant",
+  9:  "Corporal",
+  10: "Senior Trooper  ·  Senior Deputy  ·  Senior State Trooper",
+  11: "Trooper First Class  ·  Deputy First Class  ·  State Trooper First Class",
+  12: "Trooper  ·  Deputy  ·  State Trooper",
+  13: "Probationary Officer",
+  14: "Cadet",
+  15: "Student / Trainee",
 };
 
 function getRankOrder(rank: string): number {
@@ -333,24 +353,24 @@ export default function RosterPage() {
                 </TableRow>
               ) : (
                 (() => {
-                  // Group by rank (list is already rank-sorted)
-                  const groups: { rank: string; members: typeof filtered }[] = [];
+                  // Group by rank TIER (order number) so equivalent cross-dept ranks are in the same group
+                  const groups: { tier: number; members: typeof filtered }[] = [];
                   for (const o of filtered) {
+                    const tier = getRankOrder(o.rank);
                     const last = groups[groups.length - 1];
-                    if (last && last.rank === o.rank) {
+                    if (last && last.tier === tier) {
                       last.members.push(o);
                     } else {
-                      groups.push({ rank: o.rank, members: [o] });
+                      groups.push({ tier, members: [o] });
                     }
                   }
-                  return groups.flatMap(({ rank, members }) => [
-                    <TableRow key={`group-${rank}`} className="bg-secondary/30 hover:bg-secondary/30 border-t border-border">
-                      <TableCell
-                        colSpan={22}
-                        className="sticky left-0 py-1.5 px-3"
-                      >
+                  return groups.flatMap(({ tier, members }) => {
+                    const tierLabel = RANK_TIER_LABEL[tier] ?? members[0]?.rank ?? "Unknown";
+                    return [
+                    <TableRow key={`group-${tier}`} className="bg-secondary/30 hover:bg-secondary/30 border-t border-border">
+                      <TableCell colSpan={22} className="sticky left-0 py-1.5 px-3">
                         <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-purple-400">
-                          {rank}
+                          {tierLabel}
                         </span>
                         <span className="ml-2 text-[10px] font-mono text-muted-foreground/60">
                           ({members.length} {members.length === 1 ? "member" : "members"})
@@ -447,7 +467,8 @@ export default function RosterPage() {
                     </TableCell>
                     </TableRow>
                     )) // close members.map
-                  ]); // close flatMap array + callback
+                  ]; // close return array
+                  }); // close flatMap callback + call
                 })() // close IIFE
               )}
             </TableBody>
