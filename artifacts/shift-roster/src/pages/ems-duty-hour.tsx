@@ -211,6 +211,7 @@ export default function PdDutyHourPage() {
   const [weekNav, setWeekNav] = useState(0);
   const [monthNav, setMonthNav] = useState(0);
   const [selectedCs, setSelectedCs] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "Active" | "Semi-Active" | "Inactive" | "LOA">("ALL");
 
   const statsParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
   const breakdownParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
@@ -275,20 +276,46 @@ export default function PdDutyHourPage() {
       .map((p, i) => ({ ...p, totalHours: secsToHms(p.secs), position: i + 1 }));
   }, [breakdown, selectedMonth, monthWeeks]);
 
+  // Per-officer current-month computed status (for filter counts)
+  const officerStatusMap = useMemo(() => {
+    const map = new Map<string, "Active" | "Semi-Active" | "Inactive" | "LOA">();
+    const currentMonth = months[0];
+    for (const person of breakdown) {
+      const dbStatus = person.status ?? "";
+      if (dbStatus === "LOA") { map.set(person.csNumber, "LOA"); continue; }
+      if (!currentMonth) { map.set(person.csNumber, "Inactive"); continue; }
+      const wps = monthWeeks[currentMonth] ?? [];
+      const weekHoursMap: Record<string, string | null> = {};
+      for (const w of person.weeks) weekHoursMap[w.weekPeriod] = w.dutyHours;
+      const weekStatuses: WeekStatus[] = wps.map((wp) => getWeekStatus(weekHoursMap[wp]));
+      const computed = computeMonthlyStatus(weekStatuses);
+      map.set(person.csNumber, computed ?? "Inactive");
+    }
+    return map;
+  }, [breakdown, months, monthWeeks]);
+
+  const statusCounts = useMemo(() => {
+    const counts = { ALL: breakdown.length, Active: 0, "Semi-Active": 0, Inactive: 0, LOA: 0 };
+    for (const [, s] of officerStatusMap) counts[s] = (counts[s] ?? 0) + 1;
+    return counts;
+  }, [officerStatusMap, breakdown.length]);
+
   // Filtered + rank-sorted breakdown
   const filteredBreakdown = useMemo(() => {
-    const list = search.trim()
-      ? breakdown.filter((p) => {
-          const q = search.toLowerCase();
-          return p.csNumber.toLowerCase().includes(q) || p.name.toLowerCase().includes(q);
-        })
-      : breakdown;
+    let list = breakdown;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((p) => p.csNumber.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
+    }
+    if (statusFilter !== "ALL") {
+      list = list.filter((p) => officerStatusMap.get(p.csNumber) === statusFilter);
+    }
     return [...list].sort((a, b) => {
       const diff = getRankOrder(a.rank) - getRankOrder(b.rank);
       if (diff !== 0) return diff;
       return a.csNumber.localeCompare(b.csNumber);
     });
-  }, [breakdown, search]);
+  }, [breakdown, search, statusFilter, officerStatusMap]);
 
   const weekLabel = weekNav === 0 ? "THIS WEEK" : weekNav === 1 ? "PREV WEEK" : `WEEK -${weekNav}`;
   const monthLabel = monthNav === 0 ? "THIS MONTH" : monthNav === 1 ? "PREV MONTH" : `MONTH -${monthNav}`;
@@ -475,13 +502,36 @@ export default function PdDutyHourPage() {
 
       {/* Breakdown table */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="px-4 py-3 border-b border-border flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
             All Shifts — Weekly &amp; Monthly Breakdown
             {search.trim() && (
               <span className="ml-2 text-primary">· {filteredBreakdown.length} result{filteredBreakdown.length !== 1 ? "s" : ""}</span>
             )}
           </span>
+          {/* Status filter pills */}
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: "ALL",        label: "Total",       color: "text-foreground border-border hover:border-primary/60" },
+                { key: "Active",     label: "Active",      color: "text-green-400 border-green-500/30 hover:border-green-400/60 bg-green-500/5" },
+                { key: "Semi-Active",label: "Semi-Active", color: "text-orange-400 border-orange-500/30 hover:border-orange-400/60 bg-orange-500/5" },
+                { key: "Inactive",   label: "Inactive",    color: "text-red-400 border-red-500/30 hover:border-red-400/60 bg-red-500/5" },
+                { key: "LOA",        label: "LOA",         color: "text-yellow-400 border-yellow-500/30 hover:border-yellow-400/60 bg-yellow-500/5" },
+              ] as const
+            ).map(({ key, label, color }) => {
+              const isActive = statusFilter === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setStatusFilter(key)}
+                  className={`px-2.5 py-1 rounded border font-mono text-xs transition-all ${color} ${isActive ? "ring-1 ring-current opacity-100 font-bold" : "opacity-70 hover:opacity-100"}`}
+                >
+                  {label}: <span className="font-bold tabular-nums">{statusCounts[key]}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
