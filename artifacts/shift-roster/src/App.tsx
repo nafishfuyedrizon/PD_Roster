@@ -7,7 +7,7 @@ import NotFound from "@/pages/not-found";
 import RosterPage from "@/pages/roster";
 import StatsPage from "@/pages/stats";
 import FtoPairsPage from "@/pages/fto-pairs";
-import EmsDutyHourPage from "@/pages/ems-duty-hour";
+import PdDutyHourPage from "@/pages/ems-duty-hour";
 
 const queryClient = new QueryClient();
 
@@ -18,7 +18,7 @@ function Router() {
       <Route path="/dept/:department" component={RosterPage} />
       <Route path="/stats" component={StatsPage} />
       <Route path="/fto-pairs" component={FtoPairsPage} />
-      <Route path="/ems-duty-hour" component={EmsDutyHourPage} />
+      <Route path="/pd-duty-hour" component={PdDutyHourPage} />
       <Route component={NotFound} />
     </Switch>
   );

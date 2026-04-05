@@ -18,7 +18,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Ambulance,
   Clock,
   TrendingUp,
   AlertTriangle,
@@ -91,7 +90,7 @@ function TopPerformerRow({
   );
 }
 
-export default function EmsDutyHourPage() {
+export default function PdDutyHourPage() {
   const [shiftType, setShiftType] = useState("ALL");
 
   const statsParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
@@ -114,13 +113,13 @@ export default function EmsDutyHourPage() {
         <div>
           <h1
             className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3"
-            data-testid="ems-duty-hour-title"
+            data-testid="pd-duty-hour-title"
           >
-            <Ambulance className="w-8 h-8 text-red-400" />
-            EMS DUTY HOUR
+            <Clock className="w-8 h-8 text-blue-400" />
+            PD DUTY HOUR
           </h1>
           <p className="text-muted-foreground mt-1 font-mono text-sm">
-            Per-shift duty time breakdown — Weekly &amp; Monthly
+            Per-shift duty time breakdown — Full PD Weekly &amp; Monthly
           </p>
         </div>
       </div>
