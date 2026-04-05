@@ -54,6 +54,21 @@ interface ShiftConfig {
 
 const MONTH_NAMES = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 
+const RANK_ORDER: Record<string, number> = {
+  "CHIEF": 1, "ASSISTANT CHIEF": 2, "SHERIFF": 2, "COLONEL": 2,
+  "SENIOR DEPUTY CHIEF": 3, "UNDERSHERIFF": 3, "ASSISTANT COLONEL": 3,
+  "DEPUTY CHIEF": 4, "ASSISTANT SHERIFF": 4, "DEPUTY COLONEL": 4,
+  "CAPTAIN": 5, "LIEUTENANT": 6, "SERGEANT FIRST CLASS": 7,
+  "SERGEANT": 8, "CORPORAL": 9,
+  "SENIOR TROOPER": 10, "SENIOR DEPUTY": 10, "SENIOR STATE TROOPER": 10,
+  "TROOPER FIRST CLASS": 11, "DEPUTY FIRST CLASS": 11, "STATE TROOPER FIRST CLASS": 11,
+  "TROOPER": 12, "DEPUTY": 12, "STATE TROOPER": 12,
+  "PROBATIONARY OFFICER": 13, "CADET": 14, "TRAINEE": 15, "STUDENT": 15,
+};
+function getRankOrder(rank: string): number {
+  return RANK_ORDER[(rank ?? "").toUpperCase()] ?? 99;
+}
+
 function parseInputToSeconds(input: string): number {
   const s = input.trim().toLowerCase();
   if (!s) return 0;
@@ -249,11 +264,17 @@ export default function AdminPage() {
   }
   const isCurrentMonth = adjMonthIdx === now.getMonth() && adjYear === now.getFullYear();
 
-  const filteredOfficers = (adjData?.officers ?? []).filter((o) => {
-    if (!adjSearch.trim()) return true;
-    const q = adjSearch.toLowerCase();
-    return o.cs.toLowerCase().includes(q) || o.name.toLowerCase().includes(q) || o.rank.toLowerCase().includes(q);
-  });
+  const filteredOfficers = (adjData?.officers ?? [])
+    .filter((o) => {
+      if (!adjSearch.trim()) return true;
+      const q = adjSearch.toLowerCase();
+      return o.cs.toLowerCase().includes(q) || o.name.toLowerCase().includes(q) || o.rank.toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      const rd = getRankOrder(a.rank) - getRankOrder(b.rank);
+      if (rd !== 0) return rd;
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <Layout>
