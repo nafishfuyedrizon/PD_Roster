@@ -150,7 +150,11 @@ router.post("/admin/duty-logs/import-discord", async (req, res): Promise<void> =
   // Build licenseId → officer map (for those with rockstar_license_id)
   const licenseMap = new Map<string, typeof officers[0]>();
   for (const o of officers) {
-    if (o.rockstarLicenseId) licenseMap.set(o.rockstarLicenseId, o);
+    if (o.rockstarLicenseId) {
+      // Strip optional "license:" prefix so raw hashes from Discord events match
+      const rawId = o.rockstarLicenseId.replace(/^license:/, "");
+      licenseMap.set(rawId, o);
+    }
   }
 
   // Fuzzy name matcher (same strategy as dashboard)
