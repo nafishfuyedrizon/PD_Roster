@@ -70,6 +70,31 @@ function useShiftConfigs() {
 
 const ALL_SHIFTS_TAB = { value: "ALL", label: "All Shifts", sub: "", icon: "◉", startHour: 0, endHour: 0, sortOrder: 0 };
 
+// ── Time hour select helper ─────────────────────────────────────────────────
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => {
+  const ampm = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const label = `${h12}:00 ${ampm} (${String(h).padStart(2, "0")}:00)`;
+  return { value: h, label };
+});
+
+function HourSelect({ value, onChange, placeholder }: { value: number | undefined; onChange: (h: number) => void; placeholder?: string }) {
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none cursor-pointer"
+    >
+      {placeholder && <option value="" disabled>{placeholder}</option>}
+      {HOUR_OPTIONS.map((o) => (
+        <option key={o.value} value={o.value} className="bg-background text-foreground">
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 // ── Shift Config Modal ─────────────────────────────────────────────────────
 
 function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -133,7 +158,9 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
                   <span className="text-lg w-6 text-center">{s.icon}</span>
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm text-foreground">{s.label}</div>
-                    <div className="text-[10px] font-mono text-muted-foreground">{s.sub} · {s.startHour}:00 – {s.endHour}:00 UTC</div>
+                      <div className="text-[10px] font-mono text-muted-foreground">
+                      {HOUR_OPTIONS[s.startHour]?.label} – {HOUR_OPTIONS[s.endHour]?.label} UTC
+                    </div>
                   </div>
                   <button onClick={() => openEdit(s)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
                     <Pencil className="w-3.5 h-3.5" />
@@ -172,13 +199,23 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
                 <Label className="text-xs">Time Range Label (shown under button)</Label>
                 <Input value={form.sub ?? ""} onChange={(e) => setForm((f) => ({ ...f, sub: e.target.value }))} placeholder="e.g. 6AM – 2PM" className="font-mono text-sm" />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Start Hour (UTC 0–23)</Label>
-                <Input type="number" min={0} max={23} value={form.startHour ?? ""} onChange={(e) => setForm((f) => ({ ...f, startHour: Number(e.target.value) }))} className="font-mono text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">End Hour (UTC 0–23)</Label>
-                <Input type="number" min={0} max={23} value={form.endHour ?? ""} onChange={(e) => setForm((f) => ({ ...f, endHour: Number(e.target.value) }))} className="font-mono text-sm" />
+              <div className="col-span-2 grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Start Time (UTC)</Label>
+                  <HourSelect
+                    value={form.startHour}
+                    onChange={(h) => setForm((f) => ({ ...f, startHour: h }))}
+                    placeholder="Select start…"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">End Time (UTC)</Label>
+                  <HourSelect
+                    value={form.endHour}
+                    onChange={(h) => setForm((f) => ({ ...f, endHour: h }))}
+                    placeholder="Select end…"
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Icon</Label>
