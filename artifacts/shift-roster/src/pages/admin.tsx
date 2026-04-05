@@ -326,7 +326,9 @@ export default function AdminPage() {
                   <th className="px-4 py-2.5 text-right text-[11px] font-mono uppercase text-muted-foreground">Base</th>
                   <th className="px-4 py-2.5 text-right text-[11px] font-mono uppercase text-muted-foreground">Adj</th>
                   <th className="px-4 py-2.5 text-right text-[11px] font-mono uppercase text-muted-foreground">Total</th>
-                  <th className="px-4 py-2.5 text-center text-[11px] font-mono uppercase text-muted-foreground">Adjust</th>
+                  <th className="px-4 py-2.5 text-center text-[11px] font-mono uppercase text-muted-foreground">
+                    Adjust<br /><span className="text-[10px] normal-case opacity-50">HH:MM:SS</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
