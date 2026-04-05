@@ -147,7 +147,7 @@ function HoursCell({ hours, isLoa }: { hours: string | null | undefined; isLoa?:
   const colorCls =
     status === "inactive" ? "text-red-400" :
     status === "semi"     ? "text-orange-400" :
-    "text-foreground";
+    "text-green-400";
   return (
     <span className={`font-mono text-xs tabular-nums ${colorCls}`}>
       {hours}
