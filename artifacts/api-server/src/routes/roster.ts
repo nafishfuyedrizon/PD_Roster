@@ -69,11 +69,13 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
 
   function parseDutyMinutes(dutyHours: string | null): number {
     if (!dutyHours || dutyHours.trim() === "0" || dutyHours.trim() === "") return 0;
+    // "HH:MM:SS" format (e.g. "25:56:18") — primary format in ems_duty_logs
+    const colonMatch = dutyHours.match(/^(\d+):(\d{2}):(\d{2})$/);
+    if (colonMatch) return parseInt(colonMatch[1]) * 60 + parseInt(colonMatch[2]);
+    // "Xh Ym" fallback (e.g. "2h 30m")
     const hMatch = dutyHours.match(/(\d+)h/);
     const mMatch = dutyHours.match(/(\d+)m/);
-    const hours = hMatch ? parseInt(hMatch[1]) : 0;
-    const mins = mMatch ? parseInt(mMatch[1]) : 0;
-    return hours * 60 + mins;
+    return (hMatch ? parseInt(hMatch[1]) : 0) * 60 + (mMatch ? parseInt(mMatch[1]) : 0);
   }
 
   // Officer counts & breakdowns always from current officers table (no period filter needed)
