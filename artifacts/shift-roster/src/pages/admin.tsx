@@ -112,6 +112,14 @@ export default function AdminPage() {
 
   const adjMonth = MONTH_NAMES[adjMonthIdx]!;
 
+  const monthDateRange = (() => {
+    const firstDay = new Date(adjYear, adjMonthIdx, 1);
+    const lastDay = new Date(adjYear, adjMonthIdx + 1, 0);
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return `${fmt(firstDay)} — ${fmt(lastDay)}`;
+  })();
+
   const { data: shiftConfigs = [] } = useQuery<ShiftConfig[]>({
     queryKey: ["admin", "shift-configs"],
     queryFn: fetchShiftConfigs,
@@ -225,14 +233,17 @@ export default function AdminPage() {
         <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
           <Clock className="w-4 h-4 text-teal-400" />
           <span className="font-semibold text-sm tracking-wide uppercase">Duty Hour Adjustments</span>
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={prevMonth} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="font-mono text-sm font-bold min-w-[130px] text-center">{adjMonth} {adjYear}</span>
-            <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          <div className="ml-auto flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-2">
+              <button onClick={prevMonth} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="font-mono text-sm font-bold min-w-[130px] text-center">{adjMonth} {adjYear}</span>
+              <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono pr-1">{monthDateRange}</span>
           </div>
         </div>
 
