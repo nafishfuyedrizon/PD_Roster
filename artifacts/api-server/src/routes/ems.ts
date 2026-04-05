@@ -35,12 +35,9 @@ function secondsToHms(secs: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-// Bangladesh Standard Time = UTC+6
-const BST_OFFSET_MS = 6 * 60 * 60 * 1000;
-
-// Returns the current Mon–Sun week period in BST e.g. "04/06-04/12"
+// Returns the current Mon–Sun week period in UTC e.g. "04/06-04/12"
 function getCurrentWeekPeriod(): string {
-  const d = new Date(Date.now() + BST_OFFSET_MS);
+  const d = new Date();
   const day = d.getUTCDay(); // 0=Sun
   const diff = day === 0 ? -6 : 1 - day;
   const mon = new Date(d);
