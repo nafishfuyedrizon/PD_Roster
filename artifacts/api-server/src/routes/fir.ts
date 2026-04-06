@@ -1,8 +1,47 @@
-import { Router } from "express";
+import { Router, Response } from "express";
 import { db, pdFirTable } from "@workspace/db";
 import { desc, ilike, or, sql } from "drizzle-orm";
 
 const router = Router();
+
+const sseClients = new Set<Response>();
+
+export function broadcastFirEvent(type: "new_fir" | "thread_update") {
+  const data = JSON.stringify({ type, ts: Date.now() });
+  for (const client of sseClients) {
+    try {
+      client.write(`data: ${data}\n\n`);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}
+
+router.get("/fir/stream", (req, res): void => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  res.write(`: connected\n\n`);
+
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(`: heartbeat\n\n`);
+    } catch {
+      clearInterval(heartbeat);
+      sseClients.delete(res);
+    }
+  }, 20000);
+
+  sseClients.add(res);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    sseClients.delete(res);
+  });
+});
 
 router.get("/fir", async (req, res): Promise<void> => {
   const { search, limit: lim } = req.query as Record<string, string>;

@@ -260,6 +260,7 @@ export default function FirPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [liveTime, setLiveTime] = useState(new Date());
+  const [sseConnected, setSseConnected] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -281,10 +282,10 @@ export default function FirPage() {
       return res.json();
     },
     staleTime: 30000,
-    refetchInterval: 60000,
+    refetchInterval: 120000,
   });
 
-  const { data: stats } = useQuery<FirStats>({
+  const { data: stats, refetch: refetchStats } = useQuery<FirStats>({
     queryKey: ["/api/fir/stats"],
     queryFn: async () => {
       const res = await fetch("/api/fir/stats", { credentials: "include" });
@@ -294,6 +295,41 @@ export default function FirPage() {
     staleTime: 60000,
     refetchInterval: 120000,
   });
+
+  useEffect(() => {
+    let es: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function connect() {
+      es = new EventSource("/api/fir/stream", { withCredentials: true });
+
+      es.onopen = () => setSseConnected(true);
+
+      es.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data) as { type: string };
+          if (payload.type === "new_fir" || payload.type === "thread_update") {
+            refetch();
+            refetchStats();
+          }
+        } catch { }
+      };
+
+      es.onerror = () => {
+        setSseConnected(false);
+        es?.close();
+        reconnectTimer = setTimeout(connect, 5000);
+      };
+    }
+
+    connect();
+
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      es?.close();
+      setSseConnected(false);
+    };
+  }, []);
 
   const displayTime = liveTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
 
@@ -312,6 +348,12 @@ export default function FirPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium">
+              <span className={`w-2 h-2 rounded-full ${sseConnected ? "bg-green-400 animate-pulse" : "bg-red-500"}`} />
+              <span className={sseConnected ? "text-green-400" : "text-red-400"}>
+                {sseConnected ? "LIVE" : "OFFLINE"}
+              </span>
+            </span>
             <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
               <Clock className="w-3 h-3" />
               {displayTime}

@@ -1,4 +1,5 @@
 import { Client, GatewayIntentBits, Message, Collection, TextChannel, ChannelType } from "discord.js";
+import { broadcastFirEvent } from "../routes/fir";
 import { db } from "@workspace/db";
 import {
   discordDutyEventsTable,
@@ -566,6 +567,7 @@ async function processFirMessage(msg: Message) {
         threadReplies: threadReplies.length > 0 ? threadReplies : null,
       },
     });
+    broadcastFirEvent("new_fir");
   } catch (err) {
     logger.error({ err, messageId: msg.id }, "Error saving FIR");
   }
@@ -616,6 +618,7 @@ async function updateFirThreadByThreadId(threadId: string): Promise<void> {
     await db.update(pdFirTable)
       .set({ threadReplies: replies.length > 0 ? replies : null })
       .where(eq(pdFirTable.threadId, threadId));
+    broadcastFirEvent("thread_update");
   } catch (err) {
     logger.warn({ err, threadId }, "Could not update FIR thread replies");
   }
