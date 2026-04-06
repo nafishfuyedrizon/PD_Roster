@@ -4,13 +4,14 @@ import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Shield, Calendar, Hash, MapPin, Zap, ArrowLeft, User, Clock, Award
+  Shield, Calendar, Hash, MapPin, Zap, ArrowLeft, User, Clock, Award, Fingerprint
 } from "lucide-react";
 
 interface ProfileData {
   officer: {
     id: number;
     callSign: string;
+    citizenId: string | null;
     name: string;
     rank: string;
     department: string;
@@ -163,19 +164,23 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div className="space-y-1.5">
-              <DetailRow icon={<Shield className="w-3.5 h-3.5 text-primary" />} value={officer.rank} />
-              <DetailRow icon={<Hash className="w-3.5 h-3.5 text-muted-foreground" />} value={officer.callSign} />
-              <DetailRow icon={<Calendar className="w-3.5 h-3.5 text-muted-foreground" />} value={officer.dateOfJoining ?? "—"} label="Joined" />
-              <DetailRow icon={<Award className="w-3.5 h-3.5 text-yellow-400" />} value={officer.lastPromotion ?? "—"} label="Promoted" />
+              <DetailRow icon={<Shield className="w-3.5 h-3.5 text-primary" />} label="Rank" value={officer.rank} />
+              <DetailRow icon={<Hash className="w-3.5 h-3.5 text-blue-400" />} label="Callsign" value={officer.callSign} />
+              {officer.citizenId && (
+                <DetailRow icon={<Fingerprint className="w-3.5 h-3.5 text-emerald-400" />} label="CID" value={officer.citizenId} />
+              )}
+              <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-muted-foreground" />} label="Division" value={officer.division ?? officer.department} />
+              <DetailRow icon={<Calendar className="w-3.5 h-3.5 text-muted-foreground" />} label="Joined" value={officer.dateOfJoining ?? "—"} />
+              <DetailRow icon={<Award className="w-3.5 h-3.5 text-yellow-400" />} label="Promoted" value={officer.lastPromotion ?? "—"} />
               <DetailRow
                 icon={<Clock className="w-3.5 h-3.5 text-muted-foreground" />}
-                value={`${officer.daysSinceJoining} day${officer.daysSinceJoining !== 1 ? "s" : ""}`}
+                label="Service"
+                value={`${officer.daysSinceJoining}d`}
               />
-              <DetailRow icon={<Hash className="w-3.5 h-3.5 text-blue-400" />} value={officer.callSign} label="Callsign" />
-              <DetailRow icon={<MapPin className="w-3.5 h-3.5 text-muted-foreground" />} value={officer.division ?? officer.department} />
               <DetailRow
                 icon={<Zap className="w-3.5 h-3.5 text-red-400" />}
-                value={`${officer.strikesMajor} Major / ${officer.strikesMinor} Minor`}
+                label="Strikes"
+                value={`${officer.strikesMajor} Maj / ${officer.strikesMinor} Min`}
               />
             </div>
           )}
@@ -230,11 +235,14 @@ export default function ProfilePage() {
   );
 }
 
-function DetailRow({ icon, value }: { icon: React.ReactNode; value: string; label?: string }) {
+function DetailRow({ icon, label, value }: { icon: React.ReactNode; label?: string; value: string }) {
   return (
     <div className="flex items-center gap-2 bg-secondary/40 rounded px-3 py-2">
       {icon}
-      <span className="text-xs text-foreground truncate">{value}</span>
+      <div className="min-w-0 flex-1">
+        {label && <div className="text-[10px] text-muted-foreground/60 uppercase tracking-wide leading-none mb-0.5">{label}</div>}
+        <span className="text-xs text-foreground truncate block">{value}</span>
+      </div>
     </div>
   );
 }

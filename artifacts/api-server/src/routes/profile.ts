@@ -90,6 +90,7 @@ router.get("/profile", async (req: Request, res: Response) => {
       officer: {
         id: officer.id,
         callSign: officer.callSign,
+        citizenId: officer.citizenId ?? null,
         name: officer.name,
         rank: officer.rank,
         department: officer.department,
@@ -166,7 +167,8 @@ router.get("/profile/view", async (req: Request, res: Response) => {
 
     res.json({
       officer: {
-        id: officer.id, callSign: officer.callSign, name: officer.name, rank: officer.rank,
+        id: officer.id, callSign: officer.callSign, citizenId: officer.citizenId ?? null,
+        name: officer.name, rank: officer.rank,
         department: officer.department, division: officer.division, status: officer.status,
         dateOfJoining: officer.dateOfJoining, lastPromotion: officer.lastPromotion,
         daysSinceJoining: calcDaysSince(officer.dateOfJoining),
