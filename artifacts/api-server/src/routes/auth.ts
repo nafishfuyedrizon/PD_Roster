@@ -152,7 +152,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       isOwner,
     };
 
-    res.redirect("/shift-roster/roster");
+    res.redirect("/shift-roster/dashboard");
   } catch (err) {
     console.error("Discord OAuth error:", err);
     res.redirect("/shift-roster/?auth_error=server_error");

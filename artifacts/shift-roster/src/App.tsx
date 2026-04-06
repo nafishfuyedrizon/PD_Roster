@@ -41,7 +41,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 function HomeRoute() {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return null;
-  if (isSignedIn) return <Redirect to="/roster" />;
+  if (isSignedIn) return <Redirect to="/dashboard" />;
   return <LoginPage />;
 }
 
