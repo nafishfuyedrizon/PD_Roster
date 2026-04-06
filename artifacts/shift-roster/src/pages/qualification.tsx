@@ -48,10 +48,14 @@ type QualEntry = {
   strikesMinor: string | null;
   qualStatus: string | null;
   notes: string | null;
+  ftbVotes: Record<string, string> | null;
+  hcVotes: Record<string, string> | null;
   rosterLinked: boolean;
 };
 
-type FormData = Omit<QualEntry, "id" | "rosterLinked" | "joiningDate">;
+type FtpMembers = { fto: string[]; hc: string[] };
+
+type FormData = Omit<QualEntry, "id" | "rosterLinked" | "joiningDate" | "ftbVotes" | "hcVotes">;
 
 const EMPTY_FORM: FormData = {
   name: "",
@@ -496,11 +500,51 @@ function DeleteConfirm({ entry, onClose }: { entry: QualEntry; onClose: () => vo
   );
 }
 
+const VOTE_CYCLE: Record<string, string> = { "": "✓", "✓": "✗", "✗": "" };
+
+function VoteCell({ entryId, voteType, voterName, value }: {
+  entryId: number; voteType: "ftb" | "hc"; voterName: string; value: string;
+}) {
+  const qc = useQueryClient();
+  const mut = useMutation({
+    mutationFn: (v: string) =>
+      fetch(`/api/qualification-chart/${entryId}/votes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voteType, voterName, value: v }),
+      }).then((r) => r.json()),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] }),
+  });
+
+  const next = VOTE_CYCLE[value] ?? "";
+  const display = value === "✓" ? "✓" : value === "✗" ? "✗" : "—";
+  const color = value === "✓" ? "text-green-400 bg-green-500/15 border-green-500/30"
+    : value === "✗" ? "text-red-400 bg-red-500/15 border-red-500/30"
+    : "text-muted-foreground/40 bg-secondary/20 border-border/30";
+
+  return (
+    <button
+      onClick={() => mut.mutate(next)}
+      disabled={mut.isPending}
+      title={`${voterName}: ${value || "No vote"} → click to change`}
+      className={`w-7 h-7 rounded border text-xs font-bold transition-all hover:opacity-80 ${color} ${mut.isPending ? "opacity-50" : ""}`}
+    >
+      {display}
+    </button>
+  );
+}
+
 export default function QualificationPage() {
   const { data: entries = [], isLoading } = useQuery<QualEntry[]>({
     queryKey: ["/api/qualification-chart"],
     queryFn: () => fetch("/api/qualification-chart").then((r) => r.json()),
     refetchInterval: 30_000,
+  });
+
+  const { data: ftpMembers } = useQuery<FtpMembers>({
+    queryKey: ["/api/ftp-members"],
+    queryFn: () => fetch("/api/ftp-members").then((r) => r.json()),
+    staleTime: 60_000,
   });
 
   const { data: settings } = useSettings();
@@ -698,6 +742,32 @@ export default function QualificationPage() {
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground hidden lg:table-cell">Last Promo</th>
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground hidden lg:table-cell">Strikes</th>
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">Status</th>
+                  {/* VOTE BY FTO */}
+                  {(ftpMembers?.fto?.length ?? 0) > 0 && (
+                    <th className="px-2 py-3 text-center text-[11px] font-mono uppercase text-cyan-400/80 border-l border-border/50 min-w-0">
+                      <div className="text-[10px] font-bold mb-1 whitespace-nowrap">VOTE BY FTO</div>
+                      <div className="flex gap-1 justify-center flex-wrap">
+                        {ftpMembers!.fto.map((name) => (
+                          <span key={name} className="text-[9px] font-mono text-muted-foreground/70 truncate max-w-[52px]" title={name}>
+                            {name.split(" ")[0]}
+                          </span>
+                        ))}
+                      </div>
+                    </th>
+                  )}
+                  {/* VOTE BY HIGH COMMAND */}
+                  {(ftpMembers?.hc?.length ?? 0) > 0 && (
+                    <th className="px-2 py-3 text-center text-[11px] font-mono uppercase text-purple-400/80 border-l border-border/50 min-w-0">
+                      <div className="text-[10px] font-bold mb-1 whitespace-nowrap">VOTE BY HC</div>
+                      <div className="flex gap-1 justify-center flex-wrap">
+                        {ftpMembers!.hc.map((name) => (
+                          <span key={name} className="text-[9px] font-mono text-muted-foreground/70 truncate max-w-[52px]" title={name}>
+                            {name.split(" ")[0]}
+                          </span>
+                        ))}
+                      </div>
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">Actions</th>
                 </tr>
               </thead>
@@ -773,6 +843,38 @@ export default function QualificationPage() {
                       <td className="px-4 py-3 text-center">
                         <StatusBadge status={e.qualStatus} />
                       </td>
+                      {/* FTO Vote cells */}
+                      {(ftpMembers?.fto?.length ?? 0) > 0 && (
+                        <td className="px-2 py-2 border-l border-border/50">
+                          <div className="flex gap-1 justify-center flex-wrap">
+                            {ftpMembers!.fto.map((name) => (
+                              <VoteCell
+                                key={name}
+                                entryId={e.id}
+                                voteType="ftb"
+                                voterName={name}
+                                value={(e.ftbVotes ?? {})[name] ?? ""}
+                              />
+                            ))}
+                          </div>
+                        </td>
+                      )}
+                      {/* HC Vote cells */}
+                      {(ftpMembers?.hc?.length ?? 0) > 0 && (
+                        <td className="px-2 py-2 border-l border-border/50">
+                          <div className="flex gap-1 justify-center flex-wrap">
+                            {ftpMembers!.hc.map((name) => (
+                              <VoteCell
+                                key={name}
+                                entryId={e.id}
+                                voteType="hc"
+                                voterName={name}
+                                value={(e.hcVotes ?? {})[name] ?? ""}
+                              />
+                            ))}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1.5">
                           <button

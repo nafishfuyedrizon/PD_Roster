@@ -1,4 +1,4 @@
-import { pgTable, text, serial, real, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, real, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
 
 export const qualificationChartTable = pgTable("qualification_chart", {
   id: serial("id").primaryKey(),
@@ -15,6 +15,8 @@ export const qualificationChartTable = pgTable("qualification_chart", {
   strikesMinor: text("strikes_minor").default("0/2"),
   qualStatus: text("qual_status"),
   notes: text("notes"),
+  ftbVotes: jsonb("ftb_votes").$type<Record<string, string>>().default({}),
+  hcVotes: jsonb("hc_votes").$type<Record<string, string>>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

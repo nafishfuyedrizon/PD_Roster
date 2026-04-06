@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, qualificationChartTable, officersTable } from "@workspace/db";
-import { eq, sql, notInArray } from "drizzle-orm";
+import { eq, sql, notInArray, or, ilike } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -80,6 +80,8 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       strikesMinor: qualificationChartTable.strikesMinor,
       qualStatus: qualificationChartTable.qualStatus,
       notes: qualificationChartTable.notes,
+      ftbVotes: qualificationChartTable.ftbVotes,
+      hcVotes: qualificationChartTable.hcVotes,
       updatedAt: qualificationChartTable.updatedAt,
       rosterLinked: sql<boolean>`true`,
     })
@@ -198,6 +200,59 @@ router.delete("/qualification-chart/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   await db.delete(qualificationChartTable).where(eq(qualificationChartTable.id, id));
   res.status(204).end();
+});
+
+// GET /api/ftp-members — returns FTO and HC members from FTP department
+router.get("/ftp-members", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({ name: officersTable.name, rank: officersTable.rank, callSign: officersTable.callSign, status: officersTable.status })
+    .from(officersTable)
+    .where(ilike(officersTable.department, "FTP"));
+
+  const fto = rows.filter((r) =>
+    r.rank && (
+      r.rank.toLowerCase().includes("field training trainer") ||
+      r.rank.toLowerCase().includes("field training supervisor") ||
+      r.rank.toLowerCase().includes("fto")
+    )
+  ).map((r) => r.name ?? r.callSign ?? "");
+
+  const hc = rows.filter((r) =>
+    r.rank && r.rank.toLowerCase().includes("command")
+  ).map((r) => r.name ?? r.callSign ?? "");
+
+  res.json({ fto, hc });
+});
+
+// PATCH /api/qualification-chart/:id/votes — update a single vote
+router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const { voteType, voterName, value } = req.body;
+  // voteType: "ftb" | "hc", voterName: string, value: "✓" | "✗" | ""
+  if (!voteType || !voterName) { res.status(400).json({ error: "voteType and voterName required" }); return; }
+
+  const [current] = await db.select({
+    ftbVotes: qualificationChartTable.ftbVotes,
+    hcVotes: qualificationChartTable.hcVotes,
+  }).from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
+
+  if (!current) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (voteType === "ftb") {
+    const updated = { ...(current.ftbVotes ?? {}), [voterName]: value ?? "" };
+    const [row] = await db.update(qualificationChartTable)
+      .set({ ftbVotes: updated, updatedAt: new Date() })
+      .where(eq(qualificationChartTable.id, id))
+      .returning();
+    res.json(row);
+  } else {
+    const updated = { ...(current.hcVotes ?? {}), [voterName]: value ?? "" };
+    const [row] = await db.update(qualificationChartTable)
+      .set({ hcVotes: updated, updatedAt: new Date() })
+      .where(eq(qualificationChartTable.id, id))
+      .returning();
+    res.json(row);
+  }
 });
 
 export default router;
