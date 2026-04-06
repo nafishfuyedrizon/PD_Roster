@@ -379,6 +379,10 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
         qualUpdate.rank = officer.rank!;
         qualUpdate.lastPromotion = todayMDY();
         qualUpdate.daysInRank = 0;
+        // Reset voting system and status for new rank cycle
+        qualUpdate.ftbVotes = {};
+        qualUpdate.hcVotes = {};
+        qualUpdate.qualStatus = null;
       } else if (promotionDateChanged) {
         // Manual promotion date edit — sync it to qual chart and reset daysInRank
         qualUpdate.lastPromotion = officer.lastPromotion;
