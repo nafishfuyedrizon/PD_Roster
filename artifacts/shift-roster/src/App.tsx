@@ -17,6 +17,7 @@ import AdminPage from "@/pages/admin";
 import AdminDutyLogsPage from "@/pages/admin-duty-logs";
 import AdminSettingsPage from "@/pages/admin-settings";
 import QualificationPage from "@/pages/qualification";
+import ProfilePage from "@/pages/profile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/admin/duty-logs">{() => <ProtectedRoute component={AdminDutyLogsPage} />}</Route>
       <Route path="/admin/settings">{() => <ProtectedRoute component={AdminSettingsPage} />}</Route>
       <Route path="/qualification-chart">{() => <ProtectedRoute component={QualificationPage} />}</Route>
+      <Route path="/profile">{() => <ProtectedRoute component={ProfilePage} />}</Route>
 
       <Route component={NotFound} />
     </Switch>

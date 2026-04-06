@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutGrid, LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award, LogOut } from "lucide-react";
+import { LayoutGrid, LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award, LogOut, User } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -8,8 +8,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [rostersOpen, setRostersOpen] = useState(true);
   const [adminOpen, setAdminOpen] = useState(location.startsWith("/admin"));
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const { data: settings } = useSettings();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const isRosterActive = location === "/" || location === "/roster" || location.startsWith("/dept/");
   const isAdminActive = location.startsWith("/admin");
@@ -226,23 +238,57 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-border mt-auto space-y-3">
-          <div>
-            <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-              System Active
-            </div>
-            <div className="text-xs font-mono text-primary flex items-center gap-2 mt-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              SECURE CONNECTION
-            </div>
+        {/* User profile dropdown */}
+        <div className="p-3 border-t border-border mt-auto" ref={profileRef}>
+          <div className="relative">
+            <button
+              onClick={() => setProfileOpen((v) => !v)}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary/60 transition-colors group"
+            >
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={user.displayName}
+                  className="w-8 h-8 rounded-full shrink-0 ring-2 ring-border"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-primary" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0 text-left">
+                <div className="text-sm font-semibold text-foreground truncate leading-tight">
+                  {user?.displayName ?? "—"}
+                </div>
+                {user?.isOwner && (
+                  <div className="text-[10px] text-yellow-400 font-mono">OWNER</div>
+                )}
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {profileOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-card border border-border rounded-lg shadow-xl py-1 z-50">
+                <Link href="/profile">
+                  <div
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-secondary/60 cursor-pointer transition-colors"
+                  >
+                    <User className="w-3.5 h-3.5 text-muted-foreground" />
+                    Profile
+                  </div>
+                </Link>
+                <div className="my-1 border-t border-border/50" />
+                <button
+                  onClick={() => { setProfileOpen(false); logout(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
-          <button
-            onClick={() => logout()}
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors font-mono"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            SIGN OUT
-          </button>
         </div>
       </aside>
 

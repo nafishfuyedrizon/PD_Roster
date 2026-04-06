@@ -8,10 +8,12 @@ import adminRouter from "./admin";
 import settingsRouter from "./settings";
 import qualificationRouter from "./qualification";
 import authRouter from "./auth";
+import profileRouter from "./profile";
 
 const router: IRouter = Router();
 
 router.use(authRouter);
+router.use(profileRouter);
 router.use(healthRouter);
 router.use(rosterRouter);
 router.use(emsRouter);
