@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { z } from "zod";
 import { useForm, useWatch } from "react-hook-form";
 import { useSettings } from "@/hooks/useSettings";
@@ -21,7 +21,69 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format, parse, isValid } from "date-fns";
 import type { Officer, CreateOfficerBody } from "@workspace/api-client-react";
+
+// Parses MM/DD/YYYY → Date, or returns undefined
+function parseMDY(str: string | undefined | null): Date | undefined {
+  if (!str) return undefined;
+  const d = parse(str, "MM/dd/yyyy", new Date());
+  return isValid(d) ? d : undefined;
+}
+
+// Formats Date → MM/DD/YYYY
+function formatMDY(d: Date): string {
+  return format(d, "MM/dd/yyyy");
+}
+
+function FormDatePicker({
+  value,
+  onChange,
+  placeholder = "MM/DD/YYYY",
+}: {
+  value?: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = parseMDY(value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          type="button"
+          className="w-full justify-start text-left font-mono text-xs h-9 px-3"
+        >
+          <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          {value ? (
+            <span>{value}</span>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={(date) => {
+            if (date) {
+              onChange(formatMDY(date));
+              setOpen(false);
+            }
+          }}
+          defaultMonth={selected ?? new Date()}
+          captionLayout="dropdown"
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function todayMDY(): string {
   const d = new Date();
@@ -341,13 +403,17 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
           <FormField control={form.control} name="dateOfJoining" render={({ field }) => (
             <FormItem>
               <FormLabel className="text-xs">Date of Joining</FormLabel>
-              <FormControl><Input placeholder="12/01/2025" {...field} /></FormControl>
+              <FormControl>
+                <FormDatePicker value={field.value} onChange={field.onChange} placeholder="MM/DD/YYYY" />
+              </FormControl>
             </FormItem>
           )} />
           <FormField control={form.control} name="lastPromotion" render={({ field }) => (
             <FormItem>
               <FormLabel className="text-xs">Last Promotion</FormLabel>
-              <FormControl><Input placeholder="01/20/2026" {...field} /></FormControl>
+              <FormControl>
+                <FormDatePicker value={field.value} onChange={field.onChange} placeholder="MM/DD/YYYY" />
+              </FormControl>
             </FormItem>
           )} />
         </div>

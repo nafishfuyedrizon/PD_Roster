@@ -186,6 +186,7 @@ export default function RosterPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
     queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["profile"] });
   }
 
   const handleCreate = (data: any) => {

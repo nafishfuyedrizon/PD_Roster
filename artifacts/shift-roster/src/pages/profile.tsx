@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Shield, Calendar, Hash, MapPin, Zap, ArrowLeft, User, Clock
+  Shield, Calendar, Hash, MapPin, Zap, ArrowLeft, User, Clock, Award
 } from "lucide-react";
 
 interface ProfileData {
@@ -17,6 +17,7 @@ interface ProfileData {
     division: string | null;
     status: string;
     dateOfJoining: string | null;
+    lastPromotion: string | null;
     daysSinceJoining: number;
     strikesMajor: string;
     strikesMinor: string;
@@ -81,6 +82,9 @@ export default function ProfilePage() {
   const { data, isLoading } = useQuery<ProfileData>({
     queryKey: ["profile"],
     queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   if (isLoading) {
@@ -142,7 +146,8 @@ export default function ProfilePage() {
             <div className="space-y-1.5">
               <DetailRow icon={<Shield className="w-3.5 h-3.5 text-primary" />} value={officer.rank} />
               <DetailRow icon={<Hash className="w-3.5 h-3.5 text-muted-foreground" />} value={officer.callSign} />
-              <DetailRow icon={<Calendar className="w-3.5 h-3.5 text-muted-foreground" />} value={officer.dateOfJoining ?? "—"} />
+              <DetailRow icon={<Calendar className="w-3.5 h-3.5 text-muted-foreground" />} value={officer.dateOfJoining ?? "—"} label="Joined" />
+              <DetailRow icon={<Award className="w-3.5 h-3.5 text-yellow-400" />} value={officer.lastPromotion ?? "—"} label="Promoted" />
               <DetailRow
                 icon={<Clock className="w-3.5 h-3.5 text-muted-foreground" />}
                 value={`${officer.daysSinceJoining} day${officer.daysSinceJoining !== 1 ? "s" : ""}`}
