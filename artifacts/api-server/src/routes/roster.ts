@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable } from "@workspace/db";
+import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable } from "@workspace/db";
 import {
   ListOfficersQueryParams,
   ListOfficersResponse,
@@ -17,6 +17,13 @@ import {
   UpdateOfficerResponse,
   DeleteOfficerParams,
 } from "@workspace/api-zod";
+
+function todayMDY(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
 
 const router: IRouter = Router();
 
@@ -54,6 +61,30 @@ router.post("/roster", async (req, res): Promise<void> => {
     .insert(officersTable)
     .values(parsed.data)
     .returning();
+
+  // Auto-add to qualification chart if not already present
+  if (officer.name) {
+    const existing = await db
+      .select({ id: qualificationChartTable.id })
+      .from(qualificationChartTable)
+      .where(eq(qualificationChartTable.name, officer.name))
+      .limit(1);
+    if (existing.length === 0) {
+      await db.insert(qualificationChartTable).values({
+        name: officer.name,
+        rank: officer.rank ?? null,
+        department: officer.department ?? null,
+        daysInRank: 0,
+        hoursInRank: 0,
+        citationCount: 0,
+        firCount: 0,
+        lastPromotion: todayMDY(),
+        strikesMajor: "0/4",
+        strikesMinor: "0/2",
+        qualStatus: null,
+      });
+    }
+  }
 
   res.status(201).json(GetOfficerResponse.parse(officer));
 });
@@ -317,6 +348,44 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
       rank: officer.rank ?? "",
       status: officer.status ?? "Active",
     }).where(eq(emsDutyLogsTable.csNumber, oldCs));
+  }
+
+  // If rank changed → update Last Promotion date in qualification chart
+  const rankChanged = existing.rank !== officer.rank && !!officer.rank;
+  const nameChanged = existing.name !== officer.name && !!officer.name;
+  if (officer.name && (rankChanged || nameChanged)) {
+    const searchName = nameChanged ? existing.name : officer.name;
+    if (searchName) {
+      const qualRows = await db
+        .select({ id: qualificationChartTable.id })
+        .from(qualificationChartTable)
+        .where(eq(qualificationChartTable.name, searchName))
+        .limit(1);
+      if (qualRows.length > 0) {
+        await db.update(qualificationChartTable)
+          .set({
+            ...(nameChanged ? { name: officer.name! } : {}),
+            ...(rankChanged ? { rank: officer.rank!, lastPromotion: todayMDY(), daysInRank: 0 } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(qualificationChartTable.id, qualRows[0].id));
+      } else if (rankChanged) {
+        // Officer not in qual chart yet — create entry
+        await db.insert(qualificationChartTable).values({
+          name: officer.name!,
+          rank: officer.rank ?? null,
+          department: officer.department ?? null,
+          daysInRank: 0,
+          hoursInRank: 0,
+          citationCount: 0,
+          firCount: 0,
+          lastPromotion: todayMDY(),
+          strikesMajor: "0/4",
+          strikesMinor: "0/2",
+          qualStatus: null,
+        });
+      }
+    }
   }
 
   res.json(UpdateOfficerResponse.parse(officer));
