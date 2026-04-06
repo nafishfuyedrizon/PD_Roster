@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutGrid, LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award, LogOut, User, ScrollText } from "lucide-react";
+import { LayoutGrid, LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award, LogOut, User, ScrollText, Users } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -243,6 +243,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <ScrollText className="w-3.5 h-3.5 shrink-0 text-teal-400" />
                     Panel Logs
+                  </div>
+                </Link>
+                <Link href="/admin/staff-roles" data-testid="nav-staff-roles">
+                  <div
+                    className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+                      location === "/admin/staff-roles"
+                        ? "bg-secondary text-secondary-foreground font-medium"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                    Staff Roles
                   </div>
                 </Link>
               </div>

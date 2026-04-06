@@ -8,3 +8,4 @@ export * from "./site_settings";
 export * from "./duty_adjustments";
 export * from "./qualification_chart";
 export * from "./admin_logs";
+export * from "./staff_roles";

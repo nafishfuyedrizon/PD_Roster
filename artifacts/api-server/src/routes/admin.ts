@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable, emsDutyLogsTable, dutyAdjustmentsTable, adminLogsTable } from "@workspace/db";
+import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable, emsDutyLogsTable, dutyAdjustmentsTable, adminLogsTable, staffRolesTable } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or, desc, asc } from "drizzle-orm";
 
 const MONTH_NAMES = ["","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
@@ -381,6 +381,50 @@ router.delete("/admin/duty-adjustments/:id", async (req, res): Promise<void> => 
   await db.delete(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id));
   res.status(204).end();
 });
+
+// ─── Staff Roles ──────────────────────────────────────────────────────────────
+
+router.get("/admin/staff-roles", async (req, res): Promise<void> => {
+  const rows = await db.select().from(staffRolesTable).orderBy(asc(staffRolesTable.createdAt));
+  res.json(rows);
+});
+
+router.post("/admin/staff-roles", async (req, res): Promise<void> => {
+  const sessionUser = (req.session as any)?.user;
+  const { discordUid, displayName } = req.body;
+  if (!discordUid?.trim()) { res.status(400).json({ error: "discordUid required" }); return; }
+  try {
+    const [row] = await db.insert(staffRolesTable).values({
+      discordUid: discordUid.trim(),
+      displayName: displayName?.trim() || null,
+      addedBy: sessionUser?.displayName ?? "unknown",
+    }).returning();
+    res.status(201).json(row);
+  } catch (e: any) {
+    if (e.code === "23505") { res.status(409).json({ error: "UID already exists" }); return; }
+    res.status(500).json({ error: "Failed to add staff role" });
+  }
+});
+
+router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  const allowed = ["isSuperAdmin", "isSeniorStaff", "isStaff", "isTrusted", "displayName"];
+  const updates: Record<string, unknown> = {};
+  for (const k of allowed) {
+    if (k in req.body) updates[k] = req.body[k];
+  }
+  if (!Object.keys(updates).length) { res.status(400).json({ error: "Nothing to update" }); return; }
+  const [row] = await db.update(staffRolesTable).set(updates as any).where(eq(staffRolesTable.id, id)).returning();
+  res.json(row);
+});
+
+router.delete("/admin/staff-roles/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  await db.delete(staffRolesTable).where(eq(staffRolesTable.id, id));
+  res.status(204).end();
+});
+
+// ─── Admin Logs ───────────────────────────────────────────────────────────────
 
 // GET /api/admin/logs — activity/audit log
 router.get("/admin/logs", async (req, res): Promise<void> => {

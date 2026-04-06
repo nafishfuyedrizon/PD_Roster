@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { db, adminLogsTable } from "@workspace/db";
+import { db, adminLogsTable, staffRolesTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -130,6 +131,10 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     const isOwner = discordUser.id === DISCORD_OWNER_ID;
     const isTempAllowed = hasTempAccess(discordUser.id);
 
+    // Check staff roles table
+    const staffRows = await db.select().from(staffRolesTable).where(eq(staffRolesTable.discordUid, discordUser.id)).limit(1);
+    const isStaffRole = staffRows.length > 0;
+
     let displayName = discordUser.global_name || discordUser.username;
     let roles: string[] = [];
     let avatarUrl = discordUser.avatar
@@ -143,6 +148,9 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       // Temporary access — skip guild membership check
       const expiry = tempAccessStore.get(discordUser.id)!;
       console.log(`[auth] Temp access login: ${discordUser.username} (${discordUser.id}), expires ${new Date(expiry).toISOString()}`);
+    } else if (isStaffRole) {
+      // Staff role — granted via Staff Roles panel
+      console.log(`[auth] Staff role login: ${discordUser.username} (${discordUser.id})`);
     } else {
       // Regular users must be guild members
       const memberRes = await fetch(
