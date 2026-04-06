@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable, emsDutyLogsTable, dutyAdjustmentsTable, adminLogsTable, staffRolesTable } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or, desc, asc } from "drizzle-orm";
+import { auditLog } from "../lib/audit.js";
 
 const MONTH_NAMES = ["","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 
@@ -56,6 +57,7 @@ router.post("/admin/channels", async (req, res): Promise<void> => {
   const existing = await db.select().from(discordChannelsTable).where(eq(discordChannelsTable.channelId, trimId));
   if (existing.length > 0) { res.status(409).json({ error: "Channel ID already exists" }); return; }
   const [created] = await db.insert(discordChannelsTable).values({ channelId: trimId, channelName: trimName }).returning();
+  await auditLog(req, "CREATE", "discord-channel", created.id, trimName, { channelId: trimId });
   res.status(201).json(created);
 });
 
@@ -65,12 +67,15 @@ router.patch("/admin/channels/:id", async (req, res): Promise<void> => {
   if (typeof isActive !== "boolean") { res.status(400).json({ error: "isActive boolean required" }); return; }
   const [updated] = await db.update(discordChannelsTable).set({ isActive }).where(eq(discordChannelsTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+  await auditLog(req, "UPDATE", "discord-channel", id, updated.channelName ?? null, { isActive });
   res.json(updated);
 });
 
 router.delete("/admin/channels/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
+  const [ch] = await db.select().from(discordChannelsTable).where(eq(discordChannelsTable.id, id)).limit(1);
   await db.delete(discordChannelsTable).where(eq(discordChannelsTable.id, id));
+  await auditLog(req, "DELETE", "discord-channel", id, ch?.channelName ?? null, null);
   res.status(204).end();
 });
 
@@ -373,12 +378,15 @@ router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
     adjustmentSeconds,
     note: note?.trim() || null,
   }).returning();
+  await auditLog(req, "CREATE", "duty-adjustment", created.id, officerName?.trim() || officerCs.trim(), { officerCs, dutyMonth, dutyYear, adjustmentSeconds, note });
   res.status(201).json(created);
 });
 
 router.delete("/admin/duty-adjustments/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
+  const [adj] = await db.select().from(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id)).limit(1);
   await db.delete(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id));
+  await auditLog(req, "DELETE", "duty-adjustment", id, adj?.officerName ?? adj?.officerCs ?? null, { adjustmentSeconds: adj?.adjustmentSeconds });
   res.status(204).end();
 });
 
@@ -419,6 +427,7 @@ router.post("/admin/staff-roles", async (req, res): Promise<void> => {
       displayName: displayName?.trim() || null,
       addedBy: sessionUser?.displayName ?? "unknown",
     }).returning();
+    await auditLog(req, "CREATE", "staff-role", row.id, displayName?.trim() || discordUid.trim(), { discordUid: discordUid.trim() });
     res.status(201).json(row);
   } catch (e: any) {
     if (e.code === "23505") { res.status(409).json({ error: "UID already exists" }); return; }
@@ -435,12 +444,15 @@ router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
   }
   if (!Object.keys(updates).length) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [row] = await db.update(staffRolesTable).set(updates as any).where(eq(staffRolesTable.id, id)).returning();
+  await auditLog(req, "UPDATE", "staff-role", id, row?.displayName ?? null, updates);
   res.json(row);
 });
 
 router.delete("/admin/staff-roles/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
+  const [sr] = await db.select().from(staffRolesTable).where(eq(staffRolesTable.id, id)).limit(1);
   await db.delete(staffRolesTable).where(eq(staffRolesTable.id, id));
+  await auditLog(req, "DELETE", "staff-role", id, sr?.displayName ?? sr?.discordUid ?? null, null);
   res.status(204).end();
 });
 

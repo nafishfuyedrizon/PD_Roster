@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
-import { ScrollText, UserCog, Plus, Trash2, Edit3, RefreshCw, LogIn, Wifi } from "lucide-react";
+import { ScrollText, UserCog, Plus, Trash2, Edit3, RefreshCw, LogIn, Wifi, Vote, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AdminLog {
@@ -13,7 +13,7 @@ interface AdminLog {
   entityName: string | null;
   changedBy: string;
   changedByUid: string | null;
-  changes: Record<string, { old: unknown; new: unknown }> | null;
+  changes: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -30,12 +30,34 @@ const FIELD_LABELS: Record<string, string> = {
   strikesMinor: "Minor Strikes",
   discordUsername: "Discord Username",
   discordUid: "Discord UID",
+  qualStatus: "Qual Status",
+  hoursInRank: "Hours in Rank",
+  citationCount: "Citations",
+  firCount: "FIRs",
+  notes: "Notes",
+  isActive: "Active",
+  isSuperAdmin: "Super Admin",
+  isSeniorStaff: "Senior Staff",
+  isStaff: "Staff",
+  isTrusted: "Trusted",
+  displayName: "Display Name",
+};
+
+const ENTITY_LABELS: Record<string, string> = {
+  "officer": "Officer",
+  "session": "Session",
+  "qual-entry": "Qual Chart",
+  "discord-channel": "Discord Channel",
+  "staff-role": "Staff Role",
+  "duty-adjustment": "Duty Adjustment",
+  "site-setting": "Site Setting",
 };
 
 function actionBadge(type: string) {
   if (type === "CREATE") return <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-[10px] px-1.5">CREATE</Badge>;
   if (type === "DELETE") return <Badge className="bg-red-600/20 text-red-400 border-red-600/30 text-[10px] px-1.5">DELETE</Badge>;
   if (type === "LOGIN")  return <Badge className="bg-teal-600/20 text-teal-400 border-teal-600/30 text-[10px] px-1.5">LOGIN</Badge>;
+  if (type === "VOTE")   return <Badge className="bg-purple-600/20 text-purple-400 border-purple-600/30 text-[10px] px-1.5">VOTE</Badge>;
   return <Badge className="bg-blue-600/20 text-blue-400 border-blue-600/30 text-[10px] px-1.5">UPDATE</Badge>;
 }
 
@@ -43,7 +65,9 @@ function actionIcon(type: string) {
   if (type === "CREATE") return <Plus className="w-3.5 h-3.5 text-green-400" />;
   if (type === "DELETE") return <Trash2 className="w-3.5 h-3.5 text-red-400" />;
   if (type === "LOGIN")  return <LogIn className="w-3.5 h-3.5 text-teal-400" />;
-  return <Edit3 className="w-3.5 h-3.5 text-blue-400" />;
+  if (type === "VOTE")   return <Vote className="w-3.5 h-3.5 text-purple-400" />;
+  if (type === "UPDATE" ) return <Edit3 className="w-3.5 h-3.5 text-blue-400" />;
+  return <Settings className="w-3.5 h-3.5 text-blue-400" />;
 }
 
 function formatDate(iso: string) {
@@ -53,16 +77,52 @@ function formatDate(iso: string) {
   return { date, time };
 }
 
-function ChangesDiff({ changes }: { changes: Record<string, { old: unknown; new: unknown }> }) {
+function ChangesDiff({ changes, actionType }: { changes: Record<string, unknown>; actionType: string }) {
+  // VOTE format: { voter, column, old, new }
+  if (actionType === "VOTE" && "voter" in changes) {
+    const voter = String(changes.voter ?? "");
+    const col = String(changes.column ?? "");
+    const oldV = String(changes.old ?? "—") || "—";
+    const newV = String(changes.new ?? "—") || "—";
+    return (
+      <div className="mt-2 flex items-center gap-2 text-[11px] font-mono">
+        <span className="text-muted-foreground">{voter}</span>
+        <span className="text-muted-foreground/50">({col}):</span>
+        <span className="text-red-400 line-through opacity-70">{oldV}</span>
+        <span className="text-muted-foreground mx-0.5">→</span>
+        <span className="text-green-400">{newV}</span>
+      </div>
+    );
+  }
+
+  // Per-field diff format: { field: { old, new } }
+  const isFieldDiff = Object.values(changes).some((v) => v !== null && typeof v === "object" && "old" in (v as object));
+  if (isFieldDiff) {
+    return (
+      <div className="mt-2 space-y-1">
+        {Object.entries(changes).map(([field, val]) => {
+          const { old: oldVal, new: newVal } = val as { old: unknown; new: unknown };
+          return (
+            <div key={field} className="flex items-start gap-2 text-[11px] font-mono">
+              <span className="text-muted-foreground w-28 shrink-0">{FIELD_LABELS[field] ?? field}:</span>
+              <span className="text-red-400 line-through opacity-70">{String(oldVal ?? "—")}</span>
+              <span className="text-muted-foreground mx-1">→</span>
+              <span className="text-green-400">{String(newVal ?? "—")}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Simple flat metadata: { key: value }
   return (
-    <div className="mt-2 space-y-1">
-      {Object.entries(changes).map(([field, { old: oldVal, new: newVal }]) => (
-        <div key={field} className="flex items-start gap-2 text-[11px] font-mono">
-          <span className="text-muted-foreground w-28 shrink-0">{FIELD_LABELS[field] ?? field}:</span>
-          <span className="text-red-400 line-through opacity-70">{String(oldVal ?? "—")}</span>
-          <span className="text-muted-foreground mx-1">→</span>
-          <span className="text-green-400">{String(newVal ?? "—")}</span>
-        </div>
+    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+      {Object.entries(changes).map(([k, v]) => (
+        <span key={k} className="text-[11px] font-mono text-muted-foreground">
+          <span className="text-muted-foreground/60">{FIELD_LABELS[k] ?? k}: </span>
+          <span className="text-foreground/70">{String(v ?? "—")}</span>
+        </span>
       ))}
     </div>
   );
@@ -173,8 +233,8 @@ export default function AdminLogsPage() {
                           </button>
                         )}
 
-                        <span className="text-[10px] text-muted-foreground capitalize">
-                          ({log.entityType})
+                        <span className="text-[10px] text-muted-foreground">
+                          ({ENTITY_LABELS[log.entityType] ?? log.entityType})
                         </span>
                       </div>
 
@@ -194,7 +254,7 @@ export default function AdminLogsPage() {
                         </div>
                       )}
 
-                      {hasChanges && <ChangesDiff changes={log.changes!} />}
+                      {hasChanges && <ChangesDiff changes={log.changes!} actionType={log.actionType} />}
                     </div>
                   </div>
 

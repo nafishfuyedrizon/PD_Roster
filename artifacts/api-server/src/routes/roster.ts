@@ -1,33 +1,8 @@
 import { Router, type IRouter } from "express";
-import type { Request } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable, adminLogsTable } from "@workspace/db";
+import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable } from "@workspace/db";
 import { syncVotersToQualChart } from "./qualification.js";
-
-// Helper: write an audit log entry
-async function auditLog(
-  req: Request,
-  actionType: "CREATE" | "UPDATE" | "DELETE",
-  entityType: string,
-  entityId: string | number | null,
-  entityName: string | null,
-  changes: Record<string, { old: unknown; new: unknown }> | null,
-) {
-  const sessionUser = (req.session as any)?.user;
-  try {
-    await db.insert(adminLogsTable).values({
-      actionType,
-      entityType,
-      entityId: entityId != null ? String(entityId) : null,
-      entityName,
-      changedBy: sessionUser?.displayName ?? sessionUser?.username ?? "System",
-      changedByUid: sessionUser?.id ?? null,
-      changes: changes as any,
-    });
-  } catch (err) {
-    console.error("[auditLog] failed to write log:", err);
-  }
-}
+import { auditLog } from "../lib/audit.js";
 import {
   ListOfficersQueryParams,
   ListOfficersResponse,

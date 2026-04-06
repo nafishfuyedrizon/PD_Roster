@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, siteSettingsTable, DEFAULT_SETTINGS } from "@workspace/db";
+import { auditLog } from "../lib/audit.js";
 
 const router: IRouter = Router();
 
@@ -33,10 +34,12 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
   const { key, value } = req.body as { key: string; value: unknown };
   if (!key) { res.status(400).json({ error: "key is required" }); return; }
   const serialized = JSON.stringify(value);
+  const [existing] = await db.select({ value: siteSettingsTable.value }).from(siteSettingsTable).where(eq(siteSettingsTable.key, key)).limit(1);
   await db
     .insert(siteSettingsTable)
     .values({ key, value: serialized })
     .onConflictDoUpdate({ target: siteSettingsTable.key, set: { value: serialized, updatedAt: new Date() } });
+  await auditLog(req, "UPDATE", "site-setting", null, key, { old: existing?.value, new: serialized });
   res.json({ ok: true, key, value });
 });
 

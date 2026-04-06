@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, qualificationChartTable, officersTable } from "@workspace/db";
 import { eq, sql, notInArray, or, ilike, and } from "drizzle-orm";
+import { auditLog } from "../lib/audit.js";
 
 const router: IRouter = Router();
 
@@ -247,6 +248,7 @@ router.post("/qualification-chart", async (req, res): Promise<void> => {
     lastPromotion, strikesMajor: strikesMajor ?? "0/4",
     strikesMinor: strikesMinor ?? "0/2", qualStatus, notes,
   }).returning();
+  await auditLog(req, "CREATE", "qual-entry", row.id, name, { rank, department, qualStatus });
   res.status(201).json(row);
 });
 
@@ -255,6 +257,7 @@ router.put("/qualification-chart/:id", async (req, res): Promise<void> => {
   const { name, discordUid, rank, department, hoursInRank,
     citationCount, firCount, lastPromotion, strikesMajor, strikesMinor,
     qualStatus, notes } = req.body;
+  const [before] = await db.select().from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
   const [row] = await db.update(qualificationChartTable)
     .set({ name, discordUid, rank, department, hoursInRank,
       citationCount, firCount, lastPromotion, strikesMajor, strikesMinor,
@@ -262,12 +265,19 @@ router.put("/qualification-chart/:id", async (req, res): Promise<void> => {
     .where(eq(qualificationChartTable.id, id))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  const diff: Record<string, unknown> = {};
+  for (const k of ["name","rank","department","qualStatus","strikesMajor","strikesMinor","hoursInRank","citationCount","firCount","lastPromotion","notes"] as const) {
+    if ((before as any)?.[k] !== (row as any)[k]) diff[k] = { old: (before as any)?.[k], new: (row as any)[k] };
+  }
+  await auditLog(req, "UPDATE", "qual-entry", id, name ?? before?.name ?? null, Object.keys(diff).length ? diff : null);
   res.json(row);
 });
 
 router.delete("/qualification-chart/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
+  const [entry] = await db.select({ name: qualificationChartTable.name }).from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
   await db.delete(qualificationChartTable).where(eq(qualificationChartTable.id, id));
+  await auditLog(req, "DELETE", "qual-entry", id, entry?.name ?? null, null);
   res.status(204).end();
 });
 
@@ -312,6 +322,7 @@ router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> =
   }
 
   const [current] = await db.select({
+    name: qualificationChartTable.name,
     ftbVotes: qualificationChartTable.ftbVotes,
     hcVotes: qualificationChartTable.hcVotes,
   }).from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
@@ -319,18 +330,22 @@ router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> =
   if (!current) { res.status(404).json({ error: "Not found" }); return; }
 
   if (voteType === "ftb") {
+    const oldVal = (current.ftbVotes ?? {})[voterName] ?? "";
     const updated = { ...(current.ftbVotes ?? {}), [voterName]: value ?? "" };
     const [row] = await db.update(qualificationChartTable)
       .set({ ftbVotes: updated, updatedAt: new Date() })
       .where(eq(qualificationChartTable.id, id))
       .returning();
+    await auditLog(req, "VOTE", "qual-entry", id, current.name ?? null, { voter: voterName, column: "FTB", old: oldVal, new: value ?? "" });
     res.json(row);
   } else {
+    const oldVal = (current.hcVotes ?? {})[voterName] ?? "";
     const updated = { ...(current.hcVotes ?? {}), [voterName]: value ?? "" };
     const [row] = await db.update(qualificationChartTable)
       .set({ hcVotes: updated, updatedAt: new Date() })
       .where(eq(qualificationChartTable.id, id))
       .returning();
+    await auditLog(req, "VOTE", "qual-entry", id, current.name ?? null, { voter: voterName, column: "HC", old: oldVal, new: value ?? "" });
     res.json(row);
   }
 });
