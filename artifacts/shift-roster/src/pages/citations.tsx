@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
@@ -46,8 +47,19 @@ function formatDate(iso: string) {
 
 function CitationCard({ citation }: { citation: Citation }) {
   const [expanded, setExpanded] = useState(false);
+  const [, setLocation] = useLocation();
   const { date, time } = formatDate(citation.postedAt);
   const evidenceLinks = (citation.evidence ?? "").match(/https?:\/\/[^\s]+/g) ?? [];
+
+  async function goToOfficerProfile() {
+    if (!citation.officerName) return;
+    try {
+      const res = await fetch(`/api/roster/officer-lookup?name=${encodeURIComponent(citation.officerName)}`, { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json() as { id: number; name: string | null };
+      setLocation(`/profile?officerId=${data.id}&name=${encodeURIComponent(data.name ?? citation.officerName ?? "")}`);
+    } catch { /* silently ignore */ }
+  }
 
   return (
     <div className="bg-secondary/30 border border-border/50 rounded-md overflow-hidden">
@@ -95,7 +107,12 @@ function CitationCard({ citation }: { citation: Citation }) {
             {citation.officerName && (
               <div className="flex items-center gap-1 mt-1.5">
                 <Hash className="w-3 h-3 text-teal-400" />
-                <span className="text-[11px] text-teal-300">Officer: {citation.officerName}</span>
+                <button
+                  onClick={goToOfficerProfile}
+                  className="text-[11px] text-teal-300 hover:text-teal-100 hover:underline transition-colors cursor-pointer"
+                >
+                  Officer: {citation.officerName}
+                </button>
               </div>
             )}
           </div>

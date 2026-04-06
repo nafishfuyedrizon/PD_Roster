@@ -449,4 +449,39 @@ router.delete("/roster/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
+// Officer lookup by citation name string e.g. "Tasin Rahaman [76]"
+router.get("/roster/officer-lookup", async (req, res): Promise<void> => {
+  const raw = String(req.query.name ?? "").trim();
+  if (!raw) { res.status(400).json({ error: "name required" }); return; }
+
+  // Extract callsign number from "[76]" pattern
+  const csMatch = /\[(\d+)\]/.exec(raw);
+  const csNum = csMatch ? csMatch[1] : null;
+  // Extract name part (before the bracket)
+  const namePart = raw.replace(/\s*\[.*?\]\s*$/, "").trim();
+
+  let officer: { id: number; name: string | null; callSign: string; discordUid: string | null } | null = null;
+
+  if (csNum) {
+    const rows = await db
+      .select({ id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid })
+      .from(officersTable)
+      .where(sql`${officersTable.callSign} ILIKE ${"%" + csNum}`)
+      .limit(1);
+    if (rows[0]) officer = rows[0];
+  }
+
+  if (!officer && namePart) {
+    const rows = await db
+      .select({ id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid })
+      .from(officersTable)
+      .where(sql`${officersTable.name} ILIKE ${namePart + "%"}`)
+      .limit(1);
+    if (rows[0]) officer = rows[0];
+  }
+
+  if (!officer) { res.status(404).json({ error: "Officer not found" }); return; }
+  res.json(officer);
+});
+
 export default router;
