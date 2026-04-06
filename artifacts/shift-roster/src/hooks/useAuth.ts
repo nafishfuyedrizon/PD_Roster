@@ -7,6 +7,7 @@ export interface AuthUser {
   avatar: string;
   roles: string[];
   guildId: string;
+  isOwner: boolean;
 }
 
 export function useAuth() {

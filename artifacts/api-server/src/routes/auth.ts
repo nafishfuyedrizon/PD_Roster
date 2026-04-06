@@ -6,6 +6,7 @@ const router = Router();
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || "1286283853186596904";
+const DISCORD_OWNER_ID = process.env.DISCORD_OWNER_ID || "1286283853186596904";
 const DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
 
 function getRedirectUri(req: Request) {
@@ -86,23 +87,12 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
 
     const authHeader = `${tokenData.token_type} ${tokenData.access_token}`;
 
-    const [userRes, memberRes] = await Promise.all([
-      fetch("https://discord.com/api/users/@me", {
-        headers: { Authorization: authHeader },
-      }),
-      fetch(`https://discord.com/api/users/@me/guilds/${DISCORD_GUILD_ID}/member`, {
-        headers: { Authorization: authHeader },
-      }),
-    ]);
+    const userRes = await fetch("https://discord.com/api/users/@me", {
+      headers: { Authorization: authHeader },
+    });
 
     if (!userRes.ok) {
       res.redirect("/shift-roster/?auth_error=user_fetch_failed");
-      return;
-    }
-
-    if (!memberRes.ok) {
-      console.warn(`Guild membership check failed (${memberRes.status}) for guild ${DISCORD_GUILD_ID}`);
-      res.redirect("/shift-roster/?auth_error=not_member");
       return;
     }
 
@@ -114,26 +104,52 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       discriminator: string;
     };
 
-    const memberData = await memberRes.json() as {
-      nick: string | null;
-      roles: string[];
-      avatar: string | null;
-    };
+    const isOwner = discordUser.id === DISCORD_OWNER_ID;
 
-    const avatarHash = memberData.avatar || discordUser.avatar;
-    const avatarBase = memberData.avatar
-      ? `https://cdn.discordapp.com/guilds/${DISCORD_GUILD_ID}/users/${discordUser.id}/avatars/${memberData.avatar}.png`
-      : discordUser.avatar
-        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-        : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordUser.discriminator || "0") % 5}.png`;
+    let displayName = discordUser.global_name || discordUser.username;
+    let roles: string[] = [];
+    let avatarUrl = discordUser.avatar
+      ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+      : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordUser.discriminator || "0") % 5}.png`;
+
+    if (isOwner) {
+      // Owner always gets in — skip guild membership check
+      console.log(`Owner login: ${discordUser.username} (${discordUser.id})`);
+    } else {
+      // Regular users must be guild members
+      const memberRes = await fetch(
+        `https://discord.com/api/users/@me/guilds/${DISCORD_GUILD_ID}/member`,
+        { headers: { Authorization: authHeader } },
+      );
+
+      if (!memberRes.ok) {
+        console.warn(`Guild check failed (${memberRes.status}) for user ${discordUser.id}`);
+        res.redirect("/shift-roster/?auth_error=not_member");
+        return;
+      }
+
+      const memberData = await memberRes.json() as {
+        nick: string | null;
+        roles: string[];
+        avatar: string | null;
+      };
+
+      displayName = memberData.nick || discordUser.global_name || discordUser.username;
+      roles = memberData.roles;
+
+      if (memberData.avatar) {
+        avatarUrl = `https://cdn.discordapp.com/guilds/${DISCORD_GUILD_ID}/users/${discordUser.id}/avatars/${memberData.avatar}.png`;
+      }
+    }
 
     (req.session as any).user = {
       id: discordUser.id,
       username: discordUser.username,
-      displayName: memberData.nick || discordUser.global_name || discordUser.username,
-      avatar: avatarBase,
-      roles: memberData.roles,
+      displayName,
+      avatar: avatarUrl,
+      roles,
       guildId: DISCORD_GUILD_ID,
+      isOwner,
     };
 
     res.redirect("/shift-roster/roster");
