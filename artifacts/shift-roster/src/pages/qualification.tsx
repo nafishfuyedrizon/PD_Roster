@@ -498,7 +498,11 @@ export default function QualificationPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <div className="bg-card border border-border rounded-lg p-4 flex items-center gap-3">
+        <div
+          className="bg-card border rounded-lg p-4 flex items-center gap-3 cursor-pointer transition-colors hover:border-primary/40"
+          style={{ borderColor: statusFilter === "ALL" && deptFilter === "ALL" ? "rgba(99,102,241,0.5)" : undefined }}
+          onClick={() => { setStatusFilter("ALL"); setDeptFilter("ALL"); setSearch(""); }}
+        >
           <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
             <Award className="w-5 h-5 text-primary" />
           </div>
