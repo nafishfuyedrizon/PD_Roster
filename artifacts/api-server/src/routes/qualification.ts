@@ -52,32 +52,32 @@ async function syncRosterToQualChart(): Promise<void> {
 }
 
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
-  // Always ensure all roster officers appear in the qual chart
+  // Ensure all roster officers have a qual chart entry
   await syncRosterToQualChart();
 
+  // Only show officers who are in the roster (officers table is primary)
   const rows = await db
     .select({
       id: qualificationChartTable.id,
-      name: qualificationChartTable.name,
+      name: officersTable.name,
       discordUid: qualificationChartTable.discordUid,
-      // Live from roster; fall back to qual chart's own stored value
-      rank: sql<string | null>`COALESCE(${officersTable.rank}, ${qualificationChartTable.rank})`,
-      department: sql<string | null>`COALESCE(${officersTable.department}, ${qualificationChartTable.department})`,
+      // Always live from roster
+      rank: officersTable.rank,
+      department: officersTable.department,
       daysInRank: qualificationChartTable.daysInRank,
       hoursInRank: qualificationChartTable.hoursInRank,
-      citationCount: qualificationChartTable.citationCount,
-      firCount: qualificationChartTable.firCount,
+      citationCount: sql<number>`COALESCE(${qualificationChartTable.citationCount}, 0)`,
+      firCount: sql<number>`COALESCE(${qualificationChartTable.firCount}, 0)`,
       lastPromotion: qualificationChartTable.lastPromotion,
       strikesMajor: qualificationChartTable.strikesMajor,
       strikesMinor: qualificationChartTable.strikesMinor,
       qualStatus: qualificationChartTable.qualStatus,
       notes: qualificationChartTable.notes,
       updatedAt: qualificationChartTable.updatedAt,
-      // Flag: true when officer exists in the roster
-      rosterLinked: sql<boolean>`(${officersTable.id} IS NOT NULL)`,
+      rosterLinked: sql<boolean>`true`,
     })
-    .from(qualificationChartTable)
-    .leftJoin(officersTable, eq(qualificationChartTable.name, officersTable.name))
+    .from(officersTable)
+    .leftJoin(qualificationChartTable, eq(officersTable.name, qualificationChartTable.name))
     .orderBy(qualificationChartTable.id);
   res.json(rows);
 });
