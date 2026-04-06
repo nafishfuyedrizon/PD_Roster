@@ -177,6 +177,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
 
   const { data: settings } = useSettings();
   const selectedDept = useWatch({ control: form.control, name: "department" });
+  const selectedRank = useWatch({ control: form.control, name: "rank" });
   const availableRanks = settings?.ranks ?? ALL_RANKS;
   const availableDepts = settings?.departments ?? ["SASP","BCSO","SAHP","IA","FTP","Management","SWAT","FIB","Game Wardens"];
   const availableDivisions = settings?.divisions ?? ["High Command","Low Command (HR)","Field Training Supervisor","Field Training Officer","Field Training Trainee","Training Academy"];
@@ -187,6 +188,14 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
       form.setValue("rank", availableRanks[availableRanks.length - 1] ?? "CADET");
     }
   }, [selectedDept]);
+
+  // When rank changes during EDIT (not initial load), auto-fill lastPromotion with today
+  const initialRank = defaultValues?.rank;
+  useEffect(() => {
+    if (initialRank !== undefined && selectedRank !== initialRank) {
+      form.setValue("lastPromotion", todayMDY());
+    }
+  }, [selectedRank]);
 
   const handleSubmit = (values: OfficerFormValues) => {
     onSubmit({
