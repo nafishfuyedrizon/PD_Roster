@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -382,7 +382,7 @@ export default function CitationsPage() {
     refetchInterval: 60000,
   });
 
-  const { data: citations = [], isLoading, refetch, isFetching, dataUpdatedAt } = useQuery<Citation[]>({
+  const { data: citations = [], isLoading, refetch, isFetching } = useQuery<Citation[]>({
     queryKey: ["/api/citations", debouncedSearch],
     queryFn: () =>
       fetch(`/api/citations${debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""}`, {
@@ -393,9 +393,15 @@ export default function CitationsPage() {
     refetchOnWindowFocus: true,
   });
 
-  const lastUpdated = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })
-    : null;
+  const [liveTime, setLiveTime] = useState(() =>
+    new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })
+  );
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLiveTime(new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   function handleSearch(val: string) {
     setSearch(val);
@@ -416,7 +422,7 @@ export default function CitationsPage() {
           <div className="flex items-center gap-1 ml-2">
             <Wifi className={`w-3 h-3 ${isFetching ? "text-blue-400 animate-pulse" : "text-green-500"}`} />
             <span className="text-[10px] font-mono text-muted-foreground">
-              {isFetching ? "syncing..." : `live · ${lastUpdated ?? "—"}`}
+              {isFetching ? "syncing..." : `live · ${liveTime}`}
             </span>
           </div>
         </div>
