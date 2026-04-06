@@ -112,6 +112,7 @@ const officerSchema = z.object({
   shotgun: z.boolean().optional(),
   rifleTierII: z.boolean().optional(),
   ftp: z.boolean().optional(),
+  isManagement: z.boolean().optional(),
   strikesMajor: z.string().optional(),
   strikesMinor: z.string().optional(),
   discordUsername: z.string().optional(),
@@ -199,6 +200,7 @@ const QUAL_FIELDS: { key: keyof OfficerFormValues; label: string }[] = [
   { key: "shotgun", label: "Shotgun" },
   { key: "rifleTierII", label: "Rifle Tier II" },
   { key: "ftp", label: "FTP" },
+  { key: "isManagement", label: "Management" },
 ];
 
 export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFormProps) {
@@ -224,6 +226,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
       shotgun: defaultValues?.shotgun ?? false,
       rifleTierII: defaultValues?.rifleTierII ?? false,
       ftp: defaultValues?.ftp ?? false,
+      isManagement: defaultValues?.isManagement ?? false,
       strikesMajor: defaultValues?.strikesMajor ?? "0/4",
       strikesMinor: defaultValues?.strikesMinor ?? "0/2",
       discordUsername: defaultValues?.discordUsername ?? "",
@@ -280,6 +283,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
       shotgun: values.shotgun ?? false,
       rifleTierII: values.rifleTierII ?? false,
       ftp: values.ftp ?? false,
+      isManagement: values.isManagement ?? false,
       strikesMajor: values.strikesMajor || "0/4",
       strikesMinor: values.strikesMinor || "0/2",
       discordUsername: values.discordUsername || null,

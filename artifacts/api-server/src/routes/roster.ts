@@ -60,12 +60,16 @@ router.get("/roster", async (req, res): Promise<void> => {
     return;
   }
 
-  const { department, status, weekPeriod } = parsed.data;
+  const { department, status, weekPeriod, ftp, isManagement } = parsed.data;
 
   const conditions = [];
   if (department) conditions.push(eq(officersTable.department, department));
   if (status) conditions.push(eq(officersTable.status, status));
   if (weekPeriod) conditions.push(eq(officersTable.weekPeriod, weekPeriod));
+  if (ftp === "true") conditions.push(eq(officersTable.ftp, true));
+  if (ftp === "false") conditions.push(eq(officersTable.ftp, false));
+  if (isManagement === "true") conditions.push(eq(officersTable.isManagement, true));
+  if (isManagement === "false") conditions.push(eq(officersTable.isManagement, false));
 
   const officers = await db
     .select()

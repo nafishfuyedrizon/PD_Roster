@@ -212,6 +212,8 @@ export type ListOfficersParams = {
   department?: string;
   status?: string;
   weekPeriod?: string;
+  ftp?: "true" | "false";
+  isManagement?: "true" | "false";
 };
 
 export type GetRosterStatsParams = {

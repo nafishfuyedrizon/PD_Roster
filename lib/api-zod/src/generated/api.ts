@@ -22,6 +22,8 @@ export const ListOfficersQueryParams = zod.object({
   department: zod.coerce.string().optional(),
   status: zod.coerce.string().optional(),
   weekPeriod: zod.coerce.string().optional(),
+  ftp: zod.enum(["true", "false"]).optional(),
+  isManagement: zod.enum(["true", "false"]).optional(),
 });
 
 export const ListOfficersResponseItem = zod.object({

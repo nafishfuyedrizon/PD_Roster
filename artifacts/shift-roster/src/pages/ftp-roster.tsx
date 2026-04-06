@@ -53,8 +53,8 @@ function getFtpRole(rank: string): string {
 export default function FtpRosterPage() {
   const queryClient = useQueryClient();
   const { data: officers = [], isLoading } = useListOfficers(
-    {},
-    { query: { queryKey: getListOfficersQueryKey({}), refetchInterval: 60_000, refetchOnWindowFocus: true } }
+    { ftp: "true" },
+    { query: { queryKey: getListOfficersQueryKey({ ftp: "true" }), refetchInterval: 60_000, refetchOnWindowFocus: true } }
   );
   const { mutate: updateOfficer } = useUpdateOfficer();
 
@@ -63,7 +63,6 @@ export default function FtpRosterPage() {
   const [removingId, setRemovingId] = useState<number | null>(null);
 
   const members = officers
-    .filter((o) => o.ftp)
     .sort((a, b) => getRankOrder(a.rank) - getRankOrder(b.rank));
 
   function handleRemove(id: number) {

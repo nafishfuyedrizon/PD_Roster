@@ -41,8 +41,8 @@ function getManagementRole(rank: string): string {
 export default function ManagementPage() {
   const queryClient = useQueryClient();
   const { data: officers = [], isLoading } = useListOfficers(
-    {},
-    { query: { queryKey: getListOfficersQueryKey({}), refetchInterval: 60_000, refetchOnWindowFocus: true } }
+    { isManagement: "true" },
+    { query: { queryKey: getListOfficersQueryKey({ isManagement: "true" }), refetchInterval: 60_000, refetchOnWindowFocus: true } }
   );
   const { mutate: updateOfficer } = useUpdateOfficer();
 
@@ -51,7 +51,6 @@ export default function ManagementPage() {
   const [removingId, setRemovingId] = useState<number | null>(null);
 
   const members = officers
-    .filter((o) => o.isManagement)
     .sort((a, b) => getRankOrder(a.rank) - getRankOrder(b.rank));
 
   function handleRemove(id: number) {
