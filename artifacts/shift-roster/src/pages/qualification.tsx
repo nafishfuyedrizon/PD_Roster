@@ -64,6 +64,11 @@ const DEPT_COLOR: Record<string, string> = {
   SASP: "text-blue-400 bg-blue-500/10 border-blue-500/20",
   BCSO: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
   SAHP: "text-green-400 bg-green-500/10 border-green-500/20",
+  SWAT: "text-red-400 bg-red-500/10 border-red-500/20",
+  PTA:  "text-purple-400 bg-purple-500/10 border-purple-500/20",
+  IA:   "text-orange-400 bg-orange-500/10 border-orange-500/20",
+  FTP:  "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+  FIB:  "text-pink-400 bg-pink-500/10 border-pink-500/20",
 };
 
 const RANKS = [
@@ -73,7 +78,7 @@ const RANKS = [
   "STATE TROOPER FIRST CLASS", "TROOPER", "DEPUTY", "STATE TROOPER",
 ];
 
-const DEPARTMENTS = ["SASP", "BCSO", "SAHP"];
+const DEPARTMENTS = ["SASP", "BCSO", "SAHP", "SWAT", "PTA", "IA", "FTP", "FIB", "Game Wardens", "Management"];
 
 const STATUS_OPTIONS = [
   { value: "",                      label: "PENDING",                    color: "text-yellow-400" },
@@ -615,7 +620,7 @@ export default function QualificationPage() {
           />
         </div>
         <div className="flex gap-2">
-          {(["ALL", "SASP", "BCSO", "SAHP"] as const).filter((d) => d === "ALL" || departments.includes(d)).map((d) => (
+          {(["ALL", ...departments.sort()] as string[]).map((d) => (
             <button
               key={d}
               onClick={() => setDeptFilter(d)}
