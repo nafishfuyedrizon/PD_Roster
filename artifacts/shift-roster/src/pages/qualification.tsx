@@ -243,7 +243,13 @@ function EditModal({
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
-      toast({ title: isNew ? "Officer added" : "Record updated" });
+      const statusLabel = STATUS_OPTIONS.find((o) => o.value === (form.qualStatus ?? ""))?.label ?? "PENDING";
+      toast({
+        title: isNew ? `✅ ${form.name} added` : `✅ ${form.name}`,
+        description: isNew
+          ? `Status: ${statusLabel}`
+          : `Status updated → ${statusLabel}`,
+      });
       onClose();
     },
     onError: () => toast({ title: "Error saving", variant: "destructive" }),
