@@ -31,3 +31,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
+DISCORD_CITATION_CHANNEL_ID = "1452312616813727745"
