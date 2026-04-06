@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, Trash2, ShieldCheck, Shield, Star, CheckCircle, X } from "lucide-react";
+import { Users, Plus, Trash2, ShieldCheck, Shield, Star, CheckCircle, X, Search, Loader2 } from "lucide-react";
 
 interface StaffRole {
   id: number;
@@ -48,6 +48,8 @@ export default function AdminStaffRolesPage() {
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchResult, setSearchResult] = useState<string | null>(null);
 
   const { data: staff = [], isLoading } = useQuery<StaffRole[]>({
     queryKey: ["/api/admin/staff-roles"],
@@ -89,6 +91,27 @@ export default function AdminStaffRolesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/staff-roles"] }),
   });
 
+  async function handleSearch() {
+    const uid = newUid.trim();
+    if (!uid) return;
+    setSearching(true);
+    setSearchResult(null);
+    try {
+      const res = await fetch(`/api/profile/view?uid=${uid}`, { credentials: "include" });
+      const data = await res.json();
+      if (data.officer?.name) {
+        setNewName(data.officer.name);
+        setSearchResult("found");
+      } else {
+        setSearchResult("not_found");
+      }
+    } catch {
+      setSearchResult("not_found");
+    } finally {
+      setSearching(false);
+    }
+  }
+
   async function handleAdd() {
     if (!newUid.trim()) return;
     setAdding(true);
@@ -120,20 +143,41 @@ export default function AdminStaffRolesPage() {
         <div className="mb-4 p-4 bg-secondary/40 border border-border/60 rounded-md flex flex-col sm:flex-row gap-3 items-end">
           <div className="flex-1">
             <label className="text-[11px] font-mono text-muted-foreground mb-1 block">Discord UID *</label>
-            <Input
-              placeholder="e.g. 413256770119663616"
-              value={newUid}
-              onChange={(e) => setNewUid(e.target.value)}
-              className="h-8 text-xs font-mono"
-            />
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. 413256770119663616"
+                value={newUid}
+                onChange={(e) => { setNewUid(e.target.value); setSearchResult(null); }}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="h-8 text-xs font-mono"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSearch}
+                disabled={searching || !newUid.trim()}
+                className="h-8 px-3 shrink-0"
+                title="Search officer by UID"
+              >
+                {searching
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Search className="w-3.5 h-3.5" />}
+              </Button>
+            </div>
+            {searchResult === "found" && (
+              <p className="text-[11px] text-green-400 mt-1 font-mono">✓ Officer found — name filled</p>
+            )}
+            {searchResult === "not_found" && (
+              <p className="text-[11px] text-yellow-400 mt-1 font-mono">No roster record found — enter name manually</p>
+            )}
           </div>
           <div className="flex-1">
-            <label className="text-[11px] font-mono text-muted-foreground mb-1 block">Display Name (optional)</label>
+            <label className="text-[11px] font-mono text-muted-foreground mb-1 block">Display Name</label>
             <Input
-              placeholder="e.g. ZEKE"
+              placeholder="Auto-filled or enter manually"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="h-8 text-xs"
+              className={`h-8 text-xs ${searchResult === "found" ? "border-green-500/50 bg-green-500/5" : ""}`}
             />
           </div>
           <div className="flex gap-2">
@@ -148,7 +192,7 @@ export default function AdminStaffRolesPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => { setShowAdd(false); setNewUid(""); setNewName(""); }}
+              onClick={() => { setShowAdd(false); setNewUid(""); setNewName(""); setSearchResult(null); }}
               className="h-8 text-xs"
             >
               <X className="w-3.5 h-3.5" />
