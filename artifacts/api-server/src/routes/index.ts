@@ -9,7 +9,10 @@ import settingsRouter from "./settings";
 import qualificationRouter from "./qualification";
 import authRouter from "./auth";
 import profileRouter from "./profile";
-import citationsRouter from "./citations";
+import citationsRouter, { startSheetAutoSync } from "./citations";
+
+// Start Google Sheet auto-sync on boot
+startSheetAutoSync();
 
 const router: IRouter = Router();
 

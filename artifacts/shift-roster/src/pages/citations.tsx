@@ -8,6 +8,7 @@ import {
   FileText, Search, User, MapPin, Gavel, Phone, Hash,
   RefreshCw, Wifi, ChevronDown, ChevronUp, ExternalLink,
   Webhook, Copy, Check, RotateCcw, ChevronRight,
+  Sheet, CloudDownload, Clock, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -332,6 +333,180 @@ Officer: Tasin Rahaman [76]`}</pre>
   );
 }
 
+interface SheetConfig {
+  sheetUrl: string | null;
+  sheetName: string;
+  lastSync: string | null;
+  syncedRows: number;
+}
+
+function GoogleSheetSyncPanel() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [sheetName, setSheetName] = useState("Citations");
+  const [syncMsg, setSyncMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+
+  const { data: cfg } = useQuery<SheetConfig>({
+    queryKey: ["/api/admin/citations/sheet"],
+    queryFn: () => fetch("/api/admin/citations/sheet", { credentials: "include" }).then((r) => r.json()),
+    enabled: open,
+    staleTime: 30000,
+    onSuccess: (d) => {
+      if (d.sheetUrl) setSheetUrl(d.sheetUrl);
+      if (d.sheetName) setSheetName(d.sheetName);
+    },
+  } as any);
+
+  const saveConfig = useMutation({
+    mutationFn: () => fetch("/api/admin/citations/sheet", {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: sheetUrl, sheetName }),
+    }).then((r) => r.json()),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/citations/sheet"] }),
+  });
+
+  const syncNow = useMutation({
+    mutationFn: () => fetch("/api/admin/citations/sheet/sync", { method: "POST", credentials: "include" }).then((r) => r.json()),
+    onSuccess: (d) => {
+      if (d.error) { setSyncMsg({ type: "error", text: d.error }); }
+      else { setSyncMsg({ type: "ok", text: `${d.inserted} টি নতুন citation import হয়েছে (মোট: ${d.total})` }); }
+      qc.invalidateQueries({ queryKey: ["/api/admin/citations/sheet"] });
+      qc.invalidateQueries({ queryKey: ["/api/citations"] });
+      qc.invalidateQueries({ queryKey: ["/api/citations/stats"] });
+      setTimeout(() => setSyncMsg(null), 6000);
+    },
+  });
+
+  const resetSync = useMutation({
+    mutationFn: () => fetch("/api/admin/citations/sheet/reset", { method: "POST", credentials: "include" }).then((r) => r.json()),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/citations/sheet"] }),
+  });
+
+  const isConfigured = !!cfg?.sheetUrl;
+
+  return (
+    <div className="border border-border/50 rounded-md overflow-hidden bg-secondary/20">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-secondary/40 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <Sheet className="w-4 h-4 text-green-400" />
+          <span>Google Sheet Sync</span>
+          {isConfigured ? (
+            <Badge className="bg-green-600/20 text-green-300 border-green-600/30 text-[10px] px-1.5">Configured ✓</Badge>
+          ) : (
+            <Badge className="bg-secondary/50 text-muted-foreground border-border/30 text-[10px] px-1.5">Not set</Badge>
+          )}
+        </span>
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-border/40 px-4 py-4 space-y-4">
+
+          {/* How it works */}
+          <div className="bg-blue-950/30 border border-blue-700/30 rounded p-3 text-[11px] text-blue-300 space-y-1">
+            <div className="font-semibold">কীভাবে কাজ করে:</div>
+            <div>আপনার Google Sheet publicly readable করুন → URL দিন → আমরা প্রতি 5 মিনিটে নতুন rows টেনে আনবো।</div>
+          </div>
+
+          {/* Sheet URL input */}
+          <div>
+            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Google Sheet URL
+            </div>
+            <div className="space-y-2">
+              <Input
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                className="h-8 text-xs font-mono"
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground">Sheet/Tab নাম:</span>
+                <Input
+                  value={sheetName}
+                  onChange={(e) => setSheetName(e.target.value)}
+                  placeholder="Citations"
+                  className="h-7 text-xs w-32"
+                />
+              </div>
+              <Button
+                size="sm" variant="outline" className="text-xs gap-1.5 h-7"
+                disabled={saveConfig.isPending}
+                onClick={() => saveConfig.mutate()}
+              >
+                <Check className={`w-3 h-3 ${saveConfig.isSuccess ? "text-green-400" : ""}`} />
+                {saveConfig.isPending ? "Saving…" : saveConfig.isSuccess ? "Saved!" : "Save Config"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Sheet must be public instruction */}
+          <div className="bg-secondary/30 border border-border/30 rounded p-3 space-y-2">
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Sheet publicly readable করার নিয়ম
+            </div>
+            <ol className="space-y-1 text-[11px] text-muted-foreground ml-4 list-decimal">
+              <li>Google Sheet খুলুন → উপরে <span className="text-foreground font-medium">Share</span> button</li>
+              <li><span className="text-foreground font-medium">General access</span> → <span className="text-foreground font-medium">Anyone with the link</span> → <span className="text-foreground font-medium">Viewer</span></li>
+              <li>Done! Sheet ID automatic detect হবে।</li>
+            </ol>
+          </div>
+
+          {/* Sync status & button */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              size="sm"
+              className="text-xs gap-1.5 h-8 bg-green-700 hover:bg-green-600 text-white"
+              disabled={syncNow.isPending || !isConfigured}
+              onClick={() => syncNow.mutate()}
+            >
+              <CloudDownload className={`w-3.5 h-3.5 ${syncNow.isPending ? "animate-bounce" : ""}`} />
+              {syncNow.isPending ? "Syncing…" : "Sync Now"}
+            </Button>
+
+            {cfg?.lastSync && (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                Last: {new Date(cfg.lastSync).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                {" · "}{cfg.syncedRows} rows synced
+              </span>
+            )}
+
+            {cfg?.syncedRows && cfg.syncedRows > 0 ? (
+              <button
+                onClick={() => { if (confirm("সব rows আবার import হবে — duplicate হতে পারে। নিশ্চিত?")) resetSync.mutate(); }}
+                className="text-[10px] text-muted-foreground hover:text-orange-400 underline transition-colors"
+              >
+                Reset counter
+              </button>
+            ) : null}
+          </div>
+
+          {syncMsg && (
+            <div className={`flex items-center gap-2 text-[11px] px-3 py-2 rounded border ${
+              syncMsg.type === "ok"
+                ? "bg-green-950/30 border-green-700/30 text-green-300"
+                : "bg-red-950/30 border-red-700/30 text-red-300"
+            }`}>
+              {syncMsg.type === "ok" ? <Check className="w-3 h-3 shrink-0" /> : <AlertCircle className="w-3 h-3 shrink-0" />}
+              {syncMsg.text}
+            </div>
+          )}
+
+          <div className="text-[10px] text-muted-foreground">
+            Auto-sync: প্রতি 5 মিনিটে নিজে নিজে নতুন rows import হবে।
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CitationsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -421,9 +596,10 @@ export default function CitationsPage() {
         </div>
       )}
 
-      {/* Webhook setup panel (staff/admin only) */}
+      {/* Setup panels (staff/admin only) */}
       {isAdmin && (
-        <div className="mb-4">
+        <div className="mb-4 space-y-2">
+          <GoogleSheetSyncPanel />
           <WebhookSetupPanel />
         </div>
       )}
