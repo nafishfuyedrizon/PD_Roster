@@ -143,6 +143,20 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   const byCs = new Map<string, { name: string; rank: string; department: string; id: number; totalMins: number }>();
   // Build officer map for quick department lookup
   const officerByCs = new Map(allOfficers.filter((o) => o.callSign).map((o) => [o.callSign!, o]));
+
+  // Pre-seed all active (non-LOA) roster officers with 0 hours so newly
+  // added officers always appear in the list even with no duty logs yet
+  for (const [cs, officer] of officerByCs.entries()) {
+    if (officer.status === "LOA") continue;
+    byCs.set(cs, {
+      name: officer.name ?? cs,
+      rank: officer.rank ?? "",
+      department: officer.department,
+      id: officer.id,
+      totalMins: 0,
+    });
+  }
+
   for (const log of dutyLogs) {
     const key = log.csNumber;
     // Only include PD officers — skip any call signs not in the roster
