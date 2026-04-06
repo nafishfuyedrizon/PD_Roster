@@ -5,6 +5,8 @@ export interface AuthUser {
   username: string;
   displayName: string;
   avatar: string;
+  roles: string[];
+  guildId: string;
 }
 
 export function useAuth() {

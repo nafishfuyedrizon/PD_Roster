@@ -5,6 +5,7 @@ const router = Router();
 
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || "1286283853186596904";
 const DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
 
 function getRedirectUri(req: Request) {
@@ -15,7 +16,7 @@ function getRedirectUri(req: Request) {
 
 router.get("/auth/discord", (req: Request, res: Response) => {
   if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
-    res.status(503).json({ error: "Discord OAuth not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET." });
+    res.status(503).json({ error: "Discord OAuth not configured." });
     return;
   }
 
@@ -27,7 +28,7 @@ router.get("/auth/discord", (req: Request, res: Response) => {
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "identify guilds.members.read",
+    scope: "identify guilds guilds.members.read",
     state,
   });
 
@@ -71,20 +72,37 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     });
 
     if (!tokenRes.ok) {
-      const err = await tokenRes.text();
-      console.error("Discord token exchange failed:", err);
+      const errText = await tokenRes.text();
+      console.error("Discord token exchange failed:", errText);
       res.redirect("/shift-roster/?auth_error=token_failed");
       return;
     }
 
-    const tokenData = await tokenRes.json() as { access_token: string; token_type: string };
+    const tokenData = await tokenRes.json() as {
+      access_token: string;
+      token_type: string;
+      scope: string;
+    };
 
-    const userRes = await fetch("https://discord.com/api/users/@me", {
-      headers: { Authorization: `${tokenData.token_type} ${tokenData.access_token}` },
-    });
+    const authHeader = `${tokenData.token_type} ${tokenData.access_token}`;
+
+    const [userRes, memberRes] = await Promise.all([
+      fetch("https://discord.com/api/users/@me", {
+        headers: { Authorization: authHeader },
+      }),
+      fetch(`https://discord.com/api/users/@me/guilds/${DISCORD_GUILD_ID}/member`, {
+        headers: { Authorization: authHeader },
+      }),
+    ]);
 
     if (!userRes.ok) {
       res.redirect("/shift-roster/?auth_error=user_fetch_failed");
+      return;
+    }
+
+    if (!memberRes.ok) {
+      console.warn(`Guild membership check failed (${memberRes.status}) for guild ${DISCORD_GUILD_ID}`);
+      res.redirect("/shift-roster/?auth_error=not_member");
       return;
     }
 
@@ -96,13 +114,26 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       discriminator: string;
     };
 
+    const memberData = await memberRes.json() as {
+      nick: string | null;
+      roles: string[];
+      avatar: string | null;
+    };
+
+    const avatarHash = memberData.avatar || discordUser.avatar;
+    const avatarBase = memberData.avatar
+      ? `https://cdn.discordapp.com/guilds/${DISCORD_GUILD_ID}/users/${discordUser.id}/avatars/${memberData.avatar}.png`
+      : discordUser.avatar
+        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+        : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordUser.discriminator || "0") % 5}.png`;
+
     (req.session as any).user = {
       id: discordUser.id,
       username: discordUser.username,
-      displayName: discordUser.global_name || discordUser.username,
-      avatar: discordUser.avatar
-        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-        : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordUser.discriminator || "0") % 5}.png`,
+      displayName: memberData.nick || discordUser.global_name || discordUser.username,
+      avatar: avatarBase,
+      roles: memberData.roles,
+      guildId: DISCORD_GUILD_ID,
     };
 
     res.redirect("/shift-roster/roster");
@@ -132,6 +163,7 @@ router.post("/auth/logout", (req: Request, res: Response) => {
 router.get("/auth/config", (_req: Request, res: Response) => {
   res.json({
     configured: !!(DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET),
+    guildId: DISCORD_GUILD_ID,
   });
 });
 

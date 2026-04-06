@@ -24,9 +24,11 @@ export default function LoginPage() {
 
   const errorMessage = isConfigured === false
     ? "Discord OAuth not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET."
-    : authError
-      ? `Authentication failed: ${authError.replace(/_/g, " ")}`
-      : null;
+    : authError === "not_member"
+      ? "Access denied. You are not a member of the authorized Discord server."
+      : authError
+        ? `Authentication failed: ${authError.replace(/_/g, " ")}`
+        : null;
 
   return (
     <div className="min-h-screen bg-[#0d0f14] flex items-center justify-center p-4">
