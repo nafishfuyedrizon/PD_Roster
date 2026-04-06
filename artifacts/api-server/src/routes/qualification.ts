@@ -13,42 +13,48 @@ function todayMDY(): string {
 
 /** Auto-insert any roster officers that are not yet in the qual chart. */
 async function syncRosterToQualChart(): Promise<void> {
-  // Get all names already in qual chart
+  // Get all names already in qual chart (with their lastPromotion)
   const existing = await db
-    .select({ name: qualificationChartTable.name })
+    .select({ name: qualificationChartTable.name, lastPromotion: qualificationChartTable.lastPromotion })
     .from(qualificationChartTable);
   const existingNames = existing.map((r) => r.name);
 
-  // Find roster officers whose names are not in qual chart
-  let missing;
-  if (existingNames.length > 0) {
-    missing = await db
-      .select({ name: officersTable.name, rank: officersTable.rank, department: officersTable.department })
-      .from(officersTable)
-      .where(notInArray(officersTable.name, existingNames));
-  } else {
-    missing = await db
-      .select({ name: officersTable.name, rank: officersTable.rank, department: officersTable.department })
-      .from(officersTable);
+  // All roster officers (with lastPromotion from officers table)
+  const allOfficers = await db
+    .select({ name: officersTable.name, rank: officersTable.rank, department: officersTable.department, lastPromotion: officersTable.lastPromotion })
+    .from(officersTable);
+
+  // Insert any officers not yet in qual chart
+  const missing = allOfficers.filter((o) => !existingNames.includes(o.name ?? ""));
+  if (missing.length > 0) {
+    await db.insert(qualificationChartTable).values(
+      missing.map((o) => ({
+        name: o.name ?? "",
+        rank: o.rank ?? null,
+        department: o.department ?? null,
+        daysInRank: 0,
+        hoursInRank: 0,
+        citationCount: 0,
+        firCount: 0,
+        lastPromotion: o.lastPromotion ?? null,
+        strikesMajor: "0/4",
+        strikesMinor: "0/2",
+        qualStatus: null,
+      }))
+    );
   }
 
-  if (missing.length === 0) return;
-
-  await db.insert(qualificationChartTable).values(
-    missing.map((o) => ({
-      name: o.name ?? "",
-      rank: o.rank ?? null,
-      department: o.department ?? null,
-      daysInRank: 0,
-      hoursInRank: 0,
-      citationCount: 0,
-      firCount: 0,
-      lastPromotion: null,
-      strikesMajor: "0/4",
-      strikesMinor: "0/2",
-      qualStatus: null,
-    }))
-  );
+  // Backfill: if qual chart has null lastPromotion but officers table has one, sync it
+  const needsBackfill = existing.filter((e) => !e.lastPromotion);
+  for (const entry of needsBackfill) {
+    const officer = allOfficers.find((o) => o.name === entry.name);
+    if (officer?.lastPromotion) {
+      await db
+        .update(qualificationChartTable)
+        .set({ lastPromotion: officer.lastPromotion })
+        .where(eq(qualificationChartTable.name, entry.name ?? ""));
+    }
+  }
 }
 
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
