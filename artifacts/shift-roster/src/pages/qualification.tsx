@@ -743,12 +743,7 @@ export default function QualificationPage() {
                       </td>
                       <td className="px-4 py-3 text-center hidden lg:table-cell">
                         <span className="text-xs font-mono text-muted-foreground">
-                          {e.lastPromotion
-                            ? e.lastPromotion
-                            : e.joiningDate
-                              ? <span className="opacity-40" title={`No promotion set — joined ${e.joiningDate}`}>{e.joiningDate}</span>
-                              : <span className="opacity-30">—</span>
-                          }
+                          {e.lastPromotion ?? <span className="opacity-30">—</span>}
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
