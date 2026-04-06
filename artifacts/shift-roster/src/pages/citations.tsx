@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   FileText, Search, User, MapPin, Gavel, Phone, Hash,
   RefreshCw, Wifi, ChevronDown, ChevronUp, ExternalLink,
-  Webhook, Copy, Check, RotateCcw, Info, ChevronRight,
+  Webhook, Copy, Check, RotateCcw, ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -37,6 +37,7 @@ interface CitationStats {
 interface WebhookInfo {
   secret: string;
   webhookUrl: string;
+  discordForwardUrl: string | null;
 }
 
 function formatDate(iso: string) {
@@ -171,19 +172,40 @@ function CopyButton({ text }: { text: string }) {
 function WebhookSetupPanel() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [discordUrl, setDiscordUrl] = useState("");
+  const [urlSaved, setUrlSaved] = useState(false);
 
   const { data: wh, isLoading } = useQuery<WebhookInfo>({
     queryKey: ["/api/admin/citations/webhook"],
     queryFn: () => fetch("/api/admin/citations/webhook", { credentials: "include" }).then((r) => r.json()),
     enabled: open,
     staleTime: Infinity,
-  });
+    onSuccess: (d) => { if (d.discordForwardUrl) setDiscordUrl(d.discordForwardUrl); },
+  } as any);
 
   const regenerate = useMutation({
     mutationFn: () =>
       fetch("/api/admin/citations/webhook/regenerate", { method: "POST", credentials: "include" }).then((r) => r.json()),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/citations/webhook"] }),
   });
+
+  const saveDiscordUrl = useMutation({
+    mutationFn: (url: string) =>
+      fetch("/api/admin/citations/discord-forward", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      setUrlSaved(true);
+      setTimeout(() => setUrlSaved(false), 3000);
+      qc.invalidateQueries({ queryKey: ["/api/admin/citations/webhook"] });
+    },
+  });
+
+  const discordForwardUrl = wh?.discordForwardUrl ?? null;
+  const isDiscordConfigured = !!discordForwardUrl;
 
   return (
     <div className="border border-border/50 rounded-md overflow-hidden bg-secondary/20">
@@ -193,18 +215,22 @@ function WebhookSetupPanel() {
       >
         <span className="flex items-center gap-2">
           <Webhook className="w-4 h-4 text-purple-400" />
-          <span>Webhook Setup</span>
-          <Badge className="bg-purple-600/20 text-purple-300 border-purple-600/30 text-[10px] px-1.5">Make.com / Zapier</Badge>
+          <span>Citation Webhook Setup</span>
+          {isDiscordConfigured && (
+            <Badge className="bg-green-600/20 text-green-300 border-green-600/30 text-[10px] px-1.5">Discord ✓</Badge>
+          )}
         </span>
         {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
       </button>
 
       {open && (
         <div className="border-t border-border/40 px-4 py-4 space-y-4">
-          {/* Webhook URL */}
+
+          {/* Step 1 — Our webhook URL */}
           <div>
-            <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Your Webhook URL
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-[10px] font-bold bg-purple-600/30 text-purple-300 rounded-full w-4 h-4 flex items-center justify-center shrink-0">1</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">আমাদের Webhook URL (এটাতে POST করতে হবে)</span>
             </div>
             {isLoading ? (
               <div className="text-xs text-muted-foreground font-mono">Loading…</div>
@@ -216,68 +242,78 @@ function WebhookSetupPanel() {
                 <CopyButton text={wh.webhookUrl} />
               </div>
             ) : null}
-
             <div className="flex items-center gap-2 mt-2">
               <Button
-                size="sm"
-                variant="outline"
-                className="text-xs gap-1.5 h-7"
+                size="sm" variant="outline" className="text-xs gap-1.5 h-7"
                 disabled={regenerate.isPending}
-                onClick={() => {
-                  if (confirm("New URL তৈরি হবে। পুরনো URL আর কাজ করবে না। নিশ্চিত?")) {
-                    regenerate.mutate();
-                  }
-                }}
+                onClick={() => { if (confirm("New URL তৈরি হবে। পুরনো URL আর কাজ করবে না। নিশ্চিত?")) regenerate.mutate(); }}
               >
                 <RotateCcw className={`w-3 h-3 ${regenerate.isPending ? "animate-spin" : ""}`} />
-                Regenerate URL
+                Regenerate
               </Button>
-              <span className="text-[10px] text-muted-foreground">পুরনো URL বাতিল হবে</span>
             </div>
           </div>
 
-          {/* Make.com guide */}
-          <div className="bg-background/40 border border-border/30 rounded-md p-3 space-y-3">
+          {/* Step 2 — Discord forward URL */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-[10px] font-bold bg-purple-600/30 text-purple-300 rounded-full w-4 h-4 flex items-center justify-center shrink-0">2</span>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Discord Webhook URL (citation Discord-এ যাবে)</span>
+            </div>
             <div className="flex items-center gap-2">
-              <Info className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-              <span className="text-xs font-semibold text-foreground">Make.com দিয়ে কীভাবে সেট করবেন</span>
+              <Input
+                value={discordUrl}
+                onChange={(e) => setDiscordUrl(e.target.value)}
+                placeholder="https://discord.com/api/webhooks/..."
+                className="h-8 text-xs font-mono"
+              />
+              <Button
+                size="sm" variant="outline" className="text-xs gap-1.5 h-8 shrink-0"
+                disabled={saveDiscordUrl.isPending}
+                onClick={() => saveDiscordUrl.mutate(discordUrl)}
+              >
+                {urlSaved ? <Check className="w-3 h-3 text-green-400" /> : <Check className="w-3 h-3" />}
+                {urlSaved ? "Saved!" : "Save"}
+              </Button>
             </div>
-
-            <ol className="space-y-2 text-[11px] text-muted-foreground ml-5 list-decimal">
-              <li>
-                <span className="text-foreground font-medium">Make.com</span>-এ যান →{" "}
-                <span className="font-medium text-blue-300">Create a new scenario</span>
-              </li>
-              <li>
-                প্রথম module: <span className="font-mono bg-secondary/50 px-1 rounded">Discord → Watch Channel Messages</span>
-                <div className="mt-0.5 text-[10px]">Channel: <span className="text-foreground">pd-citation</span> সিলেক্ট করুন</div>
-              </li>
-              <li>
-                দ্বিতীয় module: <span className="font-mono bg-secondary/50 px-1 rounded">HTTP → Make a request</span>
-                <div className="mt-1 space-y-0.5 text-[10px]">
-                  <div>Method: <span className="text-foreground">POST</span></div>
-                  <div>URL: উপরের Webhook URL paste করুন</div>
-                  <div>Body type: <span className="text-foreground">Raw / JSON</span></div>
-                </div>
-              </li>
-              <li>
-                JSON body-তে এটা দিন:
-                <pre className="mt-1 bg-secondary/60 rounded p-2 text-[10px] text-green-300 overflow-x-auto">{`{
-  "content": "{{message.content}}",
-  "messageId": "{{message.id}}",
-  "timestamp": "{{message.createdAt}}"
-}`}</pre>
-              </li>
-              <li>
-                Scenario চালু করুন → Discord-এ citation post করুন → এই পেজে দেখা যাবে
-              </li>
-            </ol>
+            {discordForwardUrl && (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Check className="w-3 h-3 text-green-400" />
+                <span className="text-[10px] text-green-400">Discord forward configured</span>
+                <button
+                  onClick={() => { setDiscordUrl(""); saveDiscordUrl.mutate(""); }}
+                  className="text-[10px] text-muted-foreground hover:text-red-400 underline ml-2 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Data format note */}
+          {/* Step 3 — FiveM/script setup */}
+          <div className="bg-background/40 border border-border/30 rounded-md p-3 space-y-2">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[10px] font-bold bg-purple-600/30 text-purple-300 rounded-full w-4 h-4 flex items-center justify-center shrink-0">3</span>
+              <span className="text-xs font-semibold text-foreground">FiveM script / যে source citation পাঠায় সেটা update করুন</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              আপনার FiveM script বা Discord bot-এ যেখানে Discord webhook URL আছে, সেটার বদলে উপরের <span className="text-green-400 font-mono">Step 1</span>-এর URL দিন।
+            </p>
+            <div className="bg-secondary/50 rounded p-2 text-[10px] font-mono text-muted-foreground">
+              <div className="text-red-400 line-through">-- পুরনো: Discord webhook সরাসরি</div>
+              <div className="text-red-400 line-through">https://discord.com/api/webhooks/...</div>
+              <div className="mt-1 text-green-400">-- নতুন: আমাদের API</div>
+              <div className="text-green-400">{wh?.webhookUrl ?? "https://your-site/api/citations/ingest?key=..."}</div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              আমরা automatically Discord-এও forward করবো (Step 2 configured থাকলে) + website-এও save হবে।
+            </p>
+          </div>
+
+          {/* Data format */}
           <div className="bg-secondary/30 border border-border/30 rounded p-3">
             <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Citation Message Format (Discord-এ এভাবে লিখতে হবে)
+              Citation Message Format
             </div>
             <pre className="text-[10px] font-mono text-foreground/70 leading-relaxed whitespace-pre-wrap">{`Title: 10-11
 Incident: Traffic Stop

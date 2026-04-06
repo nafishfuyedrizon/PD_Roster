@@ -5,30 +5,32 @@ import { randomUUID } from "crypto";
 
 const router = Router();
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Settings helpers ────────────────────────────────────────────────────────
 
-async function getWebhookSecret(): Promise<string> {
+async function getSetting(key: string): Promise<string | null> {
   const [row] = await db
     .select({ value: siteSettingsTable.value })
     .from(siteSettingsTable)
-    .where(eq(siteSettingsTable.key, "citation_webhook_secret"))
+    .where(eq(siteSettingsTable.key, key))
     .limit(1);
+  if (!row?.value) return null;
+  try { return JSON.parse(row.value); } catch { return row.value; }
+}
 
-  if (row?.value) {
-    try { return JSON.parse(row.value); } catch { return row.value; }
-  }
+async function setSetting(key: string, value: string): Promise<void> {
+  await db.insert(siteSettingsTable).values({ key, value: JSON.stringify(value) })
+    .onConflictDoUpdate({ target: siteSettingsTable.key, set: { value: JSON.stringify(value), updatedAt: new Date() } });
+}
 
-  // Auto-generate and persist
+async function getWebhookSecret(): Promise<string> {
+  const existing = await getSetting("citation_webhook_secret");
+  if (existing) return existing;
   const secret = randomUUID().replace(/-/g, "");
-  await db.insert(siteSettingsTable).values({
-    key: "citation_webhook_secret",
-    value: JSON.stringify(secret),
-  }).onConflictDoUpdate({
-    target: siteSettingsTable.key,
-    set: { value: JSON.stringify(secret), updatedAt: new Date() },
-  });
+  await setSetting("citation_webhook_secret", secret);
   return secret;
 }
+
+// ── Citation text parser ────────────────────────────────────────────────────
 
 function parseCitationText(text: string): Partial<{
   title: string; incident: string; location: string;
@@ -56,6 +58,25 @@ function parseCitationText(text: string): Partial<{
     charges:        field(["Charges", "Charge"]),
     officerName:    field(["Officer"]),
   };
+}
+
+// ── Forward to Discord webhook ──────────────────────────────────────────────
+
+async function forwardToDiscord(discordWebhookUrl: string, body: Record<string, unknown>): Promise<void> {
+  try {
+    // If the incoming body is already a Discord webhook payload (has content/embeds), forward as-is
+    // Otherwise, build a simple content message from parsed fields
+    const isDiscordPayload = "content" in body || "embeds" in body;
+    const payload = isDiscordPayload ? body : { content: body.rawContent ?? JSON.stringify(body) };
+    await fetch(discordWebhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (_err) {
+    // non-fatal — log but don't fail the request
+    console.warn("[citations] Failed to forward to Discord:", _err);
+  }
 }
 
 // ── Public citation list ────────────────────────────────────────────────────
@@ -105,8 +126,9 @@ router.get("/admin/citations/webhook", async (req, res): Promise<void> => {
   const host = req.headers["x-forwarded-host"] || req.headers.host;
   const baseUrl = `${proto}://${host}`;
   const webhookUrl = `${baseUrl}/api/citations/ingest?key=${secret}`;
+  const discordForwardUrl = await getSetting("citation_discord_forward_url");
 
-  res.json({ secret, webhookUrl });
+  res.json({ secret, webhookUrl, discordForwardUrl });
 });
 
 // ── Admin: regenerate secret ────────────────────────────────────────────────
@@ -116,13 +138,7 @@ router.post("/admin/citations/webhook/regenerate", async (req, res): Promise<voi
   if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const newSecret = randomUUID().replace(/-/g, "");
-  await db.insert(siteSettingsTable).values({
-    key: "citation_webhook_secret",
-    value: JSON.stringify(newSecret),
-  }).onConflictDoUpdate({
-    target: siteSettingsTable.key,
-    set: { value: JSON.stringify(newSecret), updatedAt: new Date() },
-  });
+  await setSetting("citation_webhook_secret", newSecret);
 
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
@@ -130,6 +146,28 @@ router.post("/admin/citations/webhook/regenerate", async (req, res): Promise<voi
   const webhookUrl = `${baseUrl}/api/citations/ingest?key=${newSecret}`;
 
   res.json({ ok: true, secret: newSecret, webhookUrl });
+});
+
+// ── Admin: save Discord forward URL ────────────────────────────────────────
+
+router.post("/admin/citations/discord-forward", async (req, res): Promise<void> => {
+  const session = (req as any).session;
+  if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const { url } = req.body as { url: string };
+
+  if (url && !url.startsWith("https://discord.com/api/webhooks/")) {
+    res.status(400).json({ error: "Invalid Discord webhook URL" });
+    return;
+  }
+
+  if (url) {
+    await setSetting("citation_discord_forward_url", url);
+  } else {
+    await db.delete(siteSettingsTable).where(eq(siteSettingsTable.key, "citation_discord_forward_url"));
+  }
+
+  res.json({ ok: true });
 });
 
 // ── Webhook ingest endpoint (no session auth — uses secret key) ─────────────
@@ -145,23 +183,36 @@ router.post("/citations/ingest", async (req, res): Promise<void> => {
 
   const body = req.body as Record<string, unknown>;
 
-  // Support two modes:
-  // 1. Structured JSON: fields sent directly
-  // 2. Raw Discord content: body.content (string) to be parsed
   let data: Partial<{
     title: string; incident: string; location: string;
     evidence: string; incidentReport: string;
     suspectName: string; suspectCid: string; suspectContact: string;
     charges: string; officerName: string; rawContent: string;
-    postedAt: string; messageId: string;
   }> = {};
 
-  if (typeof body.content === "string") {
-    // Parse raw Discord message content
-    data = parseCitationText(body.content);
-    data.rawContent = (body.content as string).slice(0, 4000);
+  // Extract text to parse — check content, embeds, and direct fields
+  let textToParse: string | null = null;
+
+  if (typeof body.content === "string" && body.content.trim()) {
+    textToParse = body.content;
+  } else if (Array.isArray(body.embeds) && body.embeds.length > 0) {
+    const embed = body.embeds[0] as Record<string, unknown>;
+    const parts: string[] = [];
+    if (embed.title) parts.push(String(embed.title));
+    if (embed.description) parts.push(String(embed.description));
+    if (Array.isArray(embed.fields)) {
+      for (const f of embed.fields as Array<{ name: string; value: string }>) {
+        parts.push(`${f.name}: ${f.value}`);
+      }
+    }
+    textToParse = parts.join("\n");
+  }
+
+  if (textToParse) {
+    data = parseCitationText(textToParse);
+    data.rawContent = textToParse.slice(0, 4000);
   } else {
-    // Structured fields
+    // Structured JSON fields
     data.title          = body.title as string;
     data.incident       = body.incident as string;
     data.location       = body.location as string;
@@ -196,6 +247,12 @@ router.post("/citations/ingest", async (req, res): Promise<void> => {
     rawContent:     data.rawContent ?? null,
     postedAt,
   }).onConflictDoNothing().returning();
+
+  // Forward to Discord webhook if configured
+  const discordForwardUrl = await getSetting("citation_discord_forward_url");
+  if (discordForwardUrl) {
+    await forwardToDiscord(discordForwardUrl, body);
+  }
 
   if (!inserted) {
     res.json({ ok: true, duplicate: true });
