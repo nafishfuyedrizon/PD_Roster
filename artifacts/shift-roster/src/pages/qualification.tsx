@@ -605,8 +605,9 @@ export default function QualificationPage() {
   const { data: entries = [], isLoading } = useQuery<QualEntry[]>({
     queryKey: ["/api/qualification-chart"],
     queryFn: () => fetch("/api/qualification-chart").then((r) => r.json()),
-    refetchInterval: 15_000,
+    refetchInterval: 3_000,
     refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: ftpRaw } = useQuery<FtpMembers>({
