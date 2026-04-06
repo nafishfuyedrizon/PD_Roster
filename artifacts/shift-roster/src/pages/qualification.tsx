@@ -638,7 +638,7 @@ export default function QualificationPage() {
       )) return false;
       if (statusFilter === "QUALIFIED" && e.qualStatus !== "QUALIFIED") return false;
       if (statusFilter === "NOT QUALIFIED" && e.qualStatus !== "NOT QUALIFIED") return false;
-      if (statusFilter === "PENDING" && e.qualStatus != null) return false;
+      if (statusFilter === "PENDING" && (e.qualStatus === "QUALIFIED" || e.qualStatus === "NOT QUALIFIED")) return false;
       if (deptFilter !== "ALL" && e.department !== deptFilter) return false;
       return true;
     });
@@ -654,7 +654,7 @@ export default function QualificationPage() {
 
   const quals = entries.filter((e) => e.qualStatus === "QUALIFIED").length;
   const notQuals = entries.filter((e) => e.qualStatus === "NOT QUALIFIED").length;
-  const pending = entries.filter((e) => !e.qualStatus).length;
+  const pending = entries.filter((e) => e.qualStatus !== "QUALIFIED" && e.qualStatus !== "NOT QUALIFIED").length;
   const departments = [...new Set(entries.map((e) => e.department).filter(Boolean))] as string[];
 
   return (
