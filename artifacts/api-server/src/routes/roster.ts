@@ -450,18 +450,30 @@ router.delete("/roster/:id", async (req, res): Promise<void> => {
 });
 
 // Officer lookup by citation name string e.g. "Tasin Rahaman [76]"
+// The number in brackets is the officer's CID (citizen_id), not callsign
 router.get("/roster/officer-lookup", async (req, res): Promise<void> => {
   const raw = String(req.query.name ?? "").trim();
   if (!raw) { res.status(400).json({ error: "name required" }); return; }
 
-  // Strip bracket callsign e.g. "[76]" to get name only
+  // Extract CID from "[76]" pattern
+  const cidMatch = /\[(\d+)\]/.exec(raw);
+  const cid = cidMatch ? cidMatch[1] : null;
+  // Name part without the bracket
   const namePart = raw.replace(/\s*\[.*?\]\s*$/, "").trim();
 
   const sel = { id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid };
 
   let officer: typeof sel | null = null;
 
-  // 1) Full name contain search
+  // 1) Match by citizen_id — most reliable
+  if (!officer && cid) {
+    const rows = await db.select(sel).from(officersTable)
+      .where(eq(officersTable.citizenId, cid))
+      .limit(1);
+    if (rows[0]) officer = rows[0];
+  }
+
+  // 2) Full name contain search
   if (!officer && namePart) {
     const rows = await db.select(sel).from(officersTable)
       .where(sql`${officersTable.name} ILIKE ${"%" + namePart + "%"}`)
@@ -469,7 +481,7 @@ router.get("/roster/officer-lookup", async (req, res): Promise<void> => {
     if (rows[0]) officer = rows[0];
   }
 
-  // 2) First name only search (first word)
+  // 3) First name only search
   if (!officer && namePart) {
     const firstName = namePart.split(/\s+/)[0];
     if (firstName && firstName.length >= 3) {
@@ -480,7 +492,7 @@ router.get("/roster/officer-lookup", async (req, res): Promise<void> => {
     }
   }
 
-  // 3) Match any word from the name (last name fallback)
+  // 4) Any word from the name
   if (!officer && namePart) {
     const words = namePart.split(/\s+/).filter(w => w.length >= 4);
     for (const word of words) {
