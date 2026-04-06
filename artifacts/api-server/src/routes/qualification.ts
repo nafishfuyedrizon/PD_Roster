@@ -43,7 +43,7 @@ async function syncRosterToQualChart(): Promise<void> {
       hoursInRank: 0,
       citationCount: 0,
       firCount: 0,
-      lastPromotion: todayMDY(),
+      lastPromotion: null,
       strikesMajor: "0/4",
       strikesMinor: "0/2",
       qualStatus: null,
