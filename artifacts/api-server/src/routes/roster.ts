@@ -350,10 +350,13 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
     }).where(eq(emsDutyLogsTable.csNumber, oldCs));
   }
 
-  // If rank changed → update Last Promotion date in qualification chart
+  // Sync changes to qualification chart
   const rankChanged = existing.rank !== officer.rank && !!officer.rank;
   const nameChanged = existing.name !== officer.name && !!officer.name;
-  if (officer.name && (rankChanged || nameChanged)) {
+  const promotionDateChanged = !rankChanged && existing.lastPromotion !== officer.lastPromotion && officer.lastPromotion !== undefined;
+  const deptChanged = existing.department !== officer.department && !!officer.department;
+
+  if (officer.name && (rankChanged || nameChanged || promotionDateChanged || deptChanged)) {
     const searchName = nameChanged ? existing.name : officer.name;
     if (searchName) {
       const qualRows = await db
@@ -361,15 +364,25 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
         .from(qualificationChartTable)
         .where(eq(qualificationChartTable.name, searchName))
         .limit(1);
+
+      const qualUpdate: Record<string, any> = { updatedAt: new Date() };
+      if (nameChanged) qualUpdate.name = officer.name!;
+      if (deptChanged) qualUpdate.department = officer.department!;
+      if (rankChanged) {
+        qualUpdate.rank = officer.rank!;
+        qualUpdate.lastPromotion = todayMDY();
+        qualUpdate.daysInRank = 0;
+      } else if (promotionDateChanged) {
+        // Manual promotion date edit — sync it to qual chart and reset daysInRank
+        qualUpdate.lastPromotion = officer.lastPromotion;
+        qualUpdate.daysInRank = 0;
+      }
+
       if (qualRows.length > 0) {
         await db.update(qualificationChartTable)
-          .set({
-            ...(nameChanged ? { name: officer.name! } : {}),
-            ...(rankChanged ? { rank: officer.rank!, lastPromotion: todayMDY(), daysInRank: 0 } : {}),
-            updatedAt: new Date(),
-          })
+          .set(qualUpdate)
           .where(eq(qualificationChartTable.id, qualRows[0].id));
-      } else if (rankChanged) {
+      } else if (rankChanged || promotionDateChanged) {
         // Officer not in qual chart yet — create entry
         await db.insert(qualificationChartTable).values({
           name: officer.name!,
@@ -379,7 +392,7 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
           hoursInRank: 0,
           citationCount: 0,
           firCount: 0,
-          lastPromotion: todayMDY(),
+          lastPromotion: rankChanged ? todayMDY() : (officer.lastPromotion ?? null),
           strikesMajor: "0/4",
           strikesMinor: "0/2",
           qualStatus: null,

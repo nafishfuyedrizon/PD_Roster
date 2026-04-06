@@ -187,6 +187,7 @@ export default function RosterPage() {
     queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     queryClient.invalidateQueries({ queryKey: ["profile"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
   }
 
   const handleCreate = (data: any) => {
