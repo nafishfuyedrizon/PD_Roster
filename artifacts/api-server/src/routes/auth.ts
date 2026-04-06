@@ -8,7 +8,7 @@ const router = Router();
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || "1286283853186596904";
-const DISCORD_OWNER_ID = process.env.DISCORD_OWNER_ID || "1286283853186596904";
+const DISCORD_OWNER_ID = process.env.DISCORD_OWNER_ID || "";
 const DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
 
 // Temporary access store: discordUserId → expiry timestamp (ms)
@@ -128,12 +128,31 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       discriminator: string;
     };
 
-    const isOwner = discordUser.id === DISCORD_OWNER_ID;
     const isTempAllowed = hasTempAccess(discordUser.id);
 
     // Check staff roles table
     const staffRows = await db.select().from(staffRolesTable).where(eq(staffRolesTable.discordUid, discordUser.id)).limit(1);
     const isStaffRole = staffRows.length > 0;
+
+    // Check if user is the guild owner via /users/@me/guilds
+    let isOwner = discordUser.id === DISCORD_OWNER_ID;
+    if (!isOwner) {
+      try {
+        const guildsRes = await fetch("https://discord.com/api/users/@me/guilds", {
+          headers: { Authorization: authHeader },
+        });
+        if (guildsRes.ok) {
+          const guilds = await guildsRes.json() as Array<{ id: string; owner: boolean }>;
+          const targetGuild = guilds.find((g) => g.id === DISCORD_GUILD_ID);
+          if (targetGuild?.owner === true) {
+            isOwner = true;
+            console.log(`[auth] Guild owner detected: ${discordUser.username} (${discordUser.id})`);
+          }
+        }
+      } catch (e) {
+        console.warn("[auth] Could not fetch user guilds for owner check:", e);
+      }
+    }
 
     let displayName = discordUser.global_name || discordUser.username;
     let roles: string[] = [];
