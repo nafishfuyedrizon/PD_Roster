@@ -17,7 +17,8 @@ import {
   SelectGroup,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Users, UserMinus, ShieldAlert } from "lucide-react";
+import { Activity, Users, UserMinus, ShieldAlert, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   BarChart,
   Bar,
@@ -92,6 +93,7 @@ function buildYearGroups(weekPeriods: string[]): YearGroup[] {
 
 export default function StatsPage() {
   const [period, setPeriod] = useState<string>("ALL");
+  const [topSearch, setTopSearch] = useState("");
 
   const { data: weekPeriods = [] } = useListWeekPeriods({
     query: { queryKey: getListWeekPeriodsQueryKey() },
@@ -261,38 +263,63 @@ export default function StatsPage() {
                 <span>Top Performers (Duty Hours)</span>
                 <span className="text-muted-foreground font-normal text-xs">{stats.topDutyHours.length} officers</span>
               </CardTitle>
+              <div className="relative mt-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search by name, call sign, rank..."
+                  value={topSearch}
+                  onChange={(e) => setTopSearch(e.target.value)}
+                  className="pl-8 h-8 text-xs font-mono bg-secondary/40"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               {stats.topDutyHours.length === 0 ? (
                 <p className="text-sm text-muted-foreground font-mono">No duty hours recorded.</p>
-              ) : (
-                <div className="h-[480px] overflow-y-auto space-y-2 pr-1">
-                  {stats.topDutyHours.map((officer, i) => (
-                    <div key={officer.id} className="flex items-center justify-between p-3 rounded bg-secondary/30 border border-border" data-testid={`stat-top-${i}`}>
-                      <div className="flex items-center gap-4">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                          i === 0 ? "bg-yellow-500/20 text-yellow-400" :
-                          i === 1 ? "bg-slate-400/20 text-slate-300" :
-                          i === 2 ? "bg-orange-600/20 text-orange-400" :
-                          "bg-primary/10 text-primary/70"
-                        }`}>
-                          {i + 1}
-                        </div>
-                        <div>
-                          <div className="font-semibold flex items-center gap-2">
-                            {officer.name}
-                            <span className="text-xs font-mono text-muted-foreground">{officer.callSign}</span>
+              ) : (() => {
+                const q = topSearch.trim().toLowerCase();
+                const filtered = q
+                  ? stats.topDutyHours.filter((o) =>
+                      (o.name ?? "").toLowerCase().includes(q) ||
+                      (o.callSign ?? "").toLowerCase().includes(q) ||
+                      (o.rank ?? "").toLowerCase().includes(q) ||
+                      (o.department ?? "").toLowerCase().includes(q)
+                    )
+                  : stats.topDutyHours;
+                return (
+                  <div className="h-[480px] overflow-y-auto space-y-2 pr-1">
+                    {filtered.length === 0 ? (
+                      <p className="text-sm text-muted-foreground font-mono py-4 text-center">No officers match your search.</p>
+                    ) : filtered.map((officer, i) => {
+                      const rank = stats.topDutyHours.indexOf(officer);
+                      return (
+                        <div key={officer.id} className="flex items-center justify-between p-3 rounded bg-secondary/30 border border-border" data-testid={`stat-top-${i}`}>
+                          <div className="flex items-center gap-4">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                              rank === 0 ? "bg-yellow-500/20 text-yellow-400" :
+                              rank === 1 ? "bg-slate-400/20 text-slate-300" :
+                              rank === 2 ? "bg-orange-600/20 text-orange-400" :
+                              "bg-primary/10 text-primary/70"
+                            }`}>
+                              {rank + 1}
+                            </div>
+                            <div>
+                              <div className="font-semibold flex items-center gap-2">
+                                {officer.name}
+                                <span className="text-xs font-mono text-muted-foreground">{officer.callSign}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground font-mono">{officer.department} • {officer.rank}</div>
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground font-mono">{officer.department} • {officer.rank}</div>
+                          <div className="font-mono font-bold text-primary text-lg shrink-0">
+                            {officer.dutyHours}
+                          </div>
                         </div>
-                      </div>
-                      <div className="font-mono font-bold text-primary text-lg shrink-0">
-                        {officer.dutyHours}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
