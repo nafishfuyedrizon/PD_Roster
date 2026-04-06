@@ -53,8 +53,14 @@ function CitationCard({ citation }: { citation: Citation }) {
 
   async function goToOfficerProfile() {
     if (!citation.officerName) return;
+    console.log("[citations] clicking officer:", citation.officerName);
     try {
-      const res = await fetch(`/api/roster/officer-lookup?name=${encodeURIComponent(citation.officerName)}`, { credentials: "include" });
+      const res = await fetch(`/api/roster/officer-lookup`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: citation.officerName }),
+      });
       if (!res.ok) {
         console.warn("[officer-lookup] failed:", res.status, citation.officerName);
         return;

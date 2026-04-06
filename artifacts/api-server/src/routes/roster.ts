@@ -451,6 +451,46 @@ router.delete("/roster/:id", async (req, res): Promise<void> => {
 
 // Officer lookup by citation name string e.g. "Tasin Rahaman [76]"
 // The number in brackets is the officer's CID (citizen_id), not callsign
+// Accepts both GET (?name=...) and POST (body: {name: ...})
+router.post("/roster/officer-lookup", async (req, res): Promise<void> => {
+  console.log("[officer-lookup POST] body:", req.body);
+  const raw = String(req.body?.name ?? "").trim();
+  if (!raw) { res.status(400).json({ error: "name required" }); return; }
+
+  const cidMatch = /\[(\d+)\]/.exec(raw);
+  const cid = cidMatch ? cidMatch[1] : null;
+  const namePart = raw.replace(/\s*\[.*?\]\s*$/, "").trim();
+
+  const sel = { id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid };
+  let officer: typeof sel | null = null;
+
+  if (!officer && cid) {
+    const rows = await db.select(sel).from(officersTable).where(eq(officersTable.citizenId, cid)).limit(1);
+    if (rows[0]) officer = rows[0];
+  }
+  if (!officer && namePart) {
+    const rows = await db.select(sel).from(officersTable).where(sql`${officersTable.name} ILIKE ${"%" + namePart + "%"}`).limit(1);
+    if (rows[0]) officer = rows[0];
+  }
+  if (!officer && namePart) {
+    const firstName = namePart.split(/\s+/)[0];
+    if (firstName && firstName.length >= 3) {
+      const rows = await db.select(sel).from(officersTable).where(sql`${officersTable.name} ILIKE ${firstName + " %"}`).limit(1);
+      if (rows[0]) officer = rows[0];
+    }
+  }
+  if (!officer && namePart) {
+    const words = namePart.split(/\s+/).filter((w: string) => w.length >= 4);
+    for (const word of words) {
+      const rows = await db.select(sel).from(officersTable).where(sql`${officersTable.name} ILIKE ${"%" + word + "%"}`).limit(1);
+      if (rows[0]) { officer = rows[0]; break; }
+    }
+  }
+
+  if (!officer) { res.status(404).json({ error: "Officer not found", searched: raw }); return; }
+  res.json(officer);
+});
+
 router.get("/roster/officer-lookup", async (req, res): Promise<void> => {
   console.log("[officer-lookup] query:", req.query, "url:", req.url);
   const raw = String(req.query.name ?? "").trim();
