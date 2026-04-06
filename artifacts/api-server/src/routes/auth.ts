@@ -8,7 +8,7 @@ const router = Router();
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || "1286283853186596904";
-const DISCORD_OWNER_ID = process.env.DISCORD_OWNER_ID || "";
+const DISCORD_OWNER_ID = process.env.DISCORD_OWNER_ID || "1286283853186596904";
 const DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
 
 // Temporary access store: discordUserId → expiry timestamp (ms)
