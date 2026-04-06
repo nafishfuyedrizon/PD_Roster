@@ -233,6 +233,7 @@ export default function AdminSettingsPage() {
             label="Departments"
             items={settings?.departments ?? []}
             onSave={(v) => saveList("departments", v)}
+            ordered
           />
         </div>
 
@@ -248,6 +249,7 @@ export default function AdminSettingsPage() {
             label="Divisions"
             items={settings?.divisions ?? []}
             onSave={(v) => saveList("divisions", v)}
+            ordered
           />
         </div>
       </div>
