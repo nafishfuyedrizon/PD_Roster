@@ -514,6 +514,16 @@ function isFirMessage(text: string): boolean {
     (/complainant/i.test(text) && /description of event/i.test(text));
 }
 
+function stripDiscordMarkdown(text: string): string {
+  return text
+    .replace(/\*\*/g, "")
+    .replace(/\*/g, "")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/~~([^~]+)~~/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
+}
+
 async function processFirMessage(msg: Message) {
   const allTexts: string[] = [];
   if (msg.content) allTexts.push(msg.content);
@@ -525,7 +535,8 @@ async function processFirMessage(msg: Message) {
     if (parts.length) allTexts.push(parts.join("\n"));
   }
 
-  const combined = allTexts.join("\n");
+  const rawCombined = allTexts.join("\n");
+  const combined = stripDiscordMarkdown(rawCombined);
   if (!isFirMessage(combined)) return;
 
   const parsed = parseFir(combined);
@@ -540,7 +551,7 @@ async function processFirMessage(msg: Message) {
       suspectDetails:     parsed.suspectDetails,
       evidence:           parsed.evidence,
       officerName:        parsed.officerName,
-      rawContent:         combined.slice(0, 4000),
+      rawContent:         rawCombined.slice(0, 4000),
       postedAt:           msg.createdAt,
     }).onConflictDoNothing();
   } catch (err) {
