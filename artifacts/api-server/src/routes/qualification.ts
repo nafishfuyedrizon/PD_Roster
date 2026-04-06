@@ -1,10 +1,60 @@
 import { Router, type IRouter } from "express";
 import { db, qualificationChartTable, officersTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, notInArray } from "drizzle-orm";
 
 const router: IRouter = Router();
 
+function todayMDY(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
+/** Auto-insert any roster officers that are not yet in the qual chart. */
+async function syncRosterToQualChart(): Promise<void> {
+  // Get all names already in qual chart
+  const existing = await db
+    .select({ name: qualificationChartTable.name })
+    .from(qualificationChartTable);
+  const existingNames = existing.map((r) => r.name);
+
+  // Find roster officers whose names are not in qual chart
+  let missing;
+  if (existingNames.length > 0) {
+    missing = await db
+      .select({ name: officersTable.name, rank: officersTable.rank, department: officersTable.department })
+      .from(officersTable)
+      .where(notInArray(officersTable.name, existingNames));
+  } else {
+    missing = await db
+      .select({ name: officersTable.name, rank: officersTable.rank, department: officersTable.department })
+      .from(officersTable);
+  }
+
+  if (missing.length === 0) return;
+
+  await db.insert(qualificationChartTable).values(
+    missing.map((o) => ({
+      name: o.name ?? "",
+      rank: o.rank ?? null,
+      department: o.department ?? null,
+      daysInRank: 0,
+      hoursInRank: 0,
+      citationCount: 0,
+      firCount: 0,
+      lastPromotion: todayMDY(),
+      strikesMajor: "0/4",
+      strikesMinor: "0/2",
+      qualStatus: null,
+    }))
+  );
+}
+
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
+  // Always ensure all roster officers appear in the qual chart
+  await syncRosterToQualChart();
+
   const rows = await db
     .select({
       id: qualificationChartTable.id,
