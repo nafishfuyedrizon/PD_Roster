@@ -53,7 +53,41 @@ type QualEntry = {
   rosterLinked: boolean;
 };
 
-type FtpMembers = { fto: string[]; hc: string[] };
+type FtpMembers = { members: { name: string; rank: string }[] };
+
+const RANK_ORDER_MAP: Record<string, number> = {
+  "CHIEF": 1, "ASSISTANT CHIEF": 2, "SHERIFF": 2, "COLONEL": 2,
+  "SENIOR DEPUTY CHIEF": 3, "UNDERSHERIFF": 3, "ASSISTANT COLONEL": 3,
+  "DEPUTY CHIEF": 4, "ASSISTANT SHERIFF": 4, "DEPUTY COLONEL": 4,
+  "CAPTAIN": 5, "LIEUTENANT": 6, "SERGEANT FIRST CLASS": 7, "SERGEANT": 8,
+  "CORPORAL": 9, "SENIOR TROOPER": 10, "SENIOR DEPUTY": 10, "SENIOR STATE TROOPER": 10,
+  "TROOPER FIRST CLASS": 11, "DEPUTY FIRST CLASS": 11, "STATE TROOPER FIRST CLASS": 11,
+  "TROOPER": 12, "DEPUTY": 12, "STATE TROOPER": 12,
+  "PROBATIONARY OFFICER": 13, "CADET": 14, "TRAINEE": 15,
+};
+
+function getFtpRole(rank: string): string {
+  const upper = rank.toUpperCase();
+  const knownFtp = ["COMMAND", "FIELD TRAINING SUPERVISOR", "FIELD TRAINING TRAINER", "FIELD TRAINING TRAINEE", "FIELD TRAINING PROGRAM"];
+  if (knownFtp.includes(upper)) return rank;
+  const order = RANK_ORDER_MAP[upper] ?? 99;
+  if (order <= 3) return "Command";
+  if (order <= 5) return "Field Training Supervisor";
+  if (order <= 8) return "Field Training Trainer";
+  if (order <= 12) return "Field Training Trainee";
+  return "Field Training Program";
+}
+
+function getFtoList(members: { name: string; rank: string }[]): string[] {
+  return members.filter((m) => {
+    const role = getFtpRole(m.rank).toLowerCase();
+    return role.includes("supervisor") || role.includes("trainer");
+  }).map((m) => m.name);
+}
+
+function getHcList(members: { name: string; rank: string }[]): string[] {
+  return members.filter((m) => getFtpRole(m.rank).toLowerCase() === "command").map((m) => m.name);
+}
 
 type FormData = Omit<QualEntry, "id" | "rosterLinked" | "joiningDate" | "ftbVotes" | "hcVotes">;
 
@@ -552,11 +586,13 @@ export default function QualificationPage() {
     refetchInterval: 30_000,
   });
 
-  const { data: ftpMembers } = useQuery<FtpMembers>({
+  const { data: ftpRaw } = useQuery<FtpMembers>({
     queryKey: ["/api/ftp-members"],
     queryFn: () => fetch("/api/ftp-members").then((r) => r.json()),
     staleTime: 60_000,
   });
+  const ftoList = ftpRaw ? getFtoList(ftpRaw.members) : [];
+  const hcList = ftpRaw ? getHcList(ftpRaw.members) : [];
 
   const { data: settings } = useSettings();
   const rankOrder = settings?.ranks ?? [];
@@ -754,13 +790,13 @@ export default function QualificationPage() {
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground hidden lg:table-cell">Strikes</th>
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">Status</th>
                   {/* VOTE BY FTO */}
-                  {(ftpMembers?.fto?.length ?? 0) > 0 && (
+                  {ftoList.length > 0 && (
                     <th className="px-2 py-3 text-center text-[11px] font-mono uppercase text-cyan-400/80 border-l border-border/50 whitespace-nowrap">
                       VOTE BY FTO
                     </th>
                   )}
                   {/* VOTE BY HIGH COMMAND */}
-                  {(ftpMembers?.hc?.length ?? 0) > 0 && (
+                  {hcList.length > 0 && (
                     <th className="px-2 py-3 text-center text-[11px] font-mono uppercase text-purple-400/80 border-l border-border/50 whitespace-nowrap">
                       VOTE BY HC
                     </th>
@@ -841,10 +877,10 @@ export default function QualificationPage() {
                         <StatusBadge status={e.qualStatus} />
                       </td>
                       {/* FTO Vote cells */}
-                      {(ftpMembers?.fto?.length ?? 0) > 0 && (
+                      {ftoList.length > 0 && (
                         <td className="px-2 py-1.5 border-l border-border/50 align-top">
                           <div className="flex flex-col">
-                            {ftpMembers!.fto.map((name) => (
+                            {ftoList.map((name) => (
                               <VoteRow
                                 key={name}
                                 entryId={e.id}
@@ -857,10 +893,10 @@ export default function QualificationPage() {
                         </td>
                       )}
                       {/* HC Vote cells */}
-                      {(ftpMembers?.hc?.length ?? 0) > 0 && (
+                      {hcList.length > 0 && (
                         <td className="px-2 py-1.5 border-l border-border/50 align-top">
                           <div className="flex flex-col">
-                            {ftpMembers!.hc.map((name) => (
+                            {hcList.map((name) => (
                               <VoteRow
                                 key={name}
                                 entryId={e.id}

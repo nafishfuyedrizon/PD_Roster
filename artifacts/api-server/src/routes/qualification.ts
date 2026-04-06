@@ -202,26 +202,17 @@ router.delete("/qualification-chart/:id", async (req, res): Promise<void> => {
   res.status(204).end();
 });
 
-// GET /api/ftp-members — returns FTO and HC members from FTP department
+// GET /api/ftp-members — returns FTO and HC members (officers with ftp=true flag)
 router.get("/ftp-members", async (_req, res): Promise<void> => {
   const rows = await db
-    .select({ name: officersTable.name, rank: officersTable.rank, callSign: officersTable.callSign, status: officersTable.status })
+    .select({ name: officersTable.name, rank: officersTable.rank, callSign: officersTable.callSign })
     .from(officersTable)
-    .where(ilike(officersTable.department, "FTP"));
+    .where(eq(officersTable.ftp, true));
 
-  const fto = rows.filter((r) =>
-    r.rank && (
-      r.rank.toLowerCase().includes("field training trainer") ||
-      r.rank.toLowerCase().includes("field training supervisor") ||
-      r.rank.toLowerCase().includes("fto")
-    )
-  ).map((r) => r.name ?? r.callSign ?? "");
-
-  const hc = rows.filter((r) =>
-    r.rank && r.rank.toLowerCase().includes("command")
-  ).map((r) => r.name ?? r.callSign ?? "");
-
-  res.json({ fto, hc });
+  // Return all FTP officers with their rank so frontend can categorize FTO vs HC
+  res.json({
+    members: rows.map((r) => ({ name: r.name ?? r.callSign ?? "", rank: r.rank ?? "" })),
+  });
 });
 
 // PATCH /api/qualification-chart/:id/votes — update a single vote
