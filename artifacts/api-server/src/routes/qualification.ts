@@ -144,7 +144,8 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       hoursInRank: qualificationChartTable.hoursInRank,
       citationCount: sql<number>`COALESCE(${qualificationChartTable.citationCount}, 0)`,
       firCount: sql<number>`COALESCE(${qualificationChartTable.firCount}, 0)`,
-      lastPromotion: qualificationChartTable.lastPromotion,
+      // Always live from roster — if roster has a date, prefer it over qual chart's stored copy
+      lastPromotion: sql<string | null>`COALESCE(NULLIF(${officersTable.lastPromotion}, ''), NULLIF(${qualificationChartTable.lastPromotion}, ''))`,
       joiningDate: officersTable.dateOfJoining,
       strikesMajor: qualificationChartTable.strikesMajor,
       strikesMinor: qualificationChartTable.strikesMinor,
@@ -163,11 +164,12 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
   const hoursMap: Record<string, number> = {};
 
   // Duty log hours since lastPromotion / joiningDate
+  // Prefer roster's last_promotion (source of truth), fall back to qual chart's, then joining date
   const dutyResult = await db.execute(sql`
     WITH officer_dates AS (
       SELECT
         o.name,
-        COALESCE(NULLIF(q.last_promotion, ''), o.date_of_joining) AS since_date
+        COALESCE(NULLIF(o.last_promotion, ''), NULLIF(q.last_promotion, ''), o.date_of_joining) AS since_date
       FROM officers o
       LEFT JOIN qualification_chart q ON o.name = q.name
     )
@@ -193,7 +195,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     WITH officer_dates AS (
       SELECT
         o.name,
-        COALESCE(NULLIF(q.last_promotion, ''), o.date_of_joining) AS since_date
+        COALESCE(NULLIF(o.last_promotion, ''), NULLIF(q.last_promotion, ''), o.date_of_joining) AS since_date
       FROM officers o
       LEFT JOIN qualification_chart q ON o.name = q.name
     )
