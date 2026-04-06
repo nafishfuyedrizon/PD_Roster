@@ -30,6 +30,7 @@ function hasTempAccess(userId: string): boolean {
 
 // Pre-grant 24h access for requested user
 grantTempAccess("463587754471718923", 24 * 60 * 60 * 1000);
+grantTempAccess("413256770119663616", 24 * 60 * 60 * 1000);
 
 function getRedirectUri(req: Request) {
   const proto = req.headers["x-forwarded-proto"] || "https";
