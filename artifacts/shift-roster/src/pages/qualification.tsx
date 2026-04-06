@@ -583,13 +583,15 @@ export default function QualificationPage() {
   const { data: entries = [], isLoading } = useQuery<QualEntry[]>({
     queryKey: ["/api/qualification-chart"],
     queryFn: () => fetch("/api/qualification-chart").then((r) => r.json()),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: ftpRaw } = useQuery<FtpMembers>({
     queryKey: ["/api/ftp-members"],
     queryFn: () => fetch("/api/ftp-members").then((r) => r.json()),
-    staleTime: 60_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
   const ftoList = ftpRaw ? getFtoList(ftpRaw.members) : [];
   const hcList = ftpRaw ? getHcList(ftpRaw.members) : [];

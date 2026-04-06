@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import type { Request } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable, adminLogsTable } from "@workspace/db";
+import { syncVotersToQualChart } from "./qualification.js";
 
 // Helper: write an audit log entry
 async function auditLog(
@@ -430,6 +431,11 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
         });
       }
     }
+  }
+
+  // Auto-sync FTP/Management voters to qual chart vote columns whenever those flags change
+  if ("ftp" in parsed.data || "isManagement" in parsed.data) {
+    await syncVotersToQualChart();
   }
 
   // Build a diff of what changed

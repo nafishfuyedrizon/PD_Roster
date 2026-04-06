@@ -1,8 +1,77 @@
 import { Router, type IRouter } from "express";
 import { db, qualificationChartTable, officersTable } from "@workspace/db";
-import { eq, sql, notInArray, or, ilike } from "drizzle-orm";
+import { eq, sql, notInArray, or, ilike, and } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+const HC_RANK_ORDER: Record<string, number> = {
+  "CHIEF": 1, "ASSISTANT CHIEF": 2, "SHERIFF": 2, "COLONEL": 2,
+  "SENIOR DEPUTY CHIEF": 3, "UNDERSHERIFF": 3, "ASSISTANT COLONEL": 3,
+  "DEPUTY CHIEF": 4, "ASSISTANT SHERIFF": 4, "DEPUTY COLONEL": 4,
+  "CAPTAIN": 5, "LIEUTENANT": 6, "SERGEANT FIRST CLASS": 7, "SERGEANT": 8,
+  "CORPORAL": 9, "SENIOR TROOPER": 10, "SENIOR DEPUTY": 10, "SENIOR STATE TROOPER": 10,
+  "TROOPER FIRST CLASS": 11, "DEPUTY FIRST CLASS": 11, "STATE TROOPER FIRST CLASS": 11,
+  "TROOPER": 12, "DEPUTY": 12, "STATE TROOPER": 12,
+  "PROBATIONARY OFFICER": 13, "CADET": 14, "TRAINEE": 15,
+};
+
+function rankOrder(rank: string): number {
+  return HC_RANK_ORDER[rank.toUpperCase()] ?? 99;
+}
+
+/**
+ * Syncs FTP members and Management Command members into qual chart vote columns.
+ * - ftb_votes: FTP officers with rank > 3 (field trainers)
+ * - hc_votes: FTP officers with rank ≤ 3 (command) + Management officers with rank ≤ 3
+ * Adds missing voter keys (with "" default), removes departed voter keys,
+ * and preserves existing vote values.
+ */
+export async function syncVotersToQualChart(): Promise<void> {
+  const [ftpOfficers, mgmtOfficers, qualRows] = await Promise.all([
+    db.select({ name: officersTable.name, rank: officersTable.rank })
+      .from(officersTable).where(eq(officersTable.ftp, true)),
+    db.select({ name: officersTable.name, rank: officersTable.rank })
+      .from(officersTable).where(eq(officersTable.isManagement, true)),
+    db.select({ id: qualificationChartTable.id, ftbVotes: qualificationChartTable.ftbVotes, hcVotes: qualificationChartTable.hcVotes })
+      .from(qualificationChartTable),
+  ]);
+
+  const ftbVoters = ftpOfficers
+    .filter(o => rankOrder(o.rank ?? "") > 3)
+    .map(o => o.name ?? "").filter(Boolean);
+
+  const hcFromFtp = ftpOfficers
+    .filter(o => rankOrder(o.rank ?? "") <= 3)
+    .map(o => o.name ?? "").filter(Boolean);
+  const hcFromMgmt = mgmtOfficers
+    .filter(o => rankOrder(o.rank ?? "") <= 3)
+    .map(o => o.name ?? "").filter(Boolean);
+  const hcVoters = [...new Set([...hcFromFtp, ...hcFromMgmt])];
+
+  for (const row of qualRows) {
+    const curFtb = (row.ftbVotes ?? {}) as Record<string, string>;
+    const curHc = (row.hcVotes ?? {}) as Record<string, string>;
+
+    const newFtb: Record<string, string> = {};
+    for (const v of ftbVoters) newFtb[v] = curFtb[v] ?? "";
+
+    const newHc: Record<string, string> = {};
+    for (const v of hcVoters) newHc[v] = curHc[v] ?? "";
+
+    const ftbChanged = JSON.stringify(newFtb) !== JSON.stringify(curFtb);
+    const hcChanged = JSON.stringify(newHc) !== JSON.stringify(curHc);
+
+    if (ftbChanged || hcChanged) {
+      await db.update(qualificationChartTable)
+        .set({
+          ...(ftbChanged ? { ftbVotes: newFtb } : {}),
+          ...(hcChanged ? { hcVotes: newHc } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(qualificationChartTable.id, row.id));
+    }
+  }
+}
 
 function todayMDY(): string {
   const d = new Date();
@@ -58,8 +127,8 @@ async function syncRosterToQualChart(): Promise<void> {
 }
 
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
-  // Ensure all roster officers have a qual chart entry
-  await syncRosterToQualChart();
+  // Ensure all roster officers have a qual chart entry, and voter columns are in sync
+  await Promise.all([syncRosterToQualChart(), syncVotersToQualChart()]);
 
   // Only show officers who are in the roster (officers table is primary)
   const rows = await db
