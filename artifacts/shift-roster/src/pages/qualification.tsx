@@ -60,9 +60,16 @@ const RANKS = [
 const DEPARTMENTS = ["SASP", "BCSO", "SAHP"];
 
 const STATUS_OPTIONS = [
-  { value: "QUALIFIED", label: "QUALIFIED", color: "text-green-400" },
-  { value: "NOT QUALIFIED", label: "NOT QUALIFIED", color: "text-red-400" },
-  { value: "", label: "PENDING", color: "text-yellow-400" },
+  { value: "",                      label: "PENDING",                    color: "text-yellow-400" },
+  { value: "QUALIFIED",             label: "QUALIFIED",                  color: "text-green-400" },
+  { value: "QUALIFIED Sergeant Exam", label: "QUALIFIED Sergeant Exam",  color: "text-emerald-400" },
+  { value: "NOT QUALIFIED",         label: "NOT QUALIFIED",              color: "text-red-400" },
+  { value: "DUTY HOURS NOT COMPLETED", label: "DUTY HOURS NOT COMPLETED", color: "text-orange-400" },
+  { value: "DAYS NOT COMPLETED",    label: "DAYS NOT COMPLETED",         color: "text-orange-400" },
+  { value: "PROMOTION ON HOLD",     label: "PROMOTION ON HOLD",          color: "text-purple-400" },
+  { value: "Sergeant Exam",         label: "Sergeant Exam",              color: "text-blue-400" },
+  { value: "Deputy exam",           label: "Deputy exam",                color: "text-blue-400" },
+  { value: "Trooper Exam",          label: "Trooper Exam",               color: "text-blue-400" },
 ];
 
 function parseMajorStrikes(s: string | null) {
@@ -84,6 +91,70 @@ function StrikeDots({ cur, max, color }: { cur: number; max: number; color: stri
         <div key={i} className={`w-2.5 h-2.5 rounded-full border ${i < cur ? `${color} border-transparent` : "bg-secondary/60 border-border"}`} />
       ))}
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+  if (!status) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-yellow-500/10 text-yellow-400/70 border border-yellow-500/15 whitespace-nowrap">
+        <AlertTriangle className="w-3 h-3 shrink-0" />PENDING
+      </span>
+    );
+  }
+  if (status === "QUALIFIED") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-green-500/15 text-green-400 border border-green-500/25 whitespace-nowrap">
+        <CheckCircle2 className="w-3 h-3 shrink-0" />QUALIFIED
+      </span>
+    );
+  }
+  if (status === "QUALIFIED Sergeant Exam") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 whitespace-nowrap">
+        <CheckCircle2 className="w-3 h-3 shrink-0" />QUAL SGT EXAM
+      </span>
+    );
+  }
+  if (status === "NOT QUALIFIED") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-red-500/15 text-red-400 border border-red-500/25 whitespace-nowrap">
+        <XCircle className="w-3 h-3 shrink-0" />NOT QUALIFIED
+      </span>
+    );
+  }
+  if (status === "DUTY HOURS NOT COMPLETED") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-orange-500/15 text-orange-400 border border-orange-500/25 whitespace-nowrap">
+        <Clock className="w-3 h-3 shrink-0" />HOURS INCOMPLETE
+      </span>
+    );
+  }
+  if (status === "DAYS NOT COMPLETED") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-orange-500/15 text-orange-400 border border-orange-500/25 whitespace-nowrap">
+        <Calendar className="w-3 h-3 shrink-0" />DAYS INCOMPLETE
+      </span>
+    );
+  }
+  if (status === "PROMOTION ON HOLD") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-purple-500/15 text-purple-400 border border-purple-500/25 whitespace-nowrap">
+        <AlertTriangle className="w-3 h-3 shrink-0" />ON HOLD
+      </span>
+    );
+  }
+  if (status === "Sergeant Exam" || status === "Deputy exam" || status === "Trooper Exam") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/25 whitespace-nowrap">
+        <Award className="w-3 h-3 shrink-0" />{status.toUpperCase()}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-secondary/60 text-muted-foreground border border-border whitespace-nowrap">
+      {status}
+    </span>
   );
 }
 
@@ -287,22 +358,15 @@ function EditModal({
           {/* Qual Status */}
           <div>
             <FieldLabel>Qualification Status</FieldLabel>
-            <div className="flex gap-2">
+            <select
+              value={form.qualStatus ?? ""}
+              onChange={(e) => set("qualStatus", e.target.value || null)}
+              className="w-full h-9 rounded-md border border-input bg-secondary/30 px-3 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
               {STATUS_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => set("qualStatus", opt.value || null)}
-                  className={`flex-1 py-2 rounded-lg border text-xs font-mono font-bold transition-all ${
-                    (form.qualStatus ?? "") === opt.value
-                      ? "border-primary bg-primary/10 " + opt.color
-                      : "border-border bg-secondary/30 text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {opt.label}
-                </button>
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* Notes */}
@@ -615,19 +679,7 @@ export default function QualificationPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {e.qualStatus === "QUALIFIED" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-green-500/15 text-green-400 border border-green-500/25">
-                            <CheckCircle2 className="w-3 h-3" />QUALIFIED
-                          </span>
-                        ) : e.qualStatus === "NOT QUALIFIED" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-red-500/15 text-red-400 border border-red-500/25">
-                            <XCircle className="w-3 h-3" />NOT QUALIFIED
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-yellow-500/10 text-yellow-400/70 border border-yellow-500/15">
-                            <AlertTriangle className="w-3 h-3" />PENDING
-                          </span>
-                        )}
+                        <StatusBadge status={e.qualStatus} />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1.5">
