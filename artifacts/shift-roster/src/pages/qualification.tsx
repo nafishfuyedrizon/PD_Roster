@@ -39,9 +39,10 @@ type QualEntry = {
   strikesMinor: string | null;
   qualStatus: string | null;
   notes: string | null;
+  rosterLinked: boolean;
 };
 
-type FormData = Omit<QualEntry, "id">;
+type FormData = Omit<QualEntry, "id" | "rosterLinked">;
 
 const EMPTY_FORM: FormData = {
   name: "",
@@ -302,20 +303,45 @@ function EditModal({
 
           {/* Row: Rank + Dept */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FieldLabel>Rank</FieldLabel>
-              <StyledSelect value={form.rank ?? ""} onChange={(e) => set("rank", e.target.value)}>
-                <option value="">— No Rank —</option>
-                {RANKS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </StyledSelect>
-            </div>
-            <div>
-              <FieldLabel>Department</FieldLabel>
-              <StyledSelect value={form.department ?? ""} onChange={(e) => set("department", e.target.value)}>
-                <option value="">— None —</option>
-                {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </StyledSelect>
-            </div>
+            {(!isNew && entry?.rosterLinked) ? (
+              <>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rank</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+                  </div>
+                  <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
+                    {form.rank || <span className="text-muted-foreground/40">No Rank</span>}
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+                  </div>
+                  <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
+                    {form.department || <span className="text-muted-foreground/40">None</span>}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <FieldLabel>Rank</FieldLabel>
+                  <StyledSelect value={form.rank ?? ""} onChange={(e) => set("rank", e.target.value)}>
+                    <option value="">— No Rank —</option>
+                    {RANKS.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </StyledSelect>
+                </div>
+                <div>
+                  <FieldLabel>Department</FieldLabel>
+                  <StyledSelect value={form.department ?? ""} onChange={(e) => set("department", e.target.value)}>
+                    <option value="">— None —</option>
+                    {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </StyledSelect>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Row: Days + Hours + Citations + FIR */}

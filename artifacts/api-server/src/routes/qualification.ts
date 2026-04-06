@@ -1,11 +1,34 @@
 import { Router, type IRouter } from "express";
-import { db, qualificationChartTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, qualificationChartTable, officersTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
-  const rows = await db.select().from(qualificationChartTable).orderBy(qualificationChartTable.id);
+  const rows = await db
+    .select({
+      id: qualificationChartTable.id,
+      name: qualificationChartTable.name,
+      discordUid: qualificationChartTable.discordUid,
+      // Live from roster; fall back to qual chart's own stored value
+      rank: sql<string | null>`COALESCE(${officersTable.rank}, ${qualificationChartTable.rank})`,
+      department: sql<string | null>`COALESCE(${officersTable.department}, ${qualificationChartTable.department})`,
+      daysInRank: qualificationChartTable.daysInRank,
+      hoursInRank: qualificationChartTable.hoursInRank,
+      citationCount: qualificationChartTable.citationCount,
+      firCount: qualificationChartTable.firCount,
+      lastPromotion: qualificationChartTable.lastPromotion,
+      strikesMajor: qualificationChartTable.strikesMajor,
+      strikesMinor: qualificationChartTable.strikesMinor,
+      qualStatus: qualificationChartTable.qualStatus,
+      notes: qualificationChartTable.notes,
+      updatedAt: qualificationChartTable.updatedAt,
+      // Flag: true when officer exists in the roster
+      rosterLinked: sql<boolean>`(${officersTable.id} IS NOT NULL)`,
+    })
+    .from(qualificationChartTable)
+    .leftJoin(officersTable, eq(qualificationChartTable.name, officersTable.name))
+    .orderBy(qualificationChartTable.id);
   res.json(rows);
 });
 
