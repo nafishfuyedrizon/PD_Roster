@@ -630,17 +630,17 @@ export default function QualificationPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => setEditEntry(e)}
-                            className="p-1.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                            className="p-1.5 rounded bg-secondary/60 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-border"
                             title="Edit"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setDeleteEntry(e)}
-                            className="p-1.5 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
+                            className="p-1.5 rounded bg-secondary/60 hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors border border-border"
                             title="Delete"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
