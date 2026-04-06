@@ -454,33 +454,44 @@ router.get("/roster/officer-lookup", async (req, res): Promise<void> => {
   const raw = String(req.query.name ?? "").trim();
   if (!raw) { res.status(400).json({ error: "name required" }); return; }
 
-  // Extract callsign number from "[76]" pattern
-  const csMatch = /\[(\d+)\]/.exec(raw);
-  const csNum = csMatch ? csMatch[1] : null;
-  // Extract name part (before the bracket)
+  // Strip bracket callsign e.g. "[76]" to get name only
   const namePart = raw.replace(/\s*\[.*?\]\s*$/, "").trim();
 
-  let officer: { id: number; name: string | null; callSign: string; discordUid: string | null } | null = null;
+  const sel = { id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid };
 
-  if (csNum) {
-    const rows = await db
-      .select({ id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid })
-      .from(officersTable)
-      .where(sql`${officersTable.callSign} ILIKE ${"%" + csNum}`)
-      .limit(1);
-    if (rows[0]) officer = rows[0];
-  }
+  let officer: typeof sel | null = null;
 
+  // 1) Full name contain search
   if (!officer && namePart) {
-    const rows = await db
-      .select({ id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid })
-      .from(officersTable)
-      .where(sql`${officersTable.name} ILIKE ${namePart + "%"}`)
+    const rows = await db.select(sel).from(officersTable)
+      .where(sql`${officersTable.name} ILIKE ${"%" + namePart + "%"}`)
       .limit(1);
     if (rows[0]) officer = rows[0];
   }
 
-  if (!officer) { res.status(404).json({ error: "Officer not found" }); return; }
+  // 2) First name only search (first word)
+  if (!officer && namePart) {
+    const firstName = namePart.split(/\s+/)[0];
+    if (firstName && firstName.length >= 3) {
+      const rows = await db.select(sel).from(officersTable)
+        .where(sql`${officersTable.name} ILIKE ${firstName + " %"}`)
+        .limit(1);
+      if (rows[0]) officer = rows[0];
+    }
+  }
+
+  // 3) Match any word from the name (last name fallback)
+  if (!officer && namePart) {
+    const words = namePart.split(/\s+/).filter(w => w.length >= 4);
+    for (const word of words) {
+      const rows = await db.select(sel).from(officersTable)
+        .where(sql`${officersTable.name} ILIKE ${"%" + word + "%"}`)
+        .limit(1);
+      if (rows[0]) { officer = rows[0]; break; }
+    }
+  }
+
+  if (!officer) { res.status(404).json({ error: "Officer not found", searched: namePart }); return; }
   res.json(officer);
 });
 

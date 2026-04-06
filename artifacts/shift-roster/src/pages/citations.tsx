@@ -55,10 +55,16 @@ function CitationCard({ citation }: { citation: Citation }) {
     if (!citation.officerName) return;
     try {
       const res = await fetch(`/api/roster/officer-lookup?name=${encodeURIComponent(citation.officerName)}`, { credentials: "include" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        console.warn("[officer-lookup] failed:", res.status, citation.officerName);
+        return;
+      }
       const data = await res.json() as { id: number; name: string | null };
+      console.log("[officer-lookup] found:", data, "→ navigating to profile");
       setLocation(`/profile?officerId=${data.id}&name=${encodeURIComponent(data.name ?? citation.officerName ?? "")}`);
-    } catch { /* silently ignore */ }
+    } catch (e) {
+      console.error("[officer-lookup] error:", e);
+    }
   }
 
   return (
