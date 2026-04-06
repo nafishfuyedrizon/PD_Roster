@@ -6,11 +6,18 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  FileSearch, Search, User, Phone, Hash,
+  FileSearch, Search, Phone, Hash,
   RefreshCw, ChevronDown, ChevronUp, ExternalLink,
-  AlertTriangle, Shield, Clock,
+  AlertTriangle, Shield, Clock, MessageSquare, ImageIcon,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+
+interface FirThreadMessage {
+  author: string;
+  content: string;
+  attachments: string[];
+  timestamp: string;
+}
 
 interface Fir {
   id: number;
@@ -23,6 +30,7 @@ interface Fir {
   evidence: string | null;
   officerName: string | null;
   rawContent: string | null;
+  threadReplies: FirThreadMessage[] | null;
   postedAt: string;
   createdAt: string;
 }
@@ -45,7 +53,8 @@ function FirCard({ fir }: { fir: Fir }) {
   const [, setLocation] = useLocation();
   const { date, time } = formatDate(fir.postedAt);
   const evidenceLinks = (fir.evidence ?? "").match(/https?:\/\/[^\s]+/g) ?? [];
-  const hasMore = !!(fir.eventDescription || fir.suspectDetails || evidenceLinks.length > 0);
+  const hasMore = !!(fir.eventDescription || fir.suspectDetails || evidenceLinks.length > 0 || (fir.threadReplies && fir.threadReplies.length > 0));
+  const threadCount = fir.threadReplies?.length ?? 0;
 
   async function goToOfficerProfile() {
     if (!fir.officerName) return;
@@ -113,6 +122,12 @@ function FirCard({ fir }: { fir: Fir }) {
         <div className="flex flex-col items-end gap-1 shrink-0">
           <div className="text-[11px] font-mono text-foreground">{time}</div>
           <div className="text-[10px] font-mono text-muted-foreground">{date}</div>
+          {threadCount > 0 && (
+            <div className="flex items-center gap-1 text-[10px] text-blue-400 mt-0.5">
+              <MessageSquare className="w-3 h-3" />
+              <span>{threadCount} reply{threadCount !== 1 ? "s" : ""}</span>
+            </div>
+          )}
           {hasMore && (
             <button
               onClick={() => setExpanded((v) => !v)}
@@ -174,6 +189,64 @@ function FirCard({ fir }: { fir: Fir }) {
                 Evidence
               </div>
               <p className="text-[12px] text-foreground/80">{fir.evidence}</p>
+            </div>
+          )}
+          {fir.threadReplies && fir.threadReplies.length > 0 && (
+            <div>
+              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <MessageSquare className="w-3 h-3" />
+                Officer Thread ({fir.threadReplies.length} {fir.threadReplies.length === 1 ? "reply" : "replies"})
+              </div>
+              <div className="space-y-2">
+                {fir.threadReplies.map((reply, i) => {
+                  const t = new Date(reply.timestamp);
+                  const replyTime = t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "UTC" });
+                  const replyDate = t.toLocaleDateString("en-US", { month: "short", day: "2-digit", timeZone: "UTC" });
+                  const isImage = (url: string) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
+                  return (
+                    <div key={i} className="flex gap-2.5 bg-background/30 rounded-md px-3 py-2 border border-border/30">
+                      <div className="shrink-0 w-6 h-6 rounded-full bg-blue-600/30 flex items-center justify-center mt-0.5">
+                        <Shield className="w-3 h-3 text-blue-300" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-[11px] font-semibold text-blue-300">{reply.author}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{replyDate} {replyTime}</span>
+                        </div>
+                        {reply.content && (
+                          <p className="text-[12px] text-foreground/85 whitespace-pre-wrap leading-relaxed">{reply.content}</p>
+                        )}
+                        {reply.attachments && reply.attachments.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-1.5">
+                            {reply.attachments.map((url, ai) =>
+                              isImage(url) ? (
+                                <a key={ai} href={url} target="_blank" rel="noopener noreferrer">
+                                  <img
+                                    src={url}
+                                    alt={`attachment ${ai + 1}`}
+                                    className="max-h-40 max-w-xs rounded-md border border-border/40 object-cover hover:opacity-90 transition-opacity cursor-pointer"
+                                  />
+                                </a>
+                              ) : (
+                                <a
+                                  key={ai}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 hover:underline"
+                                >
+                                  <ImageIcon className="w-3 h-3" />
+                                  Attachment {ai + 1}
+                                </a>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

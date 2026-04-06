@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Message, Collection, TextChannel } from "discord.js";
+import { Client, GatewayIntentBits, Message, Collection, TextChannel, ChannelType } from "discord.js";
 import { db } from "@workspace/db";
 import {
   discordDutyEventsTable,
@@ -8,6 +8,7 @@ import {
   shiftConfigsTable,
   pdCitationsTable,
   pdFirTable,
+  type FirThreadMessage,
 } from "@workspace/db";
 import { eq, and, asc, desc, or, lt, gte, lte } from "drizzle-orm";
 import { logger } from "./logger";
@@ -541,6 +542,9 @@ async function processFirMessage(msg: Message) {
 
   const parsed = parseFir(combined);
 
+  const threadReplies = await fetchFirThreadReplies(msg);
+  const threadId = msg.thread?.id ?? null;
+
   try {
     await db.insert(pdFirTable).values({
       discordMessageId:   msg.id,
@@ -552,10 +556,68 @@ async function processFirMessage(msg: Message) {
       evidence:           parsed.evidence,
       officerName:        parsed.officerName,
       rawContent:         rawCombined.slice(0, 4000),
+      threadId,
+      threadReplies:      threadReplies.length > 0 ? threadReplies : null,
       postedAt:           msg.createdAt,
-    }).onConflictDoNothing();
+    }).onConflictDoUpdate({
+      target: pdFirTable.discordMessageId,
+      set: {
+        threadId,
+        threadReplies: threadReplies.length > 0 ? threadReplies : null,
+      },
+    });
   } catch (err) {
     logger.error({ err, messageId: msg.id }, "Error saving FIR");
+  }
+}
+
+async function fetchFirThreadReplies(msg: Message): Promise<FirThreadMessage[]> {
+  try {
+    if (!msg.thread) return [];
+    const threadMsgs = await msg.thread.messages.fetch({ limit: 100 });
+    return [...threadMsgs.values()]
+      .filter(m => !m.author.bot)
+      .sort((a, b) => a.createdTimestamp - b.createdTimestamp)
+      .map(m => ({
+        author: m.author.globalName ?? m.author.username,
+        content: m.content,
+        attachments: [...m.attachments.values()].map(a => a.url),
+        timestamp: m.createdAt.toISOString(),
+      }));
+  } catch (err) {
+    logger.warn({ err, messageId: msg.id }, "Could not fetch FIR thread replies");
+    return [];
+  }
+}
+
+async function updateFirThreadByThreadId(threadId: string): Promise<void> {
+  try {
+    const [fir] = await db
+      .select({ id: pdFirTable.id, threadId: pdFirTable.threadId })
+      .from(pdFirTable)
+      .where(eq(pdFirTable.threadId, threadId))
+      .limit(1);
+    if (!fir) return;
+
+    const thread = await (global as any).__discordClient?.channels.fetch(threadId).catch(() => null);
+    if (!thread) return;
+
+    const threadMsgs = await thread.messages.fetch({ limit: 100 });
+    const replies: FirThreadMessage[] = [...threadMsgs.values()]
+      .filter((m: Message) => !m.author.bot)
+      .sort((a: Message, b: Message) => a.createdTimestamp - b.createdTimestamp)
+      .map((m: Message) => ({
+        author: m.author.globalName ?? m.author.username,
+        content: m.content,
+        attachments: [...m.attachments.values()].map((a: any) => a.url),
+        timestamp: m.createdAt.toISOString(),
+      }));
+
+    await db.update(pdFirTable)
+      .set({ threadReplies: replies.length > 0 ? replies : null })
+      .where(eq(pdFirTable.threadId, threadId));
+  } catch (err) {
+    logger.warn({ err, threadId }, "Could not update FIR thread replies");
   }
 }
 
@@ -706,6 +768,13 @@ export async function startDiscordBot() {
       await processCitationMessage(msg);
     } else if (FIR_CHANNEL_ID && msg.channelId === FIR_CHANNEL_ID) {
       await processFirMessage(msg);
+    } else if (
+      FIR_CHANNEL_ID &&
+      msg.channel.type === ChannelType.PublicThread &&
+      (msg.channel as any).parentId === FIR_CHANNEL_ID &&
+      !msg.author.bot
+    ) {
+      await updateFirThreadByThreadId(msg.channelId);
     }
   });
 
@@ -713,5 +782,6 @@ export async function startDiscordBot() {
     logger.error({ err }, "Discord client error");
   });
 
+  (global as any).__discordClient = client;
   await client.login(BOT_TOKEN);
 }
