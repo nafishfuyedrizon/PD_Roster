@@ -168,6 +168,8 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ems/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
       queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setAdjInputs((prev) => ({ ...prev, [officer.cs]: "" }));
@@ -187,6 +189,8 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ems/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
       queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast({ title: "Adjustment removed" });

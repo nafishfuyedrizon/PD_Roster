@@ -425,8 +425,10 @@ export default function PdDutyHourPage() {
     const id = setInterval(() => {
       qcMain.invalidateQueries({ queryKey: ["/api/ems/stats"] });
       qcMain.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      qcMain.invalidateQueries({ queryKey: ["/api/roster/stats"] });
       qcMain.invalidateQueries({ queryKey: ["officer-duty"] });
       qcMain.invalidateQueries({ queryKey: ["shift-configs"] });
+      qcMain.invalidateQueries({ queryKey: ["dashboard"] });
     }, 30_000);
     return () => clearInterval(id);
   }, [qcMain]);

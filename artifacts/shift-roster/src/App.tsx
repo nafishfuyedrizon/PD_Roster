@@ -16,7 +16,16 @@ import AdminPage from "@/pages/admin";
 import AdminDutyLogsPage from "@/pages/admin-duty-logs";
 import AdminSettingsPage from "@/pages/admin-settings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 0,
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      retry: 1,
+    },
+  },
+});
 
 function RedirectTo({ to }: { to: string }) {
   const [, setLocation] = useLocation();
