@@ -7,12 +7,14 @@ import {
   officersTable,
   shiftConfigsTable,
   pdCitationsTable,
+  pdFirTable,
 } from "@workspace/db";
 import { eq, and, asc, desc, or, lt, gte, lte } from "drizzle-orm";
 import { logger } from "./logger";
 
 const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID!;
 const CITATION_CHANNEL_ID = process.env.DISCORD_CITATION_CHANNEL_ID ?? "";
+const FIR_CHANNEL_ID = process.env.DISCORD_FIR_CHANNEL_ID ?? "";
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -483,6 +485,96 @@ function isCitationMessage(text: string): boolean {
     (/charges?/i.test(text) && /officer/i.test(text) && /suspect/i.test(text));
 }
 
+// ── FIR parser ────────────────────────────────────────────────────────────────
+
+interface ParsedFir {
+  complainantName: string | null;
+  complainantCid: string | null;
+  complainantContact: string | null;
+  eventDescription: string | null;
+  suspectDetails: string | null;
+  evidence: string | null;
+  officerName: string | null;
+}
+
+function parseFir(text: string): ParsedFir {
+  return {
+    complainantName:    field(text, "Complainant'?s? Name", "Complainant Name"),
+    complainantCid:     field(text, "Complainant'?s? CID", "Complainant CID"),
+    complainantContact: field(text, "Complainant'?s? Contact", "Contact"),
+    eventDescription:   field(text, "Description of Event", "Event Description", "Description"),
+    suspectDetails:     field(text, "Details of Suspect'?s?", "Suspect Details", "Suspect"),
+    evidence:           field(text, "Evidence \\(images, links, or attachments\\).*?", "Evidence"),
+    officerName:        field(text, "Officer"),
+  };
+}
+
+function isFirMessage(text: string): boolean {
+  return /new fir submission|fir submission/i.test(text) ||
+    (/complainant/i.test(text) && /description of event/i.test(text));
+}
+
+async function processFirMessage(msg: Message) {
+  const allTexts: string[] = [];
+  if (msg.content) allTexts.push(msg.content);
+  for (const embed of msg.embeds) {
+    const parts: string[] = [];
+    if (embed.title) parts.push(embed.title);
+    if (embed.description) parts.push(embed.description);
+    for (const f of embed.fields ?? []) parts.push(`${f.name}: ${f.value}`);
+    if (parts.length) allTexts.push(parts.join("\n"));
+  }
+
+  const combined = allTexts.join("\n");
+  if (!isFirMessage(combined)) return;
+
+  const parsed = parseFir(combined);
+
+  try {
+    await db.insert(pdFirTable).values({
+      discordMessageId:   msg.id,
+      complainantName:    parsed.complainantName,
+      complainantCid:     parsed.complainantCid,
+      complainantContact: parsed.complainantContact,
+      eventDescription:   parsed.eventDescription,
+      suspectDetails:     parsed.suspectDetails,
+      evidence:           parsed.evidence,
+      officerName:        parsed.officerName,
+      rawContent:         combined.slice(0, 4000),
+      postedAt:           msg.createdAt,
+    }).onConflictDoNothing();
+  } catch (err) {
+    logger.error({ err, messageId: msg.id }, "Error saving FIR");
+  }
+}
+
+async function backfillFir(channel: TextChannel) {
+  logger.info({ channelId: channel.id }, "Starting FIR backfill");
+  let before: string | undefined;
+  let total = 0;
+
+  for (let i = 0; i < 50; i++) {
+    const options: { limit: number; before?: string } = { limit: 100 };
+    if (before) options.before = before;
+
+    const msgs: Collection<string, Message> = await channel.messages.fetch(options);
+    if (msgs.size === 0) break;
+
+    const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+    for (const msg of sorted) {
+      await processFirMessage(msg);
+      total++;
+    }
+
+    const oldest = sorted[0];
+    if (!oldest) break;
+    before = oldest.id;
+    if (msgs.size < 100) break;
+  }
+
+  logger.info({ channelId: channel.id, total }, "FIR backfill complete");
+}
+
 async function processCitationMessage(msg: Message) {
   const allTexts: string[] = [];
   if (msg.content) allTexts.push(msg.content);
@@ -583,6 +675,17 @@ export async function startDiscordBot() {
     } else {
       logger.warn("DISCORD_CITATION_CHANNEL_ID not set — citation sync disabled");
     }
+
+    if (FIR_CHANNEL_ID) {
+      const firChannel = await client.channels.fetch(FIR_CHANNEL_ID).catch(() => null);
+      if (!firChannel || !(firChannel instanceof TextChannel)) {
+        logger.warn({ FIR_CHANNEL_ID }, "Could not find FIR channel — set DISCORD_FIR_CHANNEL_ID");
+      } else {
+        await backfillFir(firChannel);
+      }
+    } else {
+      logger.warn("DISCORD_FIR_CHANNEL_ID not set — FIR sync disabled");
+    }
   });
 
   client.on("messageCreate", async (msg) => {
@@ -590,6 +693,8 @@ export async function startDiscordBot() {
       await processMessage(msg);
     } else if (CITATION_CHANNEL_ID && msg.channelId === CITATION_CHANNEL_ID) {
       await processCitationMessage(msg);
+    } else if (FIR_CHANNEL_ID && msg.channelId === FIR_CHANNEL_ID) {
+      await processFirMessage(msg);
     }
   });
 

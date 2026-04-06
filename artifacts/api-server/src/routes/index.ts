@@ -10,6 +10,7 @@ import qualificationRouter from "./qualification";
 import authRouter from "./auth";
 import profileRouter from "./profile";
 import citationsRouter, { startSheetAutoSync } from "./citations";
+import firRouter from "./fir";
 
 // Start Google Sheet auto-sync on boot
 startSheetAutoSync();
@@ -27,5 +28,6 @@ router.use(adminRouter);
 router.use(settingsRouter);
 router.use(qualificationRouter);
 router.use(citationsRouter);
+router.use(firRouter);
 
 export default router;

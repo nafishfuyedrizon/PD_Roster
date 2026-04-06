@@ -21,6 +21,7 @@ import AdminStaffRolesPage from "@/pages/admin-staff-roles";
 import QualificationPage from "@/pages/qualification";
 import ProfilePage from "@/pages/profile";
 import CitationsPage from "@/pages/citations";
+import FirPage from "@/pages/fir";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,7 @@ function Router() {
       <Route path="/admin/staff-roles">{() => <ProtectedRoute component={AdminStaffRolesPage} />}</Route>
       <Route path="/qualification-chart">{() => <ProtectedRoute component={QualificationPage} />}</Route>
       <Route path="/citations">{() => <ProtectedRoute component={CitationsPage} />}</Route>
+      <Route path="/fir">{() => <ProtectedRoute component={FirPage} />}</Route>
       <Route path="/profile">{() => <ProtectedRoute component={ProfilePage} />}</Route>
 
       <Route component={NotFound} />
