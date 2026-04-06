@@ -57,7 +57,15 @@ router.get("/auth/discord", (req: Request, res: Response) => {
     state,
   });
 
-  res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
+  const discordUrl = `https://discord.com/api/oauth2/authorize?${params}`;
+  req.session.save((err) => {
+    if (err) {
+      console.error("[auth] Session save error before OAuth redirect:", err);
+      res.status(500).json({ error: "Session error" });
+      return;
+    }
+    res.redirect(discordUrl);
+  });
 });
 
 router.get("/auth/discord/callback", async (req: Request, res: Response) => {
