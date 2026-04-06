@@ -452,6 +452,7 @@ router.delete("/roster/:id", async (req, res): Promise<void> => {
 // Officer lookup by citation name string e.g. "Tasin Rahaman [76]"
 // The number in brackets is the officer's CID (citizen_id), not callsign
 router.get("/roster/officer-lookup", async (req, res): Promise<void> => {
+  console.log("[officer-lookup] query:", req.query, "url:", req.url);
   const raw = String(req.query.name ?? "").trim();
   if (!raw) { res.status(400).json({ error: "name required" }); return; }
 
