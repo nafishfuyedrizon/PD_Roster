@@ -9,6 +9,7 @@ import settingsRouter from "./settings";
 import qualificationRouter from "./qualification";
 import authRouter from "./auth";
 import profileRouter from "./profile";
+import citationsRouter from "./citations";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(dashboardRouter);
 router.use(adminRouter);
 router.use(settingsRouter);
 router.use(qualificationRouter);
+router.use(citationsRouter);
 
 export default router;

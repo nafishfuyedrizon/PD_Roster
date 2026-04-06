@@ -6,11 +6,13 @@ import {
   pdDutyLogsTable,
   officersTable,
   shiftConfigsTable,
+  pdCitationsTable,
 } from "@workspace/db";
 import { eq, and, asc, desc, or, lt, gte, lte } from "drizzle-orm";
 import { logger } from "./logger";
 
 const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID!;
+const CITATION_CHANNEL_ID = process.env.DISCORD_CITATION_CHANNEL_ID ?? "";
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -437,6 +439,114 @@ export async function recomputeAllDutyHours(): Promise<{ pairs: number; updated:
   return { pairs: rows.length, updated };
 }
 
+// ── Citation parser ────────────────────────────────────────────────────────
+
+interface ParsedCitation {
+  title: string | null;
+  incident: string | null;
+  location: string | null;
+  evidence: string | null;
+  incidentReport: string | null;
+  suspectName: string | null;
+  suspectCid: string | null;
+  suspectContact: string | null;
+  charges: string | null;
+  officerName: string | null;
+}
+
+function field(text: string, ...keys: string[]): string | null {
+  for (const key of keys) {
+    const re = new RegExp(`${key}\\s*:([\\s\\S]*?)(?=\\n[A-Z][a-zA-Z ']+\\s*:|$)`, "i");
+    const m = re.exec(text);
+    if (m) return m[1]!.trim() || null;
+  }
+  return null;
+}
+
+function parseCitation(text: string): ParsedCitation {
+  return {
+    title:          field(text, "Title", "Code"),
+    incident:       field(text, "Incident"),
+    location:       field(text, "Location"),
+    evidence:       field(text, "Evidence"),
+    incidentReport: field(text, "Incident Report"),
+    suspectName:    field(text, "Suspect'?s? Name", "Suspect Name"),
+    suspectCid:     field(text, "Suspect'?s? CID", "Suspect CID", "CID"),
+    suspectContact: field(text, "Suspect'?s? Contact", "Contact"),
+    charges:        field(text, "Charges", "Charge"),
+    officerName:    field(text, "Officer"),
+  };
+}
+
+function isCitationMessage(text: string): boolean {
+  return /citation|pd report|new pd/i.test(text) ||
+    (/charges?/i.test(text) && /officer/i.test(text) && /suspect/i.test(text));
+}
+
+async function processCitationMessage(msg: Message) {
+  const allTexts: string[] = [];
+  if (msg.content) allTexts.push(msg.content);
+  for (const embed of msg.embeds) {
+    const parts: string[] = [];
+    if (embed.title) parts.push(embed.title);
+    if (embed.description) parts.push(embed.description);
+    for (const f of embed.fields ?? []) parts.push(`${f.name}: ${f.value}`);
+    if (parts.length) allTexts.push(parts.join("\n"));
+  }
+
+  const combined = allTexts.join("\n");
+  if (!isCitationMessage(combined)) return;
+
+  const parsed = parseCitation(combined);
+
+  try {
+    await db.insert(pdCitationsTable).values({
+      discordMessageId: msg.id,
+      title:          parsed.title,
+      incident:       parsed.incident,
+      location:       parsed.location,
+      evidence:       parsed.evidence,
+      incidentReport: parsed.incidentReport,
+      suspectName:    parsed.suspectName,
+      suspectCid:     parsed.suspectCid,
+      suspectContact: parsed.suspectContact,
+      charges:        parsed.charges,
+      officerName:    parsed.officerName,
+      rawContent:     combined.slice(0, 4000),
+      postedAt:       msg.createdAt,
+    }).onConflictDoNothing();
+  } catch (err) {
+    logger.error({ err, messageId: msg.id }, "Error saving citation");
+  }
+}
+
+async function backfillCitations(channel: TextChannel) {
+  logger.info({ channelId: channel.id }, "Starting citation backfill");
+  let before: string | undefined;
+  let total = 0;
+
+  for (let i = 0; i < 50; i++) {
+    const options: { limit: number; before?: string } = { limit: 100 };
+    if (before) options.before = before;
+
+    const msgs: Collection<string, Message> = await channel.messages.fetch(options);
+    if (msgs.size === 0) break;
+
+    const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+    for (const msg of sorted) {
+      await processCitationMessage(msg);
+      total++;
+    }
+
+    const oldest = sorted[0];
+    if (!oldest) break;
+    before = oldest.id;
+    if (msgs.size < 100) break;
+  }
+
+  logger.info({ total }, "Citation backfill complete");
+}
+
 // ── Bot start ──────────────────────────────────────────────────────────────
 
 export async function startDiscordBot() {
@@ -453,21 +563,34 @@ export async function startDiscordBot() {
     ],
   });
 
-  client.once("ready", async () => {
+  client.once("clientReady", async () => {
     logger.info({ tag: client.user?.tag }, "Discord bot connected");
 
     const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
     if (!channel || !(channel instanceof TextChannel)) {
       logger.error({ CHANNEL_ID }, "Could not find time-stamp channel");
-      return;
+    } else {
+      await backfillHistory(channel);
     }
 
-    await backfillHistory(channel);
+    if (CITATION_CHANNEL_ID) {
+      const citationChannel = await client.channels.fetch(CITATION_CHANNEL_ID).catch(() => null);
+      if (!citationChannel || !(citationChannel instanceof TextChannel)) {
+        logger.warn({ CITATION_CHANNEL_ID }, "Could not find citation channel — set DISCORD_CITATION_CHANNEL_ID");
+      } else {
+        await backfillCitations(citationChannel);
+      }
+    } else {
+      logger.warn("DISCORD_CITATION_CHANNEL_ID not set — citation sync disabled");
+    }
   });
 
   client.on("messageCreate", async (msg) => {
-    if (msg.channelId !== CHANNEL_ID) return;
-    await processMessage(msg);
+    if (msg.channelId === CHANNEL_ID) {
+      await processMessage(msg);
+    } else if (CITATION_CHANNEL_ID && msg.channelId === CITATION_CHANNEL_ID) {
+      await processCitationMessage(msg);
+    }
   });
 
   client.on("error", (err) => {
