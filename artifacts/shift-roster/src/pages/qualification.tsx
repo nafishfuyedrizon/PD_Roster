@@ -500,9 +500,9 @@ function DeleteConfirm({ entry, onClose }: { entry: QualEntry; onClose: () => vo
   );
 }
 
-const VOTE_CYCLE: Record<string, string> = { "": "✓", "✓": "✗", "✗": "" };
+const VOTE_OPTIONS = ["", "✓", "✗", "N/A"] as const;
 
-function VoteCell({ entryId, voteType, voterName, value }: {
+function VoteRow({ entryId, voteType, voterName, value }: {
   entryId: number; voteType: "ftb" | "hc"; voterName: string; value: string;
 }) {
   const qc = useQueryClient();
@@ -516,21 +516,32 @@ function VoteCell({ entryId, voteType, voterName, value }: {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] }),
   });
 
-  const next = VOTE_CYCLE[value] ?? "";
-  const display = value === "✓" ? "✓" : value === "✗" ? "✗" : "—";
-  const color = value === "✓" ? "text-green-400 bg-green-500/15 border-green-500/30"
-    : value === "✗" ? "text-red-400 bg-red-500/15 border-red-500/30"
-    : "text-muted-foreground/40 bg-secondary/20 border-border/30";
+  const valColor = value === "✓"
+    ? "text-green-400"
+    : value === "✗"
+    ? "text-red-400"
+    : value === "N/A"
+    ? "text-yellow-400/70"
+    : "text-muted-foreground/40";
 
   return (
-    <button
-      onClick={() => mut.mutate(next)}
-      disabled={mut.isPending}
-      title={`${voterName}: ${value || "No vote"} → click to change`}
-      className={`w-7 h-7 rounded border text-xs font-bold transition-all hover:opacity-80 ${color} ${mut.isPending ? "opacity-50" : ""}`}
-    >
-      {display}
-    </button>
+    <div className="flex items-center gap-1.5 py-[2px]">
+      <span className="text-[10px] font-mono text-muted-foreground/60 w-[68px] truncate text-right shrink-0" title={voterName}>
+        {voterName.split(" ")[0]}
+      </span>
+      <select
+        value={value}
+        onChange={(e) => mut.mutate(e.target.value)}
+        disabled={mut.isPending}
+        className={`text-[11px] font-bold bg-secondary/40 border border-border/40 rounded px-1 py-0 h-5 w-[46px] cursor-pointer focus:outline-none hover:border-primary/40 transition-colors ${valColor} ${mut.isPending ? "opacity-50" : ""}`}
+      >
+        {VOTE_OPTIONS.map((opt) => (
+          <option key={opt} value={opt} className="bg-background text-foreground">
+            {opt === "" ? "—" : opt}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
@@ -744,28 +755,14 @@ export default function QualificationPage() {
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">Status</th>
                   {/* VOTE BY FTO */}
                   {(ftpMembers?.fto?.length ?? 0) > 0 && (
-                    <th className="px-2 py-3 text-center text-[11px] font-mono uppercase text-cyan-400/80 border-l border-border/50 min-w-0">
-                      <div className="text-[10px] font-bold mb-1 whitespace-nowrap">VOTE BY FTO</div>
-                      <div className="flex gap-1 justify-center flex-wrap">
-                        {ftpMembers!.fto.map((name) => (
-                          <span key={name} className="text-[9px] font-mono text-muted-foreground/70 truncate max-w-[52px]" title={name}>
-                            {name.split(" ")[0]}
-                          </span>
-                        ))}
-                      </div>
+                    <th className="px-2 py-3 text-center text-[11px] font-mono uppercase text-cyan-400/80 border-l border-border/50 whitespace-nowrap">
+                      VOTE BY FTO
                     </th>
                   )}
                   {/* VOTE BY HIGH COMMAND */}
                   {(ftpMembers?.hc?.length ?? 0) > 0 && (
-                    <th className="px-2 py-3 text-center text-[11px] font-mono uppercase text-purple-400/80 border-l border-border/50 min-w-0">
-                      <div className="text-[10px] font-bold mb-1 whitespace-nowrap">VOTE BY HC</div>
-                      <div className="flex gap-1 justify-center flex-wrap">
-                        {ftpMembers!.hc.map((name) => (
-                          <span key={name} className="text-[9px] font-mono text-muted-foreground/70 truncate max-w-[52px]" title={name}>
-                            {name.split(" ")[0]}
-                          </span>
-                        ))}
-                      </div>
+                    <th className="px-2 py-3 text-center text-[11px] font-mono uppercase text-purple-400/80 border-l border-border/50 whitespace-nowrap">
+                      VOTE BY HC
                     </th>
                   )}
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">Actions</th>
@@ -845,10 +842,10 @@ export default function QualificationPage() {
                       </td>
                       {/* FTO Vote cells */}
                       {(ftpMembers?.fto?.length ?? 0) > 0 && (
-                        <td className="px-2 py-2 border-l border-border/50">
-                          <div className="flex gap-1 justify-center flex-wrap">
+                        <td className="px-2 py-1.5 border-l border-border/50 align-top">
+                          <div className="flex flex-col">
                             {ftpMembers!.fto.map((name) => (
-                              <VoteCell
+                              <VoteRow
                                 key={name}
                                 entryId={e.id}
                                 voteType="ftb"
@@ -861,10 +858,10 @@ export default function QualificationPage() {
                       )}
                       {/* HC Vote cells */}
                       {(ftpMembers?.hc?.length ?? 0) > 0 && (
-                        <td className="px-2 py-2 border-l border-border/50">
-                          <div className="flex gap-1 justify-center flex-wrap">
+                        <td className="px-2 py-1.5 border-l border-border/50 align-top">
+                          <div className="flex flex-col">
                             {ftpMembers!.hc.map((name) => (
-                              <VoteCell
+                              <VoteRow
                                 key={name}
                                 entryId={e.id}
                                 voteType="hc"
