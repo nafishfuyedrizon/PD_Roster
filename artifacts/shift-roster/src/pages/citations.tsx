@@ -39,8 +39,8 @@ interface CitationStats {
 function formatDate(iso: string) {
   const d = new Date(iso);
   return {
-    date: d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
-    time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
+    date: d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric", timeZone: "UTC" }),
+    time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "UTC" }),
   };
 }
 
