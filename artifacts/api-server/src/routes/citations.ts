@@ -202,7 +202,7 @@ async function forwardToDiscord(discordWebhookUrl: string, body: Record<string, 
 
 router.get("/citations", async (req, res): Promise<void> => {
   const { search, officer, limit: lim } = req.query as Record<string, string>;
-  const limit = Math.min(parseInt(lim ?? "100", 10) || 100, 500);
+  const limit = lim ? Math.min(parseInt(lim, 10) || 10000, 10000) : 10000;
   let query = db.select().from(pdCitationsTable).orderBy(desc(pdCitationsTable.postedAt)).$dynamic();
   if (search?.trim()) {
     const q = `%${search.trim()}%`;
