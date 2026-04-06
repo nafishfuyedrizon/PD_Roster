@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award } from "lucide-react";
+import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award, LogOut } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
+import { useClerk } from "@clerk/react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [rostersOpen, setRostersOpen] = useState(true);
   const [adminOpen, setAdminOpen] = useState(location.startsWith("/admin"));
   const { data: settings } = useSettings();
+  const { signOut } = useClerk();
 
-  const isRosterActive = location === "/" || location.startsWith("/dept/");
+  const isRosterActive = location === "/" || location === "/roster" || location.startsWith("/dept/");
   const isAdminActive = location.startsWith("/admin");
 
   const orgName    = settings?.org_name    ?? "POLICE DEPARTMENT";
@@ -56,10 +58,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             {rostersOpen && (
               <div className="mt-1 ml-2 border-l border-border pl-3 space-y-0.5">
-                <Link href="/" data-testid="nav-roster-all">
+                <Link href="/roster" data-testid="nav-roster-all">
                   <div
                     className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
-                      location === "/"
+                      location === "/roster" || location === "/"
                         ? "bg-secondary text-secondary-foreground font-medium"
                         : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                     }`}
@@ -224,14 +226,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-border mt-auto">
-          <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
-            System Active
+        <div className="p-4 border-t border-border mt-auto space-y-3">
+          <div>
+            <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+              System Active
+            </div>
+            <div className="text-xs font-mono text-primary flex items-center gap-2 mt-1">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              SECURE CONNECTION
+            </div>
           </div>
-          <div className="text-xs font-mono text-primary flex items-center gap-2 mt-1">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            SECURE CONNECTION
-          </div>
+          <button
+            onClick={() => signOut({ redirectUrl: "/" })}
+            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors font-mono"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            SIGN OUT
+          </button>
         </div>
       </aside>
 
