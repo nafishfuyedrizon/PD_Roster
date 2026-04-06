@@ -1,0 +1,153 @@
+import { useQuery } from "@tanstack/react-query";
+import { Layout } from "@/components/layout";
+import { Badge } from "@/components/ui/badge";
+import { ScrollText, UserCog, Plus, Trash2, Edit3, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface AdminLog {
+  id: number;
+  actionType: string;
+  entityType: string;
+  entityId: string | null;
+  entityName: string | null;
+  changedBy: string;
+  changedByUid: string | null;
+  changes: Record<string, { old: unknown; new: unknown }> | null;
+  createdAt: string;
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  name: "Name",
+  rank: "Rank",
+  status: "Status",
+  callSign: "Call Sign",
+  division: "Division",
+  department: "Department",
+  dateOfJoining: "Date of Joining",
+  lastPromotion: "Last Promotion",
+  strikesMajor: "Major Strikes",
+  strikesMinor: "Minor Strikes",
+  discordUsername: "Discord Username",
+  discordUid: "Discord UID",
+};
+
+function actionBadge(type: string) {
+  if (type === "CREATE") return <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-[10px] px-1.5">CREATE</Badge>;
+  if (type === "DELETE") return <Badge className="bg-red-600/20 text-red-400 border-red-600/30 text-[10px] px-1.5">DELETE</Badge>;
+  return <Badge className="bg-blue-600/20 text-blue-400 border-blue-600/30 text-[10px] px-1.5">UPDATE</Badge>;
+}
+
+function actionIcon(type: string) {
+  if (type === "CREATE") return <Plus className="w-3.5 h-3.5 text-green-400" />;
+  if (type === "DELETE") return <Trash2 className="w-3.5 h-3.5 text-red-400" />;
+  return <Edit3 className="w-3.5 h-3.5 text-blue-400" />;
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return { date, time };
+}
+
+function ChangesDiff({ changes }: { changes: Record<string, { old: unknown; new: unknown }> }) {
+  return (
+    <div className="mt-2 space-y-1">
+      {Object.entries(changes).map(([field, { old: oldVal, new: newVal }]) => (
+        <div key={field} className="flex items-start gap-2 text-[11px] font-mono">
+          <span className="text-muted-foreground w-28 shrink-0">{FIELD_LABELS[field] ?? field}:</span>
+          <span className="text-red-400 line-through opacity-70">{String(oldVal ?? "—")}</span>
+          <span className="text-muted-foreground mx-1">→</span>
+          <span className="text-green-400">{String(newVal ?? "—")}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function AdminLogsPage() {
+  const { data: logs = [], isLoading, refetch, isFetching } = useQuery<AdminLog[]>({
+    queryKey: ["/api/admin/logs"],
+    queryFn: () => fetch("/api/admin/logs?limit=200", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  return (
+    <Layout>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <ScrollText className="w-4 h-4 text-teal-400" />
+          <span className="text-base font-bold text-foreground">Panel Logs</span>
+          <span className="text-xs text-muted-foreground font-mono ml-1">({logs.length} entries)</span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="gap-2 text-xs"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48 text-muted-foreground text-sm font-mono">
+          Loading logs...
+        </div>
+      ) : logs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
+          <ScrollText className="w-8 h-8 opacity-30" />
+          <p className="text-sm font-mono">No activity logged yet</p>
+          <p className="text-xs opacity-60">Logs appear after creating, editing, or deleting officers</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {logs.map((log) => {
+            const { date, time } = formatDate(log.createdAt);
+            const hasChanges = log.changes && Object.keys(log.changes).length > 0;
+            return (
+              <div
+                key={log.id}
+                className="bg-secondary/30 border border-border/50 rounded-md px-4 py-3"
+              >
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  {/* Left: action + who + what */}
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="mt-0.5 shrink-0">{actionIcon(log.actionType)}</div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {actionBadge(log.actionType)}
+                        <span className="text-xs font-semibold text-foreground truncate">
+                          {log.entityName ?? log.entityId ?? "—"}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground capitalize">
+                          ({log.entityType})
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <UserCog className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <span className="text-[11px] text-muted-foreground">
+                          by <span className="text-foreground font-medium">{log.changedBy}</span>
+                        </span>
+                      </div>
+                      {hasChanges && <ChangesDiff changes={log.changes!} />}
+                    </div>
+                  </div>
+
+                  {/* Right: date + time */}
+                  <div className="text-right shrink-0">
+                    <div className="text-[11px] font-mono text-foreground">{time}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground">{date}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Layout>
+  );
+}

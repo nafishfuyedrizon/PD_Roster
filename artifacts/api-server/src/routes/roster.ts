@@ -1,6 +1,32 @@
 import { Router, type IRouter } from "express";
+import type { Request } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable } from "@workspace/db";
+import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable, adminLogsTable } from "@workspace/db";
+
+// Helper: write an audit log entry
+async function auditLog(
+  req: Request,
+  actionType: "CREATE" | "UPDATE" | "DELETE",
+  entityType: string,
+  entityId: string | number | null,
+  entityName: string | null,
+  changes: Record<string, { old: unknown; new: unknown }> | null,
+) {
+  const sessionUser = (req.session as any)?.user;
+  try {
+    await db.insert(adminLogsTable).values({
+      actionType,
+      entityType,
+      entityId: entityId != null ? String(entityId) : null,
+      entityName,
+      changedBy: sessionUser?.displayName ?? sessionUser?.username ?? "System",
+      changedByUid: sessionUser?.id ?? null,
+      changes: changes as any,
+    });
+  } catch (err) {
+    console.error("[auditLog] failed to write log:", err);
+  }
+}
 import {
   ListOfficersQueryParams,
   ListOfficersResponse,
@@ -86,6 +112,7 @@ router.post("/roster", async (req, res): Promise<void> => {
     }
   }
 
+  await auditLog(req, "CREATE", "officer", officer.id, officer.name ?? officer.callSign, null);
   res.status(201).json(GetOfficerResponse.parse(officer));
 });
 
@@ -401,6 +428,18 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
     }
   }
 
+  // Build a diff of what changed
+  const TRACKED = ["name","rank","status","callSign","division","department","dateOfJoining","lastPromotion","strikesMajor","strikesMinor","discordUsername","discordUid"] as const;
+  const diff: Record<string, { old: unknown; new: unknown }> = {};
+  for (const key of TRACKED) {
+    const oldVal = (existing as any)[key];
+    const newVal = (officer as any)[key];
+    if (oldVal !== newVal) diff[key] = { old: oldVal, new: newVal };
+  }
+  if (Object.keys(diff).length > 0) {
+    await auditLog(req, "UPDATE", "officer", officer.id, officer.name ?? officer.callSign, diff);
+  }
+
   res.json(UpdateOfficerResponse.parse(officer));
 });
 
@@ -421,6 +460,7 @@ router.delete("/roster/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  await auditLog(req, "DELETE", "officer", officer.id, officer.name ?? officer.callSign, null);
   res.sendStatus(204);
 });
 

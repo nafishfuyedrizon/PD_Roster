@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutGrid, LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award, LogOut, User } from "lucide-react";
+import { LayoutGrid, LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award, LogOut, User, ScrollText } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -231,6 +231,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <Settings className="w-3.5 h-3.5 shrink-0 text-teal-400" />
                     Site Settings
+                  </div>
+                </Link>
+                <Link href="/admin/logs" data-testid="nav-admin-logs">
+                  <div
+                    className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+                      location === "/admin/logs"
+                        ? "bg-secondary text-secondary-foreground font-medium"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <ScrollText className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                    Panel Logs
                   </div>
                 </Link>
               </div>

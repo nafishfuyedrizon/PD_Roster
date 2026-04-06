@@ -1,7 +1,6 @@
 import { Router } from "express";
-import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable, emsDutyLogsTable, dutyAdjustmentsTable } from "@workspace/db";
-import { eq, and, gte, lte, ilike, or } from "drizzle-orm";
-import { desc, asc } from "drizzle-orm";
+import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable, emsDutyLogsTable, dutyAdjustmentsTable, adminLogsTable } from "@workspace/db";
+import { eq, and, gte, lte, ilike, or, desc, asc } from "drizzle-orm";
 
 const MONTH_NAMES = ["","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 
@@ -381,6 +380,21 @@ router.delete("/admin/duty-adjustments/:id", async (req, res): Promise<void> => 
   const id = parseInt(req.params.id, 10);
   await db.delete(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id));
   res.status(204).end();
+});
+
+// GET /api/admin/logs — activity/audit log
+router.get("/admin/logs", async (req, res): Promise<void> => {
+  const limit = Math.min(parseInt(String(req.query.limit ?? "100"), 10), 500);
+  const offset = parseInt(String(req.query.offset ?? "0"), 10);
+
+  const logs = await db
+    .select()
+    .from(adminLogsTable)
+    .orderBy(desc(adminLogsTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  res.json(logs);
 });
 
 export default router;

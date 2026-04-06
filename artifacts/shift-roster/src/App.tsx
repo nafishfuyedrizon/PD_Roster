@@ -16,6 +16,7 @@ import DashboardPage from "@/pages/dashboard";
 import AdminPage from "@/pages/admin";
 import AdminDutyLogsPage from "@/pages/admin-duty-logs";
 import AdminSettingsPage from "@/pages/admin-settings";
+import AdminLogsPage from "@/pages/admin-logs";
 import QualificationPage from "@/pages/qualification";
 import ProfilePage from "@/pages/profile";
 
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/admin">{() => <ProtectedRoute component={AdminPage} />}</Route>
       <Route path="/admin/duty-logs">{() => <ProtectedRoute component={AdminDutyLogsPage} />}</Route>
       <Route path="/admin/settings">{() => <ProtectedRoute component={AdminSettingsPage} />}</Route>
+      <Route path="/admin/logs">{() => <ProtectedRoute component={AdminLogsPage} />}</Route>
       <Route path="/qualification-chart">{() => <ProtectedRoute component={QualificationPage} />}</Route>
       <Route path="/profile">{() => <ProtectedRoute component={ProfilePage} />}</Route>
 
