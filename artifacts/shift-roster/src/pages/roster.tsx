@@ -178,12 +178,22 @@ export default function RosterPage() {
   const updateOfficer = useUpdateOfficer();
   const deleteOfficer = useDeleteOfficer();
 
+  function invalidateAll() {
+    queryClient.invalidateQueries({ queryKey: getListOfficersQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/ems/stats"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+    queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+  }
+
   const handleCreate = (data: any) => {
     createOfficer.mutate(
       { data },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListOfficersQueryKey() });
+          invalidateAll();
           setIsCreateOpen(false);
           toast({ title: "Officer added" });
         },
@@ -197,7 +207,7 @@ export default function RosterPage() {
       { id: editOfficer.id, data },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListOfficersQueryKey() });
+          invalidateAll();
           setEditOfficer(null);
           toast({ title: "Officer updated" });
         },
@@ -211,7 +221,7 @@ export default function RosterPage() {
       { id },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListOfficersQueryKey() });
+          invalidateAll();
           toast({ title: "Officer removed" });
         },
       }
