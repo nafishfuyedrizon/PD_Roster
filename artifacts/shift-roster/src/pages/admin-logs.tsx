@@ -84,16 +84,18 @@ export default function AdminLogsPage() {
     : null;
 
   function goToProfile(log: AdminLog) {
+    const name = encodeURIComponent(log.entityName ?? "");
     if (log.entityType === "officer" && log.entityId) {
-      setLocation(`/profile?officerId=${log.entityId}`);
+      setLocation(`/profile?officerId=${log.entityId}&name=${name}`);
     } else if (log.entityType === "session" && log.entityId) {
-      setLocation(`/profile?uid=${log.entityId}`);
+      setLocation(`/profile?uid=${log.entityId}&name=${name}`);
     }
   }
 
   function goToEditorProfile(log: AdminLog) {
     if (log.changedByUid) {
-      setLocation(`/profile?uid=${log.changedByUid}`);
+      const name = encodeURIComponent(log.changedBy ?? "");
+      setLocation(`/profile?uid=${log.changedByUid}&name=${name}`);
     }
   }
 

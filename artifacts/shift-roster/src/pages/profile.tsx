@@ -82,6 +82,7 @@ export default function ProfilePage() {
   const params = new URLSearchParams(window.location.search);
   const officerId = params.get("officerId");
   const uid = params.get("uid");
+  const nameParam = params.get("name") ?? undefined;
   const isViewing = !!(officerId || uid);
 
   const ownProfile = useQuery<ProfileData>({
@@ -119,7 +120,7 @@ export default function ProfilePage() {
 
   const { officer, weeks, duties, discordUser } = data ?? {};
 
-  const displayName = officer?.name ?? discordUser?.displayName ?? "Unknown";
+  const displayName = officer?.name ?? discordUser?.displayName ?? nameParam ?? "Unknown";
   const status = officer?.status ?? "—";
 
   return (
