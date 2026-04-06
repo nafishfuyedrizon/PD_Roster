@@ -25,11 +25,11 @@ router.post("/qualification-chart", async (req, res): Promise<void> => {
 
 router.put("/qualification-chart/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
-  const { name, discordUid, rank, department, daysInRank, hoursInRank,
+  const { name, discordUid, rank, department, hoursInRank,
     citationCount, firCount, lastPromotion, strikesMajor, strikesMinor,
     qualStatus, notes } = req.body;
   const [row] = await db.update(qualificationChartTable)
-    .set({ name, discordUid, rank, department, daysInRank, hoursInRank,
+    .set({ name, discordUid, rank, department, hoursInRank,
       citationCount, firCount, lastPromotion, strikesMajor, strikesMinor,
       qualStatus, notes, updatedAt: new Date() })
     .where(eq(qualificationChartTable.id, id))

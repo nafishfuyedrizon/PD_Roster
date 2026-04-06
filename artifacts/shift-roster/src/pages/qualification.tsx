@@ -9,6 +9,21 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+/** Parse MM/DD/YYYY and return days elapsed since that date (0 if invalid/future). */
+function calcDaysInRank(lastPromotion: string | null): number | null {
+  if (!lastPromotion) return null;
+  const parts = lastPromotion.split("/");
+  if (parts.length !== 3) return null;
+  const [mm, dd, yyyy] = parts.map(Number);
+  if (isNaN(mm) || isNaN(dd) || isNaN(yyyy)) return null;
+  const promDate = new Date(yyyy, mm - 1, dd);
+  if (isNaN(promDate.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.floor((today.getTime() - promDate.getTime()) / 86_400_000);
+  return diff >= 0 ? diff : 0;
+}
+
 type QualEntry = {
   id: number;
   name: string;
@@ -221,8 +236,10 @@ function EditModal({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { daysInRank: _computed, ...rest } = form;
       const body = {
-        ...form,
+        ...rest,
         discordUid: form.discordUid || null,
         rank: form.rank || null,
         department: form.department || null,
@@ -305,13 +322,12 @@ function EditModal({
           <div className="grid grid-cols-4 gap-3">
             <div>
               <FieldLabel>Days in Rank</FieldLabel>
-              <Input
-                type="number" min={0}
-                value={form.daysInRank ?? ""}
-                onChange={(e) => set("daysInRank", e.target.value === "" ? null : Number(e.target.value))}
-                placeholder="0"
-                className="h-9 text-sm font-mono bg-secondary/30"
-              />
+              <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-muted-foreground select-none">
+                {(() => {
+                  const d = calcDaysInRank(form.lastPromotion);
+                  return d != null ? `${d} days` : "— (set Last Promotion)";
+                })()}
+              </div>
             </div>
             <div>
               <FieldLabel>Hours in Rank</FieldLabel>
@@ -657,7 +673,12 @@ export default function QualificationPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="font-mono font-semibold text-foreground">
-                          {e.daysInRank != null ? Math.round(e.daysInRank) : <span className="text-muted-foreground/40">—</span>}
+                          {(() => {
+                            const d = calcDaysInRank(e.lastPromotion);
+                            return d != null
+                              ? d
+                              : <span className="text-muted-foreground/40">—</span>;
+                          })()}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
