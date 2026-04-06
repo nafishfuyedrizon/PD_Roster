@@ -86,7 +86,83 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     .from(officersTable)
     .leftJoin(qualificationChartTable, eq(officersTable.name, qualificationChartTable.name))
     .orderBy(qualificationChartTable.id);
-  res.json(rows);
+
+  // Dynamically compute hoursInRank from duty logs since lastPromotion (or joiningDate)
+  const hoursMap: Record<string, number> = {};
+
+  // Duty log hours since lastPromotion / joiningDate
+  const dutyResult = await db.execute(sql`
+    WITH officer_dates AS (
+      SELECT
+        o.name,
+        COALESCE(NULLIF(q.last_promotion, ''), o.date_of_joining) AS since_date
+      FROM officers o
+      LEFT JOIN qualification_chart q ON o.name = q.name
+    )
+    SELECT
+      d.officer_name,
+      COALESCE(SUM(EXTRACT(EPOCH FROM d.duration::interval)), 0) AS total_seconds
+    FROM pd_duty_logs d
+    JOIN officer_dates od ON d.officer_name = od.name
+    WHERE od.since_date IS NULL
+       OR d.log_date >= MAKE_DATE(
+            SPLIT_PART(od.since_date, '/', 3)::int,
+            SPLIT_PART(od.since_date, '/', 1)::int,
+            SPLIT_PART(od.since_date, '/', 2)::int
+          )
+    GROUP BY d.officer_name
+  `);
+  for (const r of dutyResult.rows as any[]) {
+    hoursMap[r.officer_name] = Number(r.total_seconds) / 3600;
+  }
+
+  // Duty adjustments (seconds) since lastPromotion / joiningDate
+  const adjResult = await db.execute(sql`
+    WITH officer_dates AS (
+      SELECT
+        o.name,
+        COALESCE(NULLIF(q.last_promotion, ''), o.date_of_joining) AS since_date
+      FROM officers o
+      LEFT JOIN qualification_chart q ON o.name = q.name
+    )
+    SELECT
+      a.officer_name,
+      COALESCE(SUM(a.adjustment_seconds), 0) AS total_adj_seconds
+    FROM duty_adjustments a
+    JOIN officer_dates od ON a.officer_name = od.name
+    WHERE od.since_date IS NULL
+       OR (
+         a.duty_year ~ '^[0-9]+$'
+         AND MAKE_DATE(
+               a.duty_year::int,
+               CASE UPPER(a.duty_month)
+                 WHEN 'JANUARY' THEN 1 WHEN 'FEBRUARY' THEN 2 WHEN 'MARCH' THEN 3
+                 WHEN 'APRIL' THEN 4 WHEN 'MAY' THEN 5 WHEN 'JUNE' THEN 6
+                 WHEN 'JULY' THEN 7 WHEN 'AUGUST' THEN 8 WHEN 'SEPTEMBER' THEN 9
+                 WHEN 'OCTOBER' THEN 10 WHEN 'NOVEMBER' THEN 11 WHEN 'DECEMBER' THEN 12
+                 ELSE 1
+               END, 1
+             ) >= MAKE_DATE(
+               SPLIT_PART(od.since_date, '/', 3)::int,
+               SPLIT_PART(od.since_date, '/', 1)::int,
+               SPLIT_PART(od.since_date, '/', 2)::int
+             )
+       )
+    GROUP BY a.officer_name
+  `);
+  for (const r of adjResult.rows as any[]) {
+    hoursMap[r.officer_name] = (hoursMap[r.officer_name] ?? 0) + Number(r.total_adj_seconds) / 3600;
+  }
+
+  // Merge computed hoursInRank into rows
+  const enrichedRows = rows.map((r) => ({
+    ...r,
+    hoursInRank: hoursMap[r.name ?? ""] != null
+      ? Number(hoursMap[r.name ?? ""].toFixed(2))
+      : r.hoursInRank,
+  }));
+
+  res.json(enrichedRows);
 });
 
 router.post("/qualification-chart", async (req, res): Promise<void> => {
