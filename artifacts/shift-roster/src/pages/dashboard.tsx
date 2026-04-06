@@ -127,12 +127,17 @@ export default function DashboardPage() {
   function copyLowDutyList() {
     const list = data?.lowestWeekly ?? [];
     if (list.length === 0) return;
-    const text = list
+    const lines = list
       .map((o) => {
         const mention = o.discordUid ? `<@${o.discordUid}>` : `@${o.discordUsername ?? o.name}`;
         return `${mention} - ${o.weekHours}`;
       })
       .join("\n");
+    const text =
+      `⚠️WARNING The following officers are on track to not make their minimum hours on-duty as mandated by the SOP⚠️\n\n` +
+      `Your activity is low! Please fix your activity soon or Management will take proper action against you next time. which might have effect on your next promotion\n\n` +
+      `${lines}\n\n` +
+      `Please put in an LOA should you find the need for it.`;
     navigator.clipboard.writeText(text).then(() => {
       setCopiedList(true);
       setTimeout(() => setCopiedList(false), 2000);
