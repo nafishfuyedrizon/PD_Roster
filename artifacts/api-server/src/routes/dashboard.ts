@@ -31,9 +31,18 @@ function getWeekPeriod(date: Date): string {
   return `${fmt(mon)}-${fmt(sun)}`;
 }
 
+function getPreviousWeekPeriod(date: Date): string {
+  const prev = new Date(date);
+  prev.setUTCDate(prev.getUTCDate() - 7);
+  return getWeekPeriod(prev);
+}
+
 router.get("/dashboard", async (req, res): Promise<void> => {
   const now = new Date();
   const currentWeek = getWeekPeriod(now);
+  const previousWeek = getPreviousWeekPeriod(now);
+  const weekParam = req.query.week === "previous" ? "previous" : "current";
+  const selectedWeek = weekParam === "previous" ? previousWeek : currentWeek;
 
   const [officers, allEvents, allLogs, siteSettings] = await Promise.all([
     db.select().from(officersTable),
@@ -167,6 +176,7 @@ router.get("/dashboard", async (req, res): Promise<void> => {
 
   const weekLogs = allLogs.filter((l) => l.weekPeriod === currentWeek);
   const thisWeekSecs = weekLogs.reduce((s, l) => s + parseHms(l.dutyHours), 0);
+  const selectedWeekLogs = allLogs.filter((l) => l.weekPeriod === selectedWeek);
 
   const monthlySecs = allLogs.reduce((s, l) => s + parseHms(l.dutyHours), 0);
 
@@ -189,7 +199,13 @@ router.get("/dashboard", async (req, res): Promise<void> => {
     ? { csNumber: topCs[0], name: officers.find((o) => o.callSign === topCs[0])?.name ?? topCs[0], hours: secsToHms(topCs[1]) }
     : null;
 
-  // All active officers with < 5 hours this week (excluding LOA), sorted lowest first
+  // Per-officer hours for the selected week (current or previous)
+  const selectedWeekPerOfficer: Record<string, number> = {};
+  for (const l of selectedWeekLogs) {
+    selectedWeekPerOfficer[l.csNumber] = (selectedWeekPerOfficer[l.csNumber] ?? 0) + parseHms(l.dutyHours);
+  }
+
+  // All active officers with < 5 hours in selected week (excluding LOA), sorted lowest first
   const lowestWeekly = officers
     .filter((o) => o.status !== "LOA")
     .map((o) => ({
@@ -199,7 +215,7 @@ router.get("/dashboard", async (req, res): Promise<void> => {
       status: o.status ?? "",
       discordUsername: o.discordUsername ?? null,
       discordUid: o.discordUid ?? null,
-      weekSecs: weekPerOfficer[o.callSign ?? ""] ?? 0,
+      weekSecs: selectedWeekPerOfficer[o.callSign ?? ""] ?? 0,
     }))
     .filter((o) => o.weekSecs < 18000)
     .sort((a, b) => a.weekSecs - b.weekSecs)
@@ -318,6 +334,8 @@ router.get("/dashboard", async (req, res): Promise<void> => {
       peakWeek: `${peakWeek.replace("-", " – ")} · ${secsToHms(peakSecs)}`,
       topOfficer,
       currentWeek,
+      previousWeek,
+      selectedWeek,
     },
     rankDistribution,
     statusOverview,

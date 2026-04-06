@@ -36,16 +36,18 @@ interface DashboardData {
     peakWeek: string;
     topOfficer: { csNumber: string; name: string; hours: string } | null;
     currentWeek: string;
+    previousWeek: string;
+    selectedWeek: string;
   };
   rankDistribution: { rank: string; count: number }[];
   statusOverview: { status: string; count: number; weekHours: string; officers: { csNumber: string; name: string; rank: string }[] }[];
   lowestWeekly: LowestEntry[];
 }
 
-function useDashboard(refetchInterval = 60_000) {
+function useDashboard(weekView: "current" | "previous", refetchInterval = 60_000) {
   return useQuery<DashboardData>({
-    queryKey: ["dashboard"],
-    queryFn: () => fetch("/api/dashboard").then((r) => r.json()),
+    queryKey: ["dashboard", weekView],
+    queryFn: () => fetch(`/api/dashboard?week=${weekView}`).then((r) => r.json()),
     refetchInterval,
   });
 }
@@ -117,7 +119,8 @@ function titleCase(s: string) {
 }
 
 export default function DashboardPage() {
-  const { data, isLoading, refetch } = useDashboard(15000);
+  const [weekView, setWeekView] = useState<"current" | "previous">("current");
+  const { data, isLoading, refetch } = useDashboard(weekView, 15000);
   const [expandedStatus, setExpandedStatus] = useState<string | null>(null);
   const [copiedList, setCopiedList] = useState(false);
 
@@ -364,18 +367,41 @@ export default function DashboardPage() {
 
       {/* Under 5 Hours This Week */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
-          <TrendingDown className="w-4 h-4 text-red-400" />
-          <span className="font-semibold text-sm tracking-wide uppercase">Under 5 Hours This Week</span>
+        <div className="px-5 py-3.5 border-b border-border flex items-center gap-2 flex-wrap">
+          <TrendingDown className="w-4 h-4 text-red-400 shrink-0" />
+          <span className="font-semibold text-sm tracking-wide uppercase shrink-0">Under 5 Hours</span>
           {(data?.lowestWeekly ?? []).length > 0 && (
-            <span className="text-[11px] font-mono font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+            <span className="text-[11px] font-mono font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full shrink-0">
               {data!.lowestWeekly.length} officer{data!.lowestWeekly.length !== 1 ? "s" : ""}
             </span>
           )}
-          <div className="ml-auto flex items-center gap-2">
-            {data?.stats.currentWeek && (
-              <span className="text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                {data.stats.currentWeek.replace("-", " – ")}
+          <div className="ml-auto flex items-center gap-2 flex-wrap">
+            {/* Week toggle */}
+            <div className="flex items-center rounded-md border border-border overflow-hidden text-[11px] font-mono font-semibold">
+              <button
+                onClick={() => setWeekView("current")}
+                className={`px-3 py-1 transition-colors ${
+                  weekView === "current"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                This Week
+              </button>
+              <button
+                onClick={() => setWeekView("previous")}
+                className={`px-3 py-1 transition-colors border-l border-border ${
+                  weekView === "previous"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Prev Week
+              </button>
+            </div>
+            {data?.stats.selectedWeek && (
+              <span className="text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded-full shrink-0">
+                {data.stats.selectedWeek.replace("-", " – ")}
               </span>
             )}
             {(data?.lowestWeekly ?? []).length > 0 && (
