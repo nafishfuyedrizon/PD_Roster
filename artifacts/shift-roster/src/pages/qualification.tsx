@@ -8,6 +8,7 @@ import {
   FileText, Clock, Calendar, Pencil, Trash2, Plus, X, Save, UserPlus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSettings } from "@/hooks/useSettings";
 
 /**
  * Parse MM/DD/YYYY and return days elapsed since that date (0 if invalid/future).
@@ -502,6 +503,9 @@ export default function QualificationPage() {
     refetchInterval: 30_000,
   });
 
+  const { data: settings } = useSettings();
+  const rankOrder = settings?.ranks ?? [];
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "QUALIFIED" | "NOT QUALIFIED" | "PENDING">("ALL");
   const [deptFilter, setDeptFilter] = useState<string>("ALL");
@@ -510,7 +514,7 @@ export default function QualificationPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return entries.filter((e) => {
+    const result = entries.filter((e) => {
       if (q && !(
         e.name.toLowerCase().includes(q) ||
         (e.rank ?? "").toLowerCase().includes(q) ||
@@ -522,7 +526,15 @@ export default function QualificationPage() {
       if (deptFilter !== "ALL" && e.department !== deptFilter) return false;
       return true;
     });
-  }, [entries, search, statusFilter, deptFilter]);
+    // Sort by rank order from settings (highest rank first)
+    return result.sort((a, b) => {
+      const ai = rankOrder.indexOf((a.rank ?? "").toUpperCase());
+      const bi = rankOrder.indexOf((b.rank ?? "").toUpperCase());
+      const aIdx = ai === -1 ? rankOrder.length : ai;
+      const bIdx = bi === -1 ? rankOrder.length : bi;
+      return aIdx - bIdx;
+    });
+  }, [entries, search, statusFilter, deptFilter, rankOrder]);
 
   const quals = entries.filter((e) => e.qualStatus === "QUALIFIED").length;
   const notQuals = entries.filter((e) => e.qualStatus === "NOT QUALIFIED").length;
