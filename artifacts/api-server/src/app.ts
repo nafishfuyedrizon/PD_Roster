@@ -42,7 +42,6 @@ app.use(
     saveUninitialized: false,
     store: new PgSession({
       conString: process.env.DATABASE_URL,
-      createTableIfMissing: true,
       ttl: 7 * 24 * 60 * 60, // 7 days in seconds
     }),
     cookie: {
