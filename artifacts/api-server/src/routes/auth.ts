@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
+import { db, adminLogsTable } from "@workspace/db";
 
 const router = Router();
 
@@ -177,6 +178,18 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       guildId: DISCORD_GUILD_ID,
       isOwner,
     };
+
+    try {
+      await db.insert(adminLogsTable).values({
+        actionType: "LOGIN",
+        entityType: "session",
+        entityId: discordUser.id,
+        entityName: displayName,
+        changedBy: displayName,
+        changedByUid: discordUser.id,
+        changes: null,
+      });
+    } catch (_) {}
 
     res.redirect("/shift-roster/dashboard");
   } catch (err) {

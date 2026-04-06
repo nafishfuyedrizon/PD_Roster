@@ -26,7 +26,7 @@ interface ProfileData {
   } | null;
   weeks: string[];
   duties: Record<string, Record<string, string>>;
-  discordUser: {
+  discordUser?: {
     id: string;
     username: string;
     displayName: string;
@@ -79,13 +79,33 @@ function statusColor(status: string) {
 export default function ProfilePage() {
   const [, setLocation] = useLocation();
 
-  const { data, isLoading } = useQuery<ProfileData>({
+  const params = new URLSearchParams(window.location.search);
+  const officerId = params.get("officerId");
+  const uid = params.get("uid");
+  const isViewing = !!(officerId || uid);
+
+  const ownProfile = useQuery<ProfileData>({
     queryKey: ["profile"],
     queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
+    enabled: !isViewing,
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
+
+  const viewUrl = officerId
+    ? `/api/profile/view?officerId=${officerId}`
+    : `/api/profile/view?uid=${uid}`;
+
+  const viewProfile = useQuery<ProfileData>({
+    queryKey: ["profile-view", officerId ?? uid],
+    queryFn: () => fetch(viewUrl, { credentials: "include" }).then((r) => r.json()),
+    enabled: isViewing,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  const { data, isLoading } = isViewing ? viewProfile : ownProfile;
 
   if (isLoading) {
     return (
@@ -104,7 +124,6 @@ export default function ProfilePage() {
 
   return (
     <Layout>
-      {/* Top bar */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="text-lg font-bold text-foreground">
@@ -119,16 +138,15 @@ export default function ProfilePage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setLocation("/roster")}
+          onClick={() => isViewing ? window.history.back() : setLocation("/roster")}
           className="bg-sky-600 hover:bg-sky-500 text-white border-sky-500 gap-2"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Return to Roster
+          {isViewing ? "Go Back" : "Return to Roster"}
         </Button>
       </div>
 
       <div className="flex gap-4 mt-2">
-        {/* Left — Details */}
         <div className="w-44 shrink-0 space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground font-mono mb-3">Details</p>
 
@@ -139,7 +157,7 @@ export default function ProfilePage() {
                 <span className="text-xs">No roster record linked</span>
               </div>
               <p className="text-[11px] text-muted-foreground/60 px-1">
-                Ask an admin to link your Discord account to your officer profile.
+                Ask an admin to link their Discord account to an officer profile.
               </p>
             </div>
           ) : (
@@ -162,7 +180,6 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Right — Hours grid */}
         <div className="flex-1 min-w-0">
           {weeks && weeks.length > 0 ? (
             <table className="w-full text-xs">
@@ -200,7 +217,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Notes placeholder */}
           <div className="mt-4">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground font-mono">Notes</p>
             <div className="mt-2 min-h-[60px] rounded border border-border/50 bg-secondary/20 p-2 text-xs text-muted-foreground">
@@ -213,7 +229,7 @@ export default function ProfilePage() {
   );
 }
 
-function DetailRow({ icon, value, label }: { icon: React.ReactNode; value: string; label?: string }) {
+function DetailRow({ icon, value }: { icon: React.ReactNode; value: string; label?: string }) {
   return (
     <div className="flex items-center gap-2 bg-secondary/40 rounded px-3 py-2">
       {icon}

@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
-import { ScrollText, UserCog, Plus, Trash2, Edit3, RefreshCw } from "lucide-react";
+import { ScrollText, UserCog, Plus, Trash2, Edit3, RefreshCw, LogIn, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AdminLog {
@@ -34,19 +35,21 @@ const FIELD_LABELS: Record<string, string> = {
 function actionBadge(type: string) {
   if (type === "CREATE") return <Badge className="bg-green-600/20 text-green-400 border-green-600/30 text-[10px] px-1.5">CREATE</Badge>;
   if (type === "DELETE") return <Badge className="bg-red-600/20 text-red-400 border-red-600/30 text-[10px] px-1.5">DELETE</Badge>;
+  if (type === "LOGIN")  return <Badge className="bg-teal-600/20 text-teal-400 border-teal-600/30 text-[10px] px-1.5">LOGIN</Badge>;
   return <Badge className="bg-blue-600/20 text-blue-400 border-blue-600/30 text-[10px] px-1.5">UPDATE</Badge>;
 }
 
 function actionIcon(type: string) {
   if (type === "CREATE") return <Plus className="w-3.5 h-3.5 text-green-400" />;
   if (type === "DELETE") return <Trash2 className="w-3.5 h-3.5 text-red-400" />;
+  if (type === "LOGIN")  return <LogIn className="w-3.5 h-3.5 text-teal-400" />;
   return <Edit3 className="w-3.5 h-3.5 text-blue-400" />;
 }
 
 function formatDate(iso: string) {
   const d = new Date(iso);
   const date = d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
-  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+  const time = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
   return { date, time };
 }
 
@@ -66,12 +69,33 @@ function ChangesDiff({ changes }: { changes: Record<string, { old: unknown; new:
 }
 
 export default function AdminLogsPage() {
-  const { data: logs = [], isLoading, refetch, isFetching } = useQuery<AdminLog[]>({
+  const [, setLocation] = useLocation();
+
+  const { data: logs = [], isLoading, refetch, isFetching, dataUpdatedAt } = useQuery<AdminLog[]>({
     queryKey: ["/api/admin/logs"],
     queryFn: () => fetch("/api/admin/logs?limit=200", { credentials: "include" }).then((r) => r.json()),
     staleTime: 0,
     refetchOnMount: true,
+    refetchInterval: 12000,
   });
+
+  const lastUpdated = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })
+    : null;
+
+  function goToProfile(log: AdminLog) {
+    if (log.entityType === "officer" && log.entityId) {
+      setLocation(`/profile?officerId=${log.entityId}`);
+    } else if (log.entityType === "session" && log.entityId) {
+      setLocation(`/profile?uid=${log.entityId}`);
+    }
+  }
+
+  function goToEditorProfile(log: AdminLog) {
+    if (log.changedByUid) {
+      setLocation(`/profile?uid=${log.changedByUid}`);
+    }
+  }
 
   return (
     <Layout>
@@ -80,6 +104,12 @@ export default function AdminLogsPage() {
           <ScrollText className="w-4 h-4 text-teal-400" />
           <span className="text-base font-bold text-foreground">Panel Logs</span>
           <span className="text-xs text-muted-foreground font-mono ml-1">({logs.length} entries)</span>
+          <div className="flex items-center gap-1 ml-2">
+            <Wifi className={`w-3 h-3 ${isFetching ? "text-teal-400 animate-pulse" : "text-green-500"}`} />
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {isFetching ? "updating..." : `live · ${lastUpdated ?? "—"}`}
+            </span>
+          </div>
         </div>
         <Button
           variant="outline"
@@ -108,36 +138,64 @@ export default function AdminLogsPage() {
           {logs.map((log) => {
             const { date, time } = formatDate(log.createdAt);
             const hasChanges = log.changes && Object.keys(log.changes).length > 0;
+            const isLogin = log.actionType === "LOGIN";
+            const isOfficerEntity = log.entityType === "officer";
+
             return (
               <div
                 key={log.id}
                 className="bg-secondary/30 border border-border/50 rounded-md px-4 py-3"
               >
                 <div className="flex items-start justify-between gap-3 flex-wrap">
-                  {/* Left: action + who + what */}
                   <div className="flex items-start gap-3 min-w-0">
                     <div className="mt-0.5 shrink-0">{actionIcon(log.actionType)}</div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {actionBadge(log.actionType)}
-                        <span className="text-xs font-semibold text-foreground truncate">
-                          {log.entityName ?? log.entityId ?? "—"}
-                        </span>
+
+                        {isLogin ? (
+                          <button
+                            onClick={() => goToProfile(log)}
+                            className="text-xs font-semibold text-teal-300 hover:text-teal-100 hover:underline transition-colors cursor-pointer"
+                            title="View profile"
+                          >
+                            {log.entityName ?? "—"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => isOfficerEntity ? goToProfile(log) : undefined}
+                            className={`text-xs font-semibold text-foreground ${isOfficerEntity ? "hover:text-primary hover:underline cursor-pointer" : ""} transition-colors`}
+                            title={isOfficerEntity ? "View officer profile" : undefined}
+                          >
+                            {log.entityName ?? log.entityId ?? "—"}
+                          </button>
+                        )}
+
                         <span className="text-[10px] text-muted-foreground capitalize">
                           ({log.entityType})
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <UserCog className="w-3 h-3 text-muted-foreground shrink-0" />
-                        <span className="text-[11px] text-muted-foreground">
-                          by <span className="text-foreground font-medium">{log.changedBy}</span>
-                        </span>
-                      </div>
+
+                      {!isLogin && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <UserCog className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span className="text-[11px] text-muted-foreground">
+                            by{" "}
+                            <button
+                              onClick={() => goToEditorProfile(log)}
+                              className="text-foreground font-medium hover:text-primary hover:underline transition-colors cursor-pointer"
+                              title="View editor profile"
+                            >
+                              {log.changedBy}
+                            </button>
+                          </span>
+                        </div>
+                      )}
+
                       {hasChanges && <ChangesDiff changes={log.changes!} />}
                     </div>
                   </div>
 
-                  {/* Right: date + time */}
                   <div className="text-right shrink-0">
                     <div className="text-[11px] font-mono text-foreground">{time}</div>
                     <div className="text-[10px] font-mono text-muted-foreground">{date}</div>
