@@ -34,6 +34,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {/* Command Dashboard */}
+          <Link href="/dashboard" data-testid="nav-dashboard">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/dashboard"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              }`}
+            >
+              <Activity className="w-4 h-4 text-green-400" />
+              Command Dashboard
+            </div>
+          </Link>
+
           {/* Rosters collapsible section */}
           <div>
             <button
@@ -132,20 +146,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <Clock className="w-4 h-4 text-blue-400" />
               PD Duty Hour
-            </div>
-          </Link>
-
-          {/* Command Dashboard */}
-          <Link href="/dashboard" data-testid="nav-dashboard">
-            <div
-              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
-                location === "/dashboard"
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-            >
-              <Activity className="w-4 h-4 text-green-400" />
-              Command Dashboard
             </div>
           </Link>
 
