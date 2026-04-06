@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -36,7 +36,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, Shield, SearchX, Check, X, LayoutGrid } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, SearchX, Check, X, LayoutGrid, ArrowUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const RANK_ORDER: Record<string, number> = {
@@ -151,6 +151,13 @@ export default function RosterPage() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editOfficer, setEditOfficer] = useState<Officer | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const queryParams = {
     ...(deptFromRoute && { department: deptFromRoute }),
@@ -512,6 +519,17 @@ export default function RosterPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Scroll to top button */}
+      {showScrollTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all duration-200"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
     </Layout>
   );
 }
