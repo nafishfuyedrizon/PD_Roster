@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import { db } from "@workspace/db";
 import { officersTable, emsDutyLogsTable } from "@workspace/db/schema";
-import { or, eq, desc } from "drizzle-orm";
+import { or, eq, desc, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 const router = Router();
@@ -96,6 +96,7 @@ router.get("/profile", async (req: Request, res: Response) => {
         division: officer.division,
         status: officer.status,
         dateOfJoining: officer.dateOfJoining,
+        lastPromotion: officer.lastPromotion,
         daysSinceJoining: days,
         strikesMajor: officer.strikesMajor ?? "0/4",
         strikesMinor: officer.strikesMinor ?? "0/2",
@@ -115,6 +116,41 @@ router.get("/profile", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Profile error:", err);
     res.status(500).json({ error: "Failed to load profile" });
+  }
+});
+
+// PATCH /api/profile/dates — update dateOfJoining and lastPromotion for an officer
+router.patch("/profile/dates", async (req: Request, res: Response) => {
+  const sessionUser = (req.session as any)?.user;
+  if (!sessionUser) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  if (!sessionUser.isOwner) {
+    res.status(403).json({ error: "Admin only" });
+    return;
+  }
+
+  const { officerId, dateOfJoining, lastPromotion } = req.body;
+  if (!officerId) {
+    res.status(400).json({ error: "officerId required" });
+    return;
+  }
+
+  try {
+    const updates: Record<string, string | null> = {};
+    if (dateOfJoining !== undefined) updates.dateOfJoining = dateOfJoining || null;
+    if (lastPromotion !== undefined) updates.lastPromotion = lastPromotion || null;
+
+    await db
+      .update(officersTable)
+      .set(updates as any)
+      .where(eq(officersTable.id, officerId));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Profile dates update error:", err);
+    res.status(500).json({ error: "Failed to update dates" });
   }
 });
 
