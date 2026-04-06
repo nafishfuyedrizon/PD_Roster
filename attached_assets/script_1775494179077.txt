@@ -1,0 +1,92 @@
+function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Citations");
+  
+  // 1. Parse the incoming data
+  const data = JSON.parse(e.postData.contents);
+
+  // 2. Prepare the row data for the Sheet
+  const newRow = [
+    new Date(),
+    data.title || "N/A",
+    data.incident || "N/A",
+    data.location || "N/A",
+    data.evidence || "N/A",
+    data.report || "N/A",
+    data.suspectName || "N/A",
+    data.cid || "N/A",
+    data.contact || "N/A",
+    data.charges || "N/A",
+    data.officer || "N/A"
+  ];
+
+  // 3. Save to Sheet
+  sheet.appendRow(newRow);
+
+  // 4. Send to Discord IMMEDIATELY using the data we just received
+  sendToDiscordInstant(newRow);
+
+  return ContentService.createTextOutput("Success");
+}
+
+function sendToDiscordInstant(rowData) {
+  const webhookURL = "https://discord.com/api/webhooks/1452312616813727745/y6uwzcjaQytxMxP3tqD2I_mle9rDTtS8bQukqVSlimva_nZyLdz6OkXxSAQvDJrYWoXM";
+
+  // Build the full text exactly as you want it
+  let fullText = `**Title:** ${rowData[1] || "N/A"}\n\n` +
+                 `**Incident:** ${rowData[2] || "N/A"}\n\n` +
+                 `**Location:** ${rowData[3] || "N/A"}\n\n` +
+                 `**Evidence:** ${rowData[4] || "N/A"}\n\n` +
+                 `**Incident Report:** ${rowData[5] || "N/A"}\n\n` +
+                 `**Suspect's Name:** ${rowData[6] || "N/A"}\n\n` +
+                 `**Suspect's CID:** ${rowData[7] || "N/A"}\n\n` +
+                 `**Suspect's Contact:** ${rowData[8] || "N/A"}\n\n` +
+                 `**Charges:** ${rowData[9] || "N/A"}\n\n` +
+                 `**Officer:** ${rowData[10] || "N/A"}`;
+
+  const fields = [];
+  
+  // Smart Split logic: Splits the text into chunks of ~1000 characters 
+  // without breaking bold tags or lines.
+  while (fullText.length > 0) {
+    let chunk = fullText.substring(0, 1000);
+    
+    // If the text is longer than 1000, find the last newline to split cleanly
+    if (fullText.length > 1000) {
+      const lastNewline = chunk.lastIndexOf('\n');
+      if (lastNewline > 500) { // Only split at newline if it's not too early
+        chunk = fullText.substring(0, lastNewline);
+      }
+    }
+    
+    fields.push({
+      name: "\u200B",
+      value: chunk.trim(),
+      inline: false
+    });
+    
+    fullText = fullText.substring(chunk.length).trim();
+  }
+
+  const payload = {
+    embeds: [{
+      title: "📅 New PD Citation Record",
+      color: 5814783,
+      fields: fields, // This will now have 1, 2, or 3 chunks if needed
+      footer: { text: "Police Department Reception" },
+      timestamp: new Date().toISOString()
+    }]
+  };
+
+  const options = {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  try {
+    UrlFetchApp.fetch(webhookURL, options);
+  } catch (e) {
+    Logger.log("Error: " + e.message);
+  }
+}
