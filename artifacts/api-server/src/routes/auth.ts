@@ -9,6 +9,27 @@ const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || "1286283853186596904";
 const DISCORD_OWNER_ID = process.env.DISCORD_OWNER_ID || "1286283853186596904";
 const DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
 
+// Temporary access store: discordUserId → expiry timestamp (ms)
+const tempAccessStore = new Map<string, number>();
+
+function grantTempAccess(userId: string, durationMs: number) {
+  tempAccessStore.set(userId, Date.now() + durationMs);
+  console.log(`[auth] Temp access granted to ${userId} for ${durationMs / 3600000}h, expires ${new Date(Date.now() + durationMs).toISOString()}`);
+}
+
+function hasTempAccess(userId: string): boolean {
+  const expiry = tempAccessStore.get(userId);
+  if (!expiry) return false;
+  if (Date.now() > expiry) {
+    tempAccessStore.delete(userId);
+    return false;
+  }
+  return true;
+}
+
+// Pre-grant 24h access for requested user
+grantTempAccess("463587754471718923", 24 * 60 * 60 * 1000);
+
 function getRedirectUri(req: Request) {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host || DEV_DOMAIN;
@@ -105,6 +126,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     };
 
     const isOwner = discordUser.id === DISCORD_OWNER_ID;
+    const isTempAllowed = hasTempAccess(discordUser.id);
 
     let displayName = discordUser.global_name || discordUser.username;
     let roles: string[] = [];
@@ -114,7 +136,11 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
 
     if (isOwner) {
       // Owner always gets in — skip guild membership check
-      console.log(`Owner login: ${discordUser.username} (${discordUser.id})`);
+      console.log(`[auth] Owner login: ${discordUser.username} (${discordUser.id})`);
+    } else if (isTempAllowed) {
+      // Temporary access — skip guild membership check
+      const expiry = tempAccessStore.get(discordUser.id)!;
+      console.log(`[auth] Temp access login: ${discordUser.username} (${discordUser.id}), expires ${new Date(expiry).toISOString()}`);
     } else {
       // Regular users must be guild members
       const memberRes = await fetch(
@@ -123,7 +149,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       );
 
       if (!memberRes.ok) {
-        console.warn(`Guild check failed (${memberRes.status}) for user ${discordUser.id}`);
+        console.warn(`[auth] Guild check failed (${memberRes.status}) for user ${discordUser.id}`);
         res.redirect("/shift-roster/?auth_error=not_member");
         return;
       }
