@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/hooks/useSettings";
+import { useAuth } from "@/hooks/useAuth";
 
 /**
  * Parse MM/DD/YYYY and return days elapsed since that date (0 if invalid/future).
@@ -536,18 +537,23 @@ function DeleteConfirm({ entry, onClose }: { entry: QualEntry; onClose: () => vo
 
 const VOTE_OPTIONS = ["", "✓", "✗", "N/A"] as const;
 
-function VoteRow({ entryId, voteType, voterName, value }: {
-  entryId: number; voteType: "ftb" | "hc"; voterName: string; value: string;
+function VoteRow({ entryId, voteType, voterName, value, isOwn }: {
+  entryId: number; voteType: "ftb" | "hc"; voterName: string; value: string; isOwn: boolean;
 }) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const mut = useMutation({
     mutationFn: (v: string) =>
       fetch(`/api/qualification-chart/${entryId}/votes`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ voteType, voterName, value: v }),
-      }).then((r) => r.json()),
+      }).then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).error ?? "Failed");
+        return r.json();
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] }),
+    onError: (err: Error) => toast({ title: "Vote failed", description: err.message, variant: "destructive" }),
   });
 
   const valColor = value === "✓"
@@ -563,23 +569,39 @@ function VoteRow({ entryId, voteType, voterName, value }: {
       <span className="text-[10px] font-mono text-muted-foreground/60 w-[68px] truncate text-right shrink-0" title={voterName}>
         {voterName.split(" ")[0]}
       </span>
-      <select
-        value={value}
-        onChange={(e) => mut.mutate(e.target.value)}
-        disabled={mut.isPending}
-        className={`text-[11px] font-bold bg-secondary/40 border border-border/40 rounded px-1 py-0 h-5 w-[46px] cursor-pointer focus:outline-none hover:border-primary/40 transition-colors ${valColor} ${mut.isPending ? "opacity-50" : ""}`}
-      >
-        {VOTE_OPTIONS.map((opt) => (
-          <option key={opt} value={opt} className="bg-background text-foreground">
-            {opt === "" ? "—" : opt}
-          </option>
-        ))}
-      </select>
+      {isOwn ? (
+        <select
+          value={value}
+          onChange={(e) => mut.mutate(e.target.value)}
+          disabled={mut.isPending}
+          className={`text-[11px] font-bold bg-secondary/40 border border-border/40 rounded px-1 py-0 h-5 w-[46px] cursor-pointer focus:outline-none hover:border-primary/40 transition-colors ${valColor} ${mut.isPending ? "opacity-50" : ""}`}
+        >
+          {VOTE_OPTIONS.map((opt) => (
+            <option key={opt} value={opt} className="bg-background text-foreground">
+              {opt === "" ? "—" : opt}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span className={`text-[11px] font-bold w-[46px] text-center ${valColor}`}>
+          {value === "" ? "—" : value}
+        </span>
+      )}
     </div>
   );
 }
 
 export default function QualificationPage() {
+  const { user } = useAuth();
+  const isOwner = user?.isOwner ?? false;
+
+  const { data: profileData } = useQuery<{ officer: { name: string } | null }>({
+    queryKey: ["profile"],
+    queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 60_000,
+  });
+  const currentOfficerName = profileData?.officer?.name ?? null;
+
   const { data: entries = [], isLoading } = useQuery<QualEntry[]>({
     queryKey: ["/api/qualification-chart"],
     queryFn: () => fetch("/api/qualification-chart").then((r) => r.json()),
@@ -889,6 +911,7 @@ export default function QualificationPage() {
                                 voteType="ftb"
                                 voterName={name}
                                 value={(e.ftbVotes ?? {})[name] ?? ""}
+                                isOwn={isOwner || name === currentOfficerName}
                               />
                             ))}
                           </div>
@@ -905,6 +928,7 @@ export default function QualificationPage() {
                                 voteType="hc"
                                 voterName={name}
                                 value={(e.hcVotes ?? {})[name] ?? ""}
+                                isOwn={isOwner || name === currentOfficerName}
                               />
                             ))}
                           </div>

@@ -286,10 +286,30 @@ router.get("/ftp-members", async (_req, res): Promise<void> => {
 
 // PATCH /api/qualification-chart/:id/votes — update a single vote
 router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> => {
+  const sessionUser = (req.session as any)?.user;
+  if (!sessionUser) { res.status(401).json({ error: "Not authenticated" }); return; }
+
   const id = Number(req.params.id);
   const { voteType, voterName, value } = req.body;
-  // voteType: "ftb" | "hc", voterName: string, value: "✓" | "✗" | ""
+  // voteType: "ftb" | "hc", voterName: string, value: "✓" | "✗" | "N/A" | ""
   if (!voteType || !voterName) { res.status(400).json({ error: "voteType and voterName required" }); return; }
+
+  // Owners can vote on behalf of anyone; others can only submit their own vote
+  if (!sessionUser.isOwner) {
+    const officers = await db
+      .select({ name: officersTable.name })
+      .from(officersTable)
+      .where(or(
+        eq(officersTable.discordUid, sessionUser.id ?? ""),
+        eq(officersTable.discordUsername, sessionUser.username ?? ""),
+      ))
+      .limit(1);
+    const officerName = officers[0]?.name ?? null;
+    if (!officerName || officerName !== voterName) {
+      res.status(403).json({ error: "You can only submit your own vote" });
+      return;
+    }
+  }
 
   const [current] = await db.select({
     ftbVotes: qualificationChartTable.ftbVotes,
