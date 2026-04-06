@@ -162,6 +162,29 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="block text-[11px] font-mono uppercase text-muted-foreground mb-1">{children}</label>;
 }
 
+function StyledSelect({
+  value,
+  onChange,
+  children,
+  className = "",
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={onChange}
+      style={{ colorScheme: "dark", backgroundColor: "hsl(var(--secondary))", color: "hsl(var(--foreground))" }}
+      className={`w-full h-9 rounded-md border border-input px-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring ${className}`}
+    >
+      {children}
+    </select>
+  );
+}
+
 function EditModal({
   entry,
   onClose,
@@ -258,25 +281,17 @@ function EditModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel>Rank</FieldLabel>
-              <select
-                value={form.rank ?? ""}
-                onChange={(e) => set("rank", e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-secondary/30 px-3 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
+              <StyledSelect value={form.rank ?? ""} onChange={(e) => set("rank", e.target.value)}>
                 <option value="">— No Rank —</option>
                 {RANKS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
+              </StyledSelect>
             </div>
             <div>
               <FieldLabel>Department</FieldLabel>
-              <select
-                value={form.department ?? ""}
-                onChange={(e) => set("department", e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-secondary/30 px-3 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
+              <StyledSelect value={form.department ?? ""} onChange={(e) => set("department", e.target.value)}>
                 <option value="">— None —</option>
                 {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
+              </StyledSelect>
             </div>
           </div>
 
@@ -335,38 +350,26 @@ function EditModal({
             </div>
             <div>
               <FieldLabel>Major Strikes (x/4)</FieldLabel>
-              <select
-                value={form.strikesMajor ?? "0/4"}
-                onChange={(e) => set("strikesMajor", e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-secondary/30 px-3 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
+              <StyledSelect value={form.strikesMajor ?? "0/4"} onChange={(e) => set("strikesMajor", e.target.value)}>
                 {["0/4","1/4","2/4","3/4","4/4"].map((v) => <option key={v} value={v}>{v}</option>)}
-              </select>
+              </StyledSelect>
             </div>
             <div>
               <FieldLabel>Minor Strikes (x/2)</FieldLabel>
-              <select
-                value={form.strikesMinor ?? "0/2"}
-                onChange={(e) => set("strikesMinor", e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-secondary/30 px-3 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
+              <StyledSelect value={form.strikesMinor ?? "0/2"} onChange={(e) => set("strikesMinor", e.target.value)}>
                 {["0/2","1/2","2/2"].map((v) => <option key={v} value={v}>{v}</option>)}
-              </select>
+              </StyledSelect>
             </div>
           </div>
 
           {/* Qual Status */}
           <div>
             <FieldLabel>Qualification Status</FieldLabel>
-            <select
-              value={form.qualStatus ?? ""}
-              onChange={(e) => set("qualStatus", e.target.value || null)}
-              className="w-full h-9 rounded-md border border-input bg-secondary/30 px-3 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
+            <StyledSelect value={form.qualStatus ?? ""} onChange={(e) => set("qualStatus", e.target.value || null)}>
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
-            </select>
+            </StyledSelect>
           </div>
 
           {/* Notes */}
