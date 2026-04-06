@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays } from "lucide-react";
+import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -144,6 +144,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <Activity className="w-4 h-4 text-green-400" />
               Command Dashboard
+            </div>
+          </Link>
+
+          {/* Qualification Chart */}
+          <Link href="/qualification-chart" data-testid="nav-qualification-chart">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/qualification-chart"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              }`}
+            >
+              <Award className="w-4 h-4 text-yellow-400" />
+              Qual Chart
             </div>
           </Link>
 

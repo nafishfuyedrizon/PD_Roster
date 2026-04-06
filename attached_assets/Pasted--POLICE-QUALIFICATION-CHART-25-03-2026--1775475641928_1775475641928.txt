@@ -1,0 +1,467 @@
+																				
+POLICE QUALIFICATION CHART (25/03/2026)																				
+																				
+NAME	DISCORD UID	RANK	DEPARTMENT	MINIMUM DUTY DAYS IN PRESENT RANK	DAYS IN PRESENT RANK	MINIMUM DUTY HOURS IN PRESENT RANK	HOURS IN PRESENT RANK	Citation Count	FIR Count	LAST PROMOTION	"Strikes
+(Major)
+(Minor)"	STATUS	LOA DAYS IN PRESENT RANK	VOTE BY FTO		NOTES BY FTO	VOTE BY HIGH-COMMAND		NOTES BY HIGH-COMMAND	
+																				
+Ricardo Lance	442421398913155092	CHIEF	SASP	70(10 Weeks)	635	150				07/10/2024	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Devon Max	484620218887438347	ASSISTANT CHIEF	SASP		76		47.53	0		01/20/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Dino Smith	539698723610165268	UNDERSHERIFF	BCSO		75		36.6	4		01/21/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Tim Bradford	602830834738921485	CAPTAIN	BCSO		47		2.8	0		02/18/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Antu Haque	524079934109515776	LIEUTENANT	SASP		76		62.11	6		01/20/2026	0/4	NOT QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Kibria Salvatore	812733898899062785	CAPTAIN	BCSO		5		149.53	20		04/01/2026	0/4	QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Aiden O Neil	401034118718160926	LIEUTENANT	SAHP		76		81.15	6		01/20/2026	0/4	NOT QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Marshall Reeves	481132907495424002	LIEUTENANT	SAHP		76		48.12	8		01/20/2026	0/4	NOT QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Alan Davidson	#N/A	#N/A	#N/A		#N/A		73.24	0		#N/A	#N/A	NOT QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Romeo Rodriguez	1017134648440148019	SERGEANT FIRST CLASS	SASP		47		53.5	0		2/18/2026	0/4	NOT QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Tyler Maxwell	#N/A	#N/A	#N/A		#N/A		66.6	0		#N/A	#N/A	NOT QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+George Nix	546244482128019457	SERGEANT FIRST CLASS	SAHP		50		57.45	0		2/15/2026	0/4	NOT QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Rox Rosario	401071603527581697	LIEUTENANT	BCSO		5		167.56	21		04/01/2026	0/4	QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Icarus Daedlus	463587754471718923	LIEUTENANT	SAHP		5		155.36	2		04/01/2026	0/4	QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Aaron Ronnie	665163856145809464	SERGEANT FIRST CLASS	SASP		5		123.22	21		04/01/2026	0/4	QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Markel Reeves	827491250994282506	SERGEANT FIRST CLASS	BCSO		24		29.46	17		03/13/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Lucien Mccgill	#N/A	#N/A	#N/A		#N/A		51.2	1		#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Kishor Chowdhury	624654547050168345	CORPORAL	BCSO		76		128.24	8		01/20/2026	1/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Arwan Zain	493029501677338644	SENIOR TROOPER	SASP		47		47.55	3		2/18/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Jayed Hassan	764201687358504961	SENIOR TROOPER	SASP		47		39.17	1		2/18/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Jennie Valentine	535403071107497985	SENIOR DEPUTY	BCSO		76		104.15	13		01/20/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Kakashi Hatake	591328568886296675	SENIOR DEPUTY	BCSO		47		86.5	7		2/18/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Jason Friday	712360606044258375	SENIOR STATE TROOPER	SAHP		59		50.45	0		02/06/2026	1/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Soichiro Yagami	447092557147799584	TROOPER FIRST CLASS	SASP		47		15.54	0		02/18/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Vincent Lobo	752082538192699465	SENIOR TROOPER	SASP		31		11.36	0		3/6/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Daniel Parker	900229282696146985	DEPUTY FIRST CLASS	BCSO		76		86.9	20		01/20/2026	0/4	QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Tasin Rahman	1019613916105551927	SENIOR DEPUTY	BCSO		31		87.28	4		3/6/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Jerry Cruise	683173323911594142	STATE TROOPER FIRST CLASS	SAHP		47		66.41	17		2/18/2026	0/4	QUALIFIED		Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Ashfaq Reeves	880061779957403688	TROOPER FIRST CLASS	SASP		24		11.3	12		03/13/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+James Miller	513074038936043552	DEPUTY	BCSO		28		1.39	3		03/09/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Jeshu Smith	1395360292149399572	DEPUTY	BCSO		23		16.2	4		03/14/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Nick Di Caprio	749874328405016628	STATE TROOPER	SAHP		24		0	0		3/13/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+John Nolan	881400022393057280	DEPUTY	BCSO		20		28.21	7		03/17/2026	0/4			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											0/2			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+Xavier Cruz	#N/A	#N/A	#N/A		#N/A		15.45	0		#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																	Ricardo Lance			
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Max Colson			
+														Antu			Kabir Chowdhury			
+														Aiden						
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				
+	#N/A	#N/A	#N/A		#N/A					#N/A	#N/A			Kibria			Ricardo Lance			
+														Antu			Max Colson			
+														Aiden			Kabir Chowdhury			
+														Icarus						
+														Rox						
+											#N/A			Ronnie						
+														Markel						
+														Kakashi						
+														Mccgill						
+																				

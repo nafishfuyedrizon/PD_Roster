@@ -6,6 +6,7 @@ import discordRouter from "./discord";
 import dashboardRouter from "./dashboard";
 import adminRouter from "./admin";
 import settingsRouter from "./settings";
+import qualificationRouter from "./qualification";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(discordRouter);
 router.use(dashboardRouter);
 router.use(adminRouter);
 router.use(settingsRouter);
+router.use(qualificationRouter);
 
 export default router;

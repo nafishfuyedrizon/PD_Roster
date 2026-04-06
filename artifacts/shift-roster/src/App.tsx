@@ -15,6 +15,7 @@ import DashboardPage from "@/pages/dashboard";
 import AdminPage from "@/pages/admin";
 import AdminDutyLogsPage from "@/pages/admin-duty-logs";
 import AdminSettingsPage from "@/pages/admin-settings";
+import QualificationPage from "@/pages/qualification";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/admin" component={AdminPage} />
       <Route path="/admin/duty-logs" component={AdminDutyLogsPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
+      <Route path="/qualification-chart" component={QualificationPage} />
       <Route path="/ems-duty-hour">{() => <RedirectTo to="/pd-duty-hour" />}</Route>
       <Route component={NotFound} />
     </Switch>
