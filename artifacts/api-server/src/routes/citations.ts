@@ -228,8 +228,7 @@ router.get("/citations/stats", async (_req, res): Promise<void> => {
 // ── Admin: webhook info ───────────────────────────────────────────────────────
 
 router.get("/admin/citations/webhook", async (req, res): Promise<void> => {
-  const session = (req as any).session;
-  if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const secret = await getWebhookSecret();
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host;
@@ -239,8 +238,7 @@ router.get("/admin/citations/webhook", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/citations/webhook/regenerate", async (req, res): Promise<void> => {
-  const session = (req as any).session;
-  if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const newSecret = randomUUID().replace(/-/g, "");
   await setSetting("citation_webhook_secret", newSecret);
   const proto = req.headers["x-forwarded-proto"] || "https";
@@ -249,8 +247,7 @@ router.post("/admin/citations/webhook/regenerate", async (req, res): Promise<voi
 });
 
 router.post("/admin/citations/discord-forward", async (req, res): Promise<void> => {
-  const session = (req as any).session;
-  if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const { url } = req.body as { url: string };
   if (url && !url.startsWith("https://discord.com/api/webhooks/")) {
     res.status(400).json({ error: "Invalid Discord webhook URL" }); return;
@@ -263,8 +260,7 @@ router.post("/admin/citations/discord-forward", async (req, res): Promise<void> 
 // ── Admin: Google Sheet config ────────────────────────────────────────────────
 
 router.get("/admin/citations/sheet", async (req, res): Promise<void> => {
-  const session = (req as any).session;
-  if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const sheetUrl  = await getSetting("citation_sheet_url");
   const sheetName = await getSetting("citation_sheet_name") ?? "Citations";
   const lastSync  = await getSetting("citation_sheet_last_sync");
@@ -273,8 +269,7 @@ router.get("/admin/citations/sheet", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/citations/sheet", async (req, res): Promise<void> => {
-  const session = (req as any).session;
-  if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const { url, sheetName } = req.body as { url: string; sheetName?: string };
   if (url) await setSetting("citation_sheet_url", url);
   if (sheetName) await setSetting("citation_sheet_name", sheetName);
@@ -282,15 +277,13 @@ router.post("/admin/citations/sheet", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/citations/sheet/sync", async (req, res): Promise<void> => {
-  const session = (req as any).session;
-  if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   const result = await syncFromGoogleSheet();
   res.json(result);
 });
 
 router.post("/admin/citations/sheet/reset", async (req, res): Promise<void> => {
-  const session = (req as any).session;
-  if (!session?.discordUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
   await setSetting("citation_sheet_synced_rows", "0");
   res.json({ ok: true });
 });
