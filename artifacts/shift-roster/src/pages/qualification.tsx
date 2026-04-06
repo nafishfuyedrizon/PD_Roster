@@ -9,18 +9,25 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-/** Parse MM/DD/YYYY and return days elapsed since that date (0 if invalid/future). */
-function calcDaysInRank(lastPromotion: string | null): number | null {
-  if (!lastPromotion) return null;
-  const parts = lastPromotion.split("/");
+/**
+ * Parse MM/DD/YYYY and return days elapsed since that date (0 if invalid/future).
+ * If lastPromotion is null/blank, falls back to joiningDate.
+ */
+function calcDaysInRank(
+  lastPromotion: string | null,
+  joiningDate?: string | null,
+): number | null {
+  const dateStr = lastPromotion || joiningDate || null;
+  if (!dateStr) return null;
+  const parts = dateStr.split("/");
   if (parts.length !== 3) return null;
   const [mm, dd, yyyy] = parts.map(Number);
   if (isNaN(mm) || isNaN(dd) || isNaN(yyyy)) return null;
-  const promDate = new Date(yyyy, mm - 1, dd);
-  if (isNaN(promDate.getTime())) return null;
+  const fromDate = new Date(yyyy, mm - 1, dd);
+  if (isNaN(fromDate.getTime())) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const diff = Math.floor((today.getTime() - promDate.getTime()) / 86_400_000);
+  const diff = Math.floor((today.getTime() - fromDate.getTime()) / 86_400_000);
   return diff >= 0 ? diff : 0;
 }
 
@@ -35,6 +42,7 @@ type QualEntry = {
   citationCount: number;
   firCount: number;
   lastPromotion: string | null;
+  joiningDate: string | null;
   strikesMajor: string | null;
   strikesMinor: string | null;
   qualStatus: string | null;
@@ -42,7 +50,7 @@ type QualEntry = {
   rosterLinked: boolean;
 };
 
-type FormData = Omit<QualEntry, "id" | "rosterLinked">;
+type FormData = Omit<QualEntry, "id" | "rosterLinked" | "joiningDate">;
 
 const EMPTY_FORM: FormData = {
   name: "",
@@ -355,8 +363,10 @@ function EditModal({
               <FieldLabel>Days in Rank</FieldLabel>
               <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-muted-foreground select-none">
                 {(() => {
-                  const d = calcDaysInRank(form.lastPromotion);
-                  return d != null ? `${d} days` : "— (set Last Promotion)";
+                  const d = calcDaysInRank(form.lastPromotion, entry?.joiningDate);
+                  const fromJoining = !form.lastPromotion && !!entry?.joiningDate;
+                  if (d == null) return "— (set Last Promotion)";
+                  return fromJoining ? `${d} days (since joining)` : `${d} days`;
                 })()}
               </div>
             </div>
@@ -705,10 +715,15 @@ export default function QualificationPage() {
                       <td className="px-4 py-3 text-center">
                         <span className="font-mono font-semibold text-foreground">
                           {(() => {
-                            const d = calcDaysInRank(e.lastPromotion);
-                            return d != null
-                              ? d
-                              : <span className="text-muted-foreground/40">—</span>;
+                            const d = calcDaysInRank(e.lastPromotion, e.joiningDate);
+                            if (d == null) return <span className="text-muted-foreground/40">—</span>;
+                            const fromJoining = !e.lastPromotion && !!e.joiningDate;
+                            return (
+                              <span title={fromJoining ? `Since joining: ${e.joiningDate}` : undefined}
+                                className={fromJoining ? "text-muted-foreground" : ""}>
+                                {d}
+                              </span>
+                            );
                           })()}
                         </span>
                       </td>

@@ -69,6 +69,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       citationCount: sql<number>`COALESCE(${qualificationChartTable.citationCount}, 0)`,
       firCount: sql<number>`COALESCE(${qualificationChartTable.firCount}, 0)`,
       lastPromotion: qualificationChartTable.lastPromotion,
+      joiningDate: officersTable.dateOfJoining,
       strikesMajor: qualificationChartTable.strikesMajor,
       strikesMinor: qualificationChartTable.strikesMinor,
       qualStatus: qualificationChartTable.qualStatus,
