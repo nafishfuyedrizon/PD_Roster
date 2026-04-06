@@ -36,7 +36,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, Shield, SearchX, Check, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, SearchX, Check, X, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const RANK_ORDER: Record<string, number> = {
@@ -245,6 +245,12 @@ export default function RosterPage() {
 
   return (
     <Layout>
+      {/* Command Dashboard Banner */}
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0d1117] border border-[#1a2030] rounded-lg w-fit">
+        <Activity className="w-3.5 h-3.5 text-green-400 animate-pulse" />
+        <span className="text-xs font-mono font-semibold text-green-400 tracking-widest uppercase">Command Dashboard</span>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
