@@ -23,6 +23,13 @@ import {
 } from "@/components/ui/select";
 import type { Officer, CreateOfficerBody } from "@workspace/api-client-react";
 
+function todayMDY(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
 const officerSchema = z.object({
   callSign: z.string().min(1, "Call Sign is required"),
   citizenId: z.string().optional(),
@@ -145,7 +152,7 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
       division: defaultValues?.division ?? "",
       status: defaultValues?.status ?? "Active",
       timezone: defaultValues?.timezone ?? "BD",
-      dateOfJoining: defaultValues?.dateOfJoining ?? "",
+      dateOfJoining: defaultValues?.dateOfJoining ?? todayMDY(),
       lastPromotion: defaultValues?.lastPromotion ?? "",
       pilot: defaultValues?.pilot ?? false,
       mdt: defaultValues?.mdt ?? false,
