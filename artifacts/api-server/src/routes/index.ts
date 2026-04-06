@@ -7,9 +7,11 @@ import dashboardRouter from "./dashboard";
 import adminRouter from "./admin";
 import settingsRouter from "./settings";
 import qualificationRouter from "./qualification";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
+router.use(authRouter);
 router.use(healthRouter);
 router.use(rosterRouter);
 router.use(emsRouter);

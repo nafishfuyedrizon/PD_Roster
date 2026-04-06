@@ -1,0 +1,138 @@
+import { Router } from "express";
+import type { Request, Response } from "express";
+
+const router = Router();
+
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
+
+function getRedirectUri(req: Request) {
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || DEV_DOMAIN;
+  return `${proto}://${host}/api/auth/discord/callback`;
+}
+
+router.get("/auth/discord", (req: Request, res: Response) => {
+  if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
+    res.status(503).json({ error: "Discord OAuth not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET." });
+    return;
+  }
+
+  const redirectUri = getRedirectUri(req);
+  const state = Math.random().toString(36).slice(2);
+  (req.session as any).oauthState = state;
+
+  const params = new URLSearchParams({
+    client_id: DISCORD_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "identify guilds.members.read",
+    state,
+  });
+
+  res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
+});
+
+router.get("/auth/discord/callback", async (req: Request, res: Response) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    res.redirect(`/shift-roster/?auth_error=${encodeURIComponent(String(error))}`);
+    return;
+  }
+
+  const storedState = (req.session as any).oauthState;
+  if (!state || state !== storedState) {
+    res.redirect("/shift-roster/?auth_error=invalid_state");
+    return;
+  }
+
+  delete (req.session as any).oauthState;
+
+  if (!code) {
+    res.redirect("/shift-roster/?auth_error=no_code");
+    return;
+  }
+
+  try {
+    const redirectUri = getRedirectUri(req);
+
+    const tokenRes = await fetch("https://discord.com/api/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: DISCORD_CLIENT_ID!,
+        client_secret: DISCORD_CLIENT_SECRET!,
+        grant_type: "authorization_code",
+        code: String(code),
+        redirect_uri: redirectUri,
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.text();
+      console.error("Discord token exchange failed:", err);
+      res.redirect("/shift-roster/?auth_error=token_failed");
+      return;
+    }
+
+    const tokenData = await tokenRes.json() as { access_token: string; token_type: string };
+
+    const userRes = await fetch("https://discord.com/api/users/@me", {
+      headers: { Authorization: `${tokenData.token_type} ${tokenData.access_token}` },
+    });
+
+    if (!userRes.ok) {
+      res.redirect("/shift-roster/?auth_error=user_fetch_failed");
+      return;
+    }
+
+    const discordUser = await userRes.json() as {
+      id: string;
+      username: string;
+      global_name: string | null;
+      avatar: string | null;
+      discriminator: string;
+    };
+
+    (req.session as any).user = {
+      id: discordUser.id,
+      username: discordUser.username,
+      displayName: discordUser.global_name || discordUser.username,
+      avatar: discordUser.avatar
+        ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+        : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordUser.discriminator || "0") % 5}.png`,
+    };
+
+    res.redirect("/shift-roster/roster");
+  } catch (err) {
+    console.error("Discord OAuth error:", err);
+    res.redirect("/shift-roster/?auth_error=server_error");
+  }
+});
+
+router.get("/auth/me", (req: Request, res: Response) => {
+  const user = (req.session as any)?.user;
+  if (!user) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  res.json({ user });
+});
+
+router.post("/auth/logout", (req: Request, res: Response) => {
+  req.session.destroy((err) => {
+    if (err) console.error("Session destroy error:", err);
+    res.clearCookie("sid");
+    res.json({ ok: true });
+  });
+});
+
+router.get("/auth/config", (_req: Request, res: Response) => {
+  res.json({
+    configured: !!(DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET),
+  });
+});
+
+export default router;

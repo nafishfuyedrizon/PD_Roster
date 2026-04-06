@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Activity, Settings, Hash, CalendarDays, Award, LogOut } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
-import { useClerk } from "@clerk/react";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [rostersOpen, setRostersOpen] = useState(true);
   const [adminOpen, setAdminOpen] = useState(location.startsWith("/admin"));
   const { data: settings } = useSettings();
-  const { signOut } = useClerk();
+  const { logout } = useAuth();
 
   const isRosterActive = location === "/" || location === "/roster" || location.startsWith("/dept/");
   const isAdminActive = location.startsWith("/admin");
@@ -237,7 +237,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <button
-            onClick={() => signOut({ redirectUrl: "/" })}
+            onClick={() => logout()}
             className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors font-mono"
           >
             <LogOut className="w-3.5 h-3.5" />
