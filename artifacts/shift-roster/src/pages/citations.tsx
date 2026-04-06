@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   FileText, Search, User, MapPin, Gavel, Phone, Hash,
   RefreshCw, Wifi, ChevronDown, ChevronUp, ExternalLink,
-  Webhook, Copy, Check, RotateCcw, ChevronRight,
+  Copy, Check, ChevronRight,
   Sheet, CloudDownload, Clock, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,11 +35,6 @@ interface CitationStats {
   topOfficers: { officer_name: string; citations: number }[];
 }
 
-interface WebhookInfo {
-  secret: string;
-  webhookUrl: string;
-  discordForwardUrl: string | null;
-}
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -170,168 +165,6 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function WebhookSetupPanel() {
-  const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [discordUrl, setDiscordUrl] = useState("");
-  const [urlSaved, setUrlSaved] = useState(false);
-
-  const { data: wh, isLoading } = useQuery<WebhookInfo>({
-    queryKey: ["/api/admin/citations/webhook"],
-    queryFn: () => fetch("/api/admin/citations/webhook", { credentials: "include" }).then((r) => r.json()),
-    enabled: open,
-    staleTime: Infinity,
-    onSuccess: (d) => { if (d.discordForwardUrl) setDiscordUrl(d.discordForwardUrl); },
-  } as any);
-
-  const regenerate = useMutation({
-    mutationFn: () =>
-      fetch("/api/admin/citations/webhook/regenerate", { method: "POST", credentials: "include" }).then((r) => r.json()),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/citations/webhook"] }),
-  });
-
-  const saveDiscordUrl = useMutation({
-    mutationFn: (url: string) =>
-      fetch("/api/admin/citations/discord-forward", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      }).then((r) => r.json()),
-    onSuccess: () => {
-      setUrlSaved(true);
-      setTimeout(() => setUrlSaved(false), 3000);
-      qc.invalidateQueries({ queryKey: ["/api/admin/citations/webhook"] });
-    },
-  });
-
-  const discordForwardUrl = wh?.discordForwardUrl ?? null;
-  const isDiscordConfigured = !!discordForwardUrl;
-
-  return (
-    <div className="border border-border/50 rounded-md overflow-hidden bg-secondary/20">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-secondary/40 transition-colors"
-      >
-        <span className="flex items-center gap-2">
-          <Webhook className="w-4 h-4 text-purple-400" />
-          <span>Citation Webhook Setup</span>
-          {isDiscordConfigured && (
-            <Badge className="bg-green-600/20 text-green-300 border-green-600/30 text-[10px] px-1.5">Discord ✓</Badge>
-          )}
-        </span>
-        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-      </button>
-
-      {open && (
-        <div className="border-t border-border/40 px-4 py-4 space-y-4">
-
-          {/* Step 1 — Our webhook URL */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-[10px] font-bold bg-purple-600/30 text-purple-300 rounded-full w-4 h-4 flex items-center justify-center shrink-0">1</span>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">আমাদের Webhook URL (এটাতে POST করতে হবে)</span>
-            </div>
-            {isLoading ? (
-              <div className="text-xs text-muted-foreground font-mono">Loading…</div>
-            ) : wh?.webhookUrl ? (
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-[11px] font-mono bg-background border border-border/50 rounded px-2 py-1.5 text-green-400 break-all">
-                  {wh.webhookUrl}
-                </code>
-                <CopyButton text={wh.webhookUrl} />
-              </div>
-            ) : null}
-            <div className="flex items-center gap-2 mt-2">
-              <Button
-                size="sm" variant="outline" className="text-xs gap-1.5 h-7"
-                disabled={regenerate.isPending}
-                onClick={() => { if (confirm("New URL তৈরি হবে। পুরনো URL আর কাজ করবে না। নিশ্চিত?")) regenerate.mutate(); }}
-              >
-                <RotateCcw className={`w-3 h-3 ${regenerate.isPending ? "animate-spin" : ""}`} />
-                Regenerate
-              </Button>
-            </div>
-          </div>
-
-          {/* Step 2 — Discord forward URL */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-[10px] font-bold bg-purple-600/30 text-purple-300 rounded-full w-4 h-4 flex items-center justify-center shrink-0">2</span>
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Discord Webhook URL (citation Discord-এ যাবে)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={discordUrl}
-                onChange={(e) => setDiscordUrl(e.target.value)}
-                placeholder="https://discord.com/api/webhooks/..."
-                className="h-8 text-xs font-mono"
-              />
-              <Button
-                size="sm" variant="outline" className="text-xs gap-1.5 h-8 shrink-0"
-                disabled={saveDiscordUrl.isPending}
-                onClick={() => saveDiscordUrl.mutate(discordUrl)}
-              >
-                {urlSaved ? <Check className="w-3 h-3 text-green-400" /> : <Check className="w-3 h-3" />}
-                {urlSaved ? "Saved!" : "Save"}
-              </Button>
-            </div>
-            {discordForwardUrl && (
-              <div className="flex items-center gap-1.5 mt-1.5">
-                <Check className="w-3 h-3 text-green-400" />
-                <span className="text-[10px] text-green-400">Discord forward configured</span>
-                <button
-                  onClick={() => { setDiscordUrl(""); saveDiscordUrl.mutate(""); }}
-                  className="text-[10px] text-muted-foreground hover:text-red-400 underline ml-2 transition-colors"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Step 3 — FiveM/script setup */}
-          <div className="bg-background/40 border border-border/30 rounded-md p-3 space-y-2">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-[10px] font-bold bg-purple-600/30 text-purple-300 rounded-full w-4 h-4 flex items-center justify-center shrink-0">3</span>
-              <span className="text-xs font-semibold text-foreground">FiveM script / যে source citation পাঠায় সেটা update করুন</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              আপনার FiveM script বা Discord bot-এ যেখানে Discord webhook URL আছে, সেটার বদলে উপরের <span className="text-green-400 font-mono">Step 1</span>-এর URL দিন।
-            </p>
-            <div className="bg-secondary/50 rounded p-2 text-[10px] font-mono text-muted-foreground">
-              <div className="text-red-400 line-through">-- পুরনো: Discord webhook সরাসরি</div>
-              <div className="text-red-400 line-through">https://discord.com/api/webhooks/...</div>
-              <div className="mt-1 text-green-400">-- নতুন: আমাদের API</div>
-              <div className="text-green-400">{wh?.webhookUrl ?? "https://your-site/api/citations/ingest?key=..."}</div>
-            </div>
-            <p className="text-[10px] text-muted-foreground">
-              আমরা automatically Discord-এও forward করবো (Step 2 configured থাকলে) + website-এও save হবে।
-            </p>
-          </div>
-
-          {/* Data format */}
-          <div className="bg-secondary/30 border border-border/30 rounded p-3">
-            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Citation Message Format
-            </div>
-            <pre className="text-[10px] font-mono text-foreground/70 leading-relaxed whitespace-pre-wrap">{`Title: 10-11
-Incident: Traffic Stop
-Location: DEL PERRO
-Evidence: https://i.vgy.me/...
-Incident Report: [বিবরণ]
-Suspect's Name: KATCHAM
-Suspect's CID: 458
-Suspect's Contact: 905-6610
-Charges: Excessive Speeding 1x
-Officer: Tasin Rahaman [76]`}</pre>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface SheetConfig {
   sheetUrl: string | null;
@@ -598,9 +431,8 @@ export default function CitationsPage() {
 
       {/* Setup panels (staff/admin only) */}
       {isAdmin && (
-        <div className="mb-4 space-y-2">
+        <div className="mb-4">
           <GoogleSheetSyncPanel />
-          <WebhookSetupPanel />
         </div>
       )}
 
