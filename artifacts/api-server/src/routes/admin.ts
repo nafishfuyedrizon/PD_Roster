@@ -382,6 +382,26 @@ router.delete("/admin/duty-adjustments/:id", async (req, res): Promise<void> => 
   res.status(204).end();
 });
 
+// ─── Officer Search ───────────────────────────────────────────────────────────
+
+router.get("/admin/officer-search", async (req, res): Promise<void> => {
+  const q = String(req.query.q ?? "").trim();
+  if (!q) { res.json([]); return; }
+  const rows = await db
+    .select({
+      id: officersTable.id,
+      name: officersTable.name,
+      callSign: officersTable.callSign,
+      rank: officersTable.rank,
+      discordUid: officersTable.discordUid,
+      discordUsername: officersTable.discordUsername,
+    })
+    .from(officersTable)
+    .where(or(ilike(officersTable.name, `%${q}%`), ilike(officersTable.callSign, `%${q}%`)))
+    .limit(10);
+  res.json(rows);
+});
+
 // ─── Staff Roles ──────────────────────────────────────────────────────────────
 
 router.get("/admin/staff-roles", async (req, res): Promise<void> => {

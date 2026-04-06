@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Users, Plus, Trash2, ShieldCheck, Shield, Star, CheckCircle, X, Search, Loader2 } from "lucide-react";
+
+interface OfficerResult {
+  id: number;
+  name: string | null;
+  callSign: string;
+  rank: string | null;
+  discordUid: string | null;
+  discordUsername: string | null;
+}
 
 interface StaffRole {
   id: number;
@@ -51,6 +59,14 @@ export default function AdminStaffRolesPage() {
   const [searching, setSearching] = useState(false);
   const [searchResult, setSearchResult] = useState<string | null>(null);
 
+  // Officer name/callsign search
+  const [nameQuery, setNameQuery] = useState("");
+  const [nameResults, setNameResults] = useState<OfficerResult[]>([]);
+  const [nameSearching, setNameSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const nameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const { data: staff = [], isLoading } = useQuery<StaffRole[]>({
     queryKey: ["/api/admin/staff-roles"],
     queryFn: () => fetch("/api/admin/staff-roles", { credentials: "include" }).then((r) => r.json()),
@@ -90,6 +106,52 @@ export default function AdminStaffRolesPage() {
       fetch(`/api/admin/staff-roles/${id}`, { method: "DELETE", credentials: "include" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/staff-roles"] }),
   });
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleNameQueryChange(val: string) {
+    setNameQuery(val);
+    setShowDropdown(false);
+    if (nameTimer.current) clearTimeout(nameTimer.current);
+    if (!val.trim()) { setNameResults([]); return; }
+    nameTimer.current = setTimeout(async () => {
+      setNameSearching(true);
+      try {
+        const res = await fetch(`/api/admin/officer-search?q=${encodeURIComponent(val)}`, { credentials: "include" });
+        const data: OfficerResult[] = await res.json();
+        setNameResults(data);
+        setShowDropdown(data.length > 0);
+      } finally {
+        setNameSearching(false);
+      }
+    }, 280);
+  }
+
+  function selectOfficer(o: OfficerResult) {
+    setNewUid(o.discordUid ?? "");
+    setNewName(o.name ?? o.callSign);
+    setNameQuery(`${o.name ?? ""} (${o.callSign})`);
+    setShowDropdown(false);
+    setSearchResult(o.discordUid ? "found" : "not_found");
+  }
+
+  function resetForm() {
+    setShowAdd(false);
+    setNewUid("");
+    setNewName("");
+    setNameQuery("");
+    setNameResults([]);
+    setShowDropdown(false);
+    setSearchResult(null);
+  }
 
   async function handleSearch() {
     const uid = newUid.trim();
@@ -140,63 +202,102 @@ export default function AdminStaffRolesPage() {
       </div>
 
       {showAdd && (
-        <div className="mb-4 p-4 bg-secondary/40 border border-border/60 rounded-md flex flex-col sm:flex-row gap-3 items-end">
-          <div className="flex-1">
-            <label className="text-[11px] font-mono text-muted-foreground mb-1 block">Discord UID *</label>
+        <div className="mb-4 p-4 bg-secondary/40 border border-border/60 rounded-md space-y-3">
+          {/* Row 1: name/callsign search */}
+          <div ref={dropdownRef} className="relative">
+            <label className="text-[11px] font-mono text-muted-foreground mb-1 block">
+              Search by Name or Call Sign
+            </label>
             <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="e.g. John Doe or LT-1372"
+                  value={nameQuery}
+                  onChange={(e) => handleNameQueryChange(e.target.value)}
+                  onFocus={() => nameResults.length > 0 && setShowDropdown(true)}
+                  className="h-8 text-xs pl-8"
+                />
+                {nameSearching && (
+                  <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground animate-spin" />
+                )}
+              </div>
+            </div>
+            {showDropdown && nameResults.length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden">
+                {nameResults.map((o) => (
+                  <button
+                    key={o.id}
+                    onMouseDown={(e) => { e.preventDefault(); selectOfficer(o); }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-secondary/60 transition-colors border-b border-border/30 last:border-0"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-semibold text-foreground truncate">{o.name ?? "—"}</div>
+                      <div className="text-[10px] font-mono text-muted-foreground">{o.callSign} · {o.rank ?? "—"}</div>
+                    </div>
+                    {o.discordUid ? (
+                      <span className="text-[10px] font-mono text-teal-400 shrink-0">UID linked</span>
+                    ) : (
+                      <span className="text-[10px] font-mono text-yellow-400 shrink-0">No UID</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Row 2: UID + Display Name + buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 items-end">
+            <div className="flex-1">
+              <label className="text-[11px] font-mono text-muted-foreground mb-1 block">Discord UID *</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. 413256770119663616"
+                  value={newUid}
+                  onChange={(e) => { setNewUid(e.target.value); setSearchResult(null); }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="h-8 text-xs font-mono"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSearch}
+                  disabled={searching || !newUid.trim()}
+                  className="h-8 px-3 shrink-0"
+                  title="Search by UID"
+                >
+                  {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                </Button>
+              </div>
+              {searchResult === "found" && (
+                <p className="text-[11px] text-green-400 mt-1 font-mono">✓ Officer found</p>
+              )}
+              {searchResult === "not_found" && (
+                <p className="text-[11px] text-yellow-400 mt-1 font-mono">No record — enter name manually</p>
+              )}
+            </div>
+            <div className="flex-1">
+              <label className="text-[11px] font-mono text-muted-foreground mb-1 block">Display Name</label>
               <Input
-                placeholder="e.g. 413256770119663616"
-                value={newUid}
-                onChange={(e) => { setNewUid(e.target.value); setSearchResult(null); }}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="h-8 text-xs font-mono"
+                placeholder="Auto-filled or enter manually"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className={`h-8 text-xs ${searchResult === "found" ? "border-green-500/50 bg-green-500/5" : ""}`}
               />
+            </div>
+            <div className="flex gap-2 shrink-0">
               <Button
                 size="sm"
-                variant="outline"
-                onClick={handleSearch}
-                disabled={searching || !newUid.trim()}
-                className="h-8 px-3 shrink-0"
-                title="Search officer by UID"
+                onClick={handleAdd}
+                disabled={adding || !newUid.trim()}
+                className="h-8 text-xs bg-green-600 hover:bg-green-500 text-white border-0"
               >
-                {searching
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Search className="w-3.5 h-3.5" />}
+                {adding ? "Adding..." : "Confirm"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={resetForm} className="h-8 text-xs">
+                <X className="w-3.5 h-3.5" />
               </Button>
             </div>
-            {searchResult === "found" && (
-              <p className="text-[11px] text-green-400 mt-1 font-mono">✓ Officer found — name filled</p>
-            )}
-            {searchResult === "not_found" && (
-              <p className="text-[11px] text-yellow-400 mt-1 font-mono">No roster record found — enter name manually</p>
-            )}
-          </div>
-          <div className="flex-1">
-            <label className="text-[11px] font-mono text-muted-foreground mb-1 block">Display Name</label>
-            <Input
-              placeholder="Auto-filled or enter manually"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className={`h-8 text-xs ${searchResult === "found" ? "border-green-500/50 bg-green-500/5" : ""}`}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={handleAdd}
-              disabled={adding || !newUid.trim()}
-              className="h-8 text-xs bg-green-600 hover:bg-green-500 text-white border-0"
-            >
-              {adding ? "Adding..." : "Confirm"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => { setShowAdd(false); setNewUid(""); setNewName(""); setSearchResult(null); }}
-              className="h-8 text-xs"
-            >
-              <X className="w-3.5 h-3.5" />
-            </Button>
           </div>
         </div>
       )}
