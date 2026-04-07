@@ -356,7 +356,13 @@ function EditModal({
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
                 )}
               </div>
-              <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Ricardo Lance" className="h-9 text-sm font-mono bg-secondary/30" />
+              {(!isNew && entry?.rosterLinked) ? (
+                <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
+                  {form.name || <span className="text-muted-foreground/40">—</span>}
+                </div>
+              ) : (
+                <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Ricardo Lance" className="h-9 text-sm font-mono bg-secondary/30" />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
@@ -365,7 +371,13 @@ function EditModal({
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
                 )}
               </div>
-              <Input value={form.discordUid ?? ""} onChange={(e) => set("discordUid", e.target.value)} placeholder="e.g. 442421398913155092" className="h-9 text-sm font-mono bg-secondary/30" />
+              {(!isNew && entry?.rosterLinked) ? (
+                <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
+                  {form.discordUid || <span className="text-muted-foreground/40">—</span>}
+                </div>
+              ) : (
+                <Input value={form.discordUid ?? ""} onChange={(e) => set("discordUid", e.target.value)} placeholder="e.g. 442421398913155092" className="h-9 text-sm font-mono bg-secondary/30" />
+              )}
             </div>
           </div>
 
@@ -470,12 +482,18 @@ function EditModal({
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
                 )}
               </div>
-              <Input
-                value={form.lastPromotion ?? ""}
-                onChange={(e) => set("lastPromotion", e.target.value)}
-                placeholder="MM/DD/YYYY"
-                className="h-9 text-sm font-mono bg-secondary/30"
-              />
+              {(!isNew && entry?.rosterLinked) ? (
+                <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
+                  {form.lastPromotion || <span className="text-muted-foreground/40">—</span>}
+                </div>
+              ) : (
+                <Input
+                  value={form.lastPromotion ?? ""}
+                  onChange={(e) => set("lastPromotion", e.target.value)}
+                  placeholder="MM/DD/YYYY"
+                  className="h-9 text-sm font-mono bg-secondary/30"
+                />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
@@ -484,9 +502,15 @@ function EditModal({
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
                 )}
               </div>
-              <StyledSelect value={form.strikesMajor ?? "0/4"} onChange={(e) => set("strikesMajor", e.target.value)}>
-                {["0/4","1/4","2/4","3/4","4/4"].map((v) => <option key={v} value={v}>{v}</option>)}
-              </StyledSelect>
+              {(!isNew && entry?.rosterLinked) ? (
+                <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
+                  {form.strikesMajor ?? "0/4"}
+                </div>
+              ) : (
+                <StyledSelect value={form.strikesMajor ?? "0/4"} onChange={(e) => set("strikesMajor", e.target.value)}>
+                  {["0/4","1/4","2/4","3/4","4/4"].map((v) => <option key={v} value={v}>{v}</option>)}
+                </StyledSelect>
+              )}
             </div>
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
@@ -495,9 +519,15 @@ function EditModal({
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
                 )}
               </div>
-              <StyledSelect value={form.strikesMinor ?? "0/2"} onChange={(e) => set("strikesMinor", e.target.value)}>
-                {["0/2","1/2","2/2"].map((v) => <option key={v} value={v}>{v}</option>)}
-              </StyledSelect>
+              {(!isNew && entry?.rosterLinked) ? (
+                <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
+                  {form.strikesMinor ?? "0/2"}
+                </div>
+              ) : (
+                <StyledSelect value={form.strikesMinor ?? "0/2"} onChange={(e) => set("strikesMinor", e.target.value)}>
+                  {["0/2","1/2","2/2"].map((v) => <option key={v} value={v}>{v}</option>)}
+                </StyledSelect>
+              )}
             </div>
           </div>
 
