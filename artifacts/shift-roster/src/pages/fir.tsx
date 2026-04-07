@@ -109,9 +109,7 @@ function OfficerPicker({
 function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; onDone: () => void }) {
   const { user } = useAuth();
   const [officerName, setOfficerName] = useState<string | null>(fir.officerName ?? null);
-  const [acceptedByName, setAcceptedByName] = useState<string | null>(
-    fir.acceptedBy ?? user?.displayName ?? null
-  );
+  const [acceptedByName, setAcceptedByName] = useState<string | null>(fir.acceptedBy ?? null);
   const [saving, setSaving] = useState(false);
 
   const { data: officers = [] } = useQuery<OfficerItem[]>({
@@ -124,10 +122,20 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
     staleTime: 60000,
   });
 
-  // If user loads after initial render, fill acceptedBy with display name
+  const { data: profileData } = useQuery<{ officer: { name: string } | null }>({
+    queryKey: ["profile"],
+    queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 60_000,
+  });
+
+  // Auto-fill with PD officer name from profile; fall back to Discord display name
   useEffect(() => {
-    if (!acceptedByName && user?.displayName) setAcceptedByName(user.displayName);
-  }, [user?.displayName]);
+    if (fir.acceptedBy) return;
+    const pdName = profileData?.officer?.name;
+    const fallback = user?.displayName;
+    const name = pdName ?? fallback ?? null;
+    if (name) setAcceptedByName(name);
+  }, [profileData, user?.displayName]);
 
   async function confirm() {
     if (!acceptedByName || !officerName) return;
@@ -215,7 +223,13 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
   const status = fir.status ?? "pending";
 
   const { user } = useAuth();
-  const myName = user?.displayName ?? null;
+
+  const { data: profileData } = useQuery<{ officer: { name: string } | null }>({
+    queryKey: ["profile"],
+    queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 60_000,
+  });
+  const myName = profileData?.officer?.name ?? user?.displayName ?? null;
 
   async function handleBookmark() {
     setBookmarking(true);
