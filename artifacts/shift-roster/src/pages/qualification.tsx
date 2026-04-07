@@ -397,9 +397,6 @@ function EditModal({
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Full Name *</span>
-                {!isNew && entry?.rosterLinked && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
-                )}
               </div>
               {(!isNew && entry?.rosterLinked) ? (
                 <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
@@ -412,9 +409,6 @@ function EditModal({
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Discord UID</span>
-                {!isNew && entry?.rosterLinked && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
-                )}
               </div>
               {(!isNew && entry?.rosterLinked) ? (
                 <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
@@ -433,7 +427,7 @@ function EditModal({
                 <div>
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rank</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+  
                   </div>
                   <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
                     {form.rank || <span className="text-muted-foreground/40">No Rank</span>}
@@ -442,7 +436,7 @@ function EditModal({
                 <div>
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+  
                   </div>
                   <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
                     {form.department || <span className="text-muted-foreground/40">None</span>}
@@ -523,9 +517,6 @@ function EditModal({
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Last Promotion</span>
-                {!isNew && entry?.rosterLinked && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
-                )}
               </div>
               {(!isNew && entry?.rosterLinked) ? (
                 <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
@@ -543,9 +534,6 @@ function EditModal({
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Major Strikes (x/4)</span>
-                {!isNew && entry?.rosterLinked && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
-                )}
               </div>
               {(!isNew && entry?.rosterLinked) ? (
                 <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
@@ -560,9 +548,6 @@ function EditModal({
             <div>
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Minor Strikes (x/2)</span>
-                {!isNew && entry?.rosterLinked && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
-                )}
               </div>
               {(!isNew && entry?.rosterLinked) ? (
                 <div className="h-9 flex items-center px-3 rounded-md border border-border/40 bg-secondary/10 font-mono text-sm text-foreground select-none">
