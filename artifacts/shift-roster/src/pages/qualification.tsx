@@ -1621,13 +1621,6 @@ export default function QualificationPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
-                            onClick={(ev) => { ev.stopPropagation(); setNoteEntry(e); }}
-                            className="p-1.5 rounded bg-secondary/60 hover:bg-yellow-500/20 text-muted-foreground hover:text-yellow-400 transition-colors border border-border"
-                            title="Edit Note"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </button>
-                          <button
                             onClick={(ev) => { ev.stopPropagation(); setFeedbackEntry(e); }}
                             className="p-1.5 rounded bg-secondary/60 hover:bg-blue-500/20 text-muted-foreground hover:text-blue-400 transition-colors border border-border"
                             title="Feedback"
