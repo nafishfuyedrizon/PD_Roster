@@ -232,26 +232,12 @@ function StatusBadge({ status }: { status: string | null }) {
 }
 
 function InlineStatusSelect({ entryId, currentStatus }: { entryId: number; currentStatus: string | null }) {
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
-
-  useEffect(() => {
-    if (!editing) return;
-    const onOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setEditing(false);
-      }
-    };
-    document.addEventListener("mousedown", onOutside);
-    return () => document.removeEventListener("mousedown", onOutside);
-  }, [editing]);
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value || null;
     setSaving(true);
-    setEditing(false);
     try {
       await fetch(`/api/qualification-chart/${entryId}/status`, {
         method: "PATCH",
@@ -264,34 +250,27 @@ function InlineStatusSelect({ entryId, currentStatus }: { entryId: number; curre
     }
   };
 
+  const colorClass =
+    !currentStatus ? "text-yellow-400 border-yellow-500/30 bg-yellow-500/10" :
+    currentStatus === "QUALIFIED" ? "text-green-400 border-green-500/30 bg-green-500/10" :
+    currentStatus === "QUALIFIED Sergeant Exam" ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" :
+    currentStatus === "NOT QUALIFIED" ? "text-red-400 border-red-500/30 bg-red-500/10" :
+    currentStatus === "PROMOTION ON HOLD" ? "text-purple-400 border-purple-500/30 bg-purple-500/10" :
+    currentStatus === "DUTY HOURS NOT COMPLETED" || currentStatus === "DAYS NOT COMPLETED" ? "text-orange-400 border-orange-500/30 bg-orange-500/10" :
+    "text-blue-400 border-blue-500/30 bg-blue-500/10";
+
   return (
-    <div ref={containerRef} className="relative inline-flex items-center justify-center">
-      {editing ? (
-        <select
-          autoFocus
-          defaultValue={currentStatus ?? ""}
-          onChange={handleChange}
-          disabled={saving}
-          size={STATUS_OPTIONS.length}
-          className="text-[11px] font-mono bg-card border border-primary/50 rounded shadow-lg text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary z-50"
-          style={{ position: "absolute", minWidth: 180 }}
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      ) : (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-          disabled={saving}
-          title="Click to change status"
-          className="inline-flex items-center gap-1 cursor-pointer hover:ring-2 hover:ring-primary/40 rounded-full transition-all disabled:opacity-50"
-        >
-          <StatusBadge status={currentStatus} />
-        </button>
-      )}
-    </div>
+    <select
+      value={currentStatus ?? ""}
+      onChange={handleChange}
+      disabled={saving}
+      onClick={(e) => e.stopPropagation()}
+      className={`text-[11px] font-mono font-bold border rounded-full px-2 py-0.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50 ${colorClass}`}
+    >
+      {STATUS_OPTIONS.map((opt) => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
   );
 }
 
