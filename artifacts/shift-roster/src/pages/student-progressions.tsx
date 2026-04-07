@@ -131,12 +131,13 @@ function CheckboxCell({
 }: { value: boolean; onClick: () => void; locked?: boolean }) {
   return (
     <button
-      onClick={onClick}
-      className={`flex items-center justify-center w-full h-full py-1 ${locked ? "cursor-default" : "cursor-pointer"}`}
+      onClick={locked ? undefined : onClick}
+      disabled={locked}
+      className={`flex items-center justify-center w-full h-full py-1 ${locked ? "pointer-events-none select-none" : "cursor-pointer"}`}
     >
       {value
-        ? <CheckCircle2 className={`w-4 h-4 ${locked ? "text-green-400" : "text-green-400 hover:text-green-300"}`} />
-        : <Circle className={`w-4 h-4 ${locked ? "text-gray-700" : "text-gray-600 hover:text-gray-400"}`} />}
+        ? <CheckCircle2 className={`w-4 h-4 ${locked ? "text-green-500/60" : "text-green-400 hover:text-green-300"}`} />
+        : <Circle className={`w-4 h-4 ${locked ? "text-gray-700/50" : "text-gray-600 hover:text-gray-400"}`} />}
     </button>
   );
 }
