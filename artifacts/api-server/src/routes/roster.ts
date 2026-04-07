@@ -440,27 +440,46 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
     await auditLog(req, "UPDATE", "officer", officer.id, officer.name ?? officer.callSign, diff);
   }
 
-  // Auto-add to Ex-PD list when status changes to an exit status
+  // Auto-add to Ex-PD list + remove from Roster & QC when exit status is applied
   const EXIT_STATUSES = ["DISCHARGED", "FIRED", "REMOVED", "TERMINATED", "RESIGNED"];
   const statusChanged = existing.status !== officer.status;
-  if (statusChanged && officer.status && EXIT_STATUSES.includes(officer.status) && officer.name) {
-    await db.insert(exPdOfficersTable).values({
-      callSign: officer.callSign ?? null,
-      characterId: officer.citizenId ?? null,
-      name: officer.name,
-      phoneNo: officer.phoneNumber ?? null,
-      division: officer.department ?? null,
-      rank: officer.rank ?? null,
-      discordUsername: officer.discordUsername ?? null,
-      discordUid: officer.discordUid ?? officer.discordId ?? null,
-      rockstarLicenseId: officer.rockstarLicenseId ?? null,
-      status: officer.status,
-      dateOfJoining: officer.dateOfJoining ?? null,
-      lastPromotion: officer.lastPromotion ?? null,
-      air1: false,
-      speed: false,
-      notes: null,
-    });
+  const isExitStatus = !!(officer.status && EXIT_STATUSES.includes(officer.status));
+
+  if (statusChanged && isExitStatus) {
+    // 1) Insert into ex_pd_officers if name is available
+    if (officer.name) {
+      await db.insert(exPdOfficersTable).values({
+        callSign: officer.callSign ?? null,
+        characterId: officer.citizenId ?? null,
+        name: officer.name,
+        phoneNo: officer.phoneNumber ?? null,
+        division: officer.department ?? null,
+        rank: officer.rank ?? null,
+        discordUsername: officer.discordUsername ?? null,
+        discordUid: officer.discordUid ?? officer.discordId ?? null,
+        rockstarLicenseId: officer.rockstarLicenseId ?? null,
+        status: officer.status,
+        dateOfJoining: officer.dateOfJoining ?? null,
+        lastPromotion: officer.lastPromotion ?? null,
+        air1: false,
+        speed: false,
+        notes: null,
+      });
+    }
+
+    // 2) Remove from Qualification Chart by name
+    if (officer.name) {
+      await db.delete(qualificationChartTable)
+        .where(eq(qualificationChartTable.name, officer.name));
+    }
+
+    // 3) Remove from Roster
+    await db.delete(officersTable)
+      .where(eq(officersTable.id, officer.id));
+
+    // Return the officer data before deletion so the frontend can update its cache
+    res.json(UpdateOfficerResponse.parse({ ...officer, _removed: true }));
+    return;
   }
 
   res.json(UpdateOfficerResponse.parse(officer));

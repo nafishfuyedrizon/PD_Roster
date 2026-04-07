@@ -218,15 +218,25 @@ export default function RosterPage() {
     );
   };
 
+  const EXIT_STATUSES = ["DISCHARGED", "FIRED", "REMOVED", "TERMINATED", "RESIGNED"];
+
   const handleUpdate = (data: any) => {
     if (!editOfficer) return;
+    const isExitStatus = data.status && EXIT_STATUSES.includes(data.status);
     updateOfficer.mutate(
       { id: editOfficer.id, data },
       {
         onSuccess: () => {
           invalidateAll();
           setEditOfficer(null);
-          toast({ title: "Officer updated" });
+          if (isExitStatus) {
+            toast({
+              title: "Officer moved to Ex-PD",
+              description: `${editOfficer.name ?? editOfficer.callSign} has been removed from Roster & QC and added to Ex-PD Officers.`,
+            });
+          } else {
+            toast({ title: "Officer updated" });
+          }
         },
       }
     );
