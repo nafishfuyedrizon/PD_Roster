@@ -60,6 +60,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
+          {/* Qualification Chart */}
+          <Link href="/qualification-chart" data-testid="nav-qualification-chart">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/qualification-chart"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              }`}
+            >
+              <Award className="w-4 h-4 text-yellow-400" />
+              Qual Chart
+            </div>
+          </Link>
+
           {/* Rosters collapsible section */}
           <div>
             <button
@@ -158,20 +172,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <Clock className="w-4 h-4 text-blue-400" />
               PD Duty Hour
-            </div>
-          </Link>
-
-          {/* Qualification Chart */}
-          <Link href="/qualification-chart" data-testid="nav-qualification-chart">
-            <div
-              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
-                location === "/qualification-chart"
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-            >
-              <Award className="w-4 h-4 text-yellow-400" />
-              Qual Chart
             </div>
           </Link>
 
