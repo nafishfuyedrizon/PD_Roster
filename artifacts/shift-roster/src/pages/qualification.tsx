@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Search, Award, CheckCircle2, XCircle, AlertTriangle,
-  FileText, Clock, Calendar, Trash2, X, Save, UserPlus,
+  FileText, Clock, Calendar, X, Save, UserPlus,
   MapPin, ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -1510,13 +1510,6 @@ export default function QualificationPage() {
                             title="Edit Note"
                           >
                             <FileText className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteEntry(e)}
-                            className="p-1.5 rounded bg-secondary/60 hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors border border-border"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
