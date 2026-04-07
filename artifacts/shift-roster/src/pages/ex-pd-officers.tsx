@@ -305,7 +305,7 @@ export default function ExPdOfficersPage() {
             <table className="w-full text-xs">
               <thead className="bg-card/80 border-b border-border">
                 <tr>
-                  {["Call Sign", "Char ID", "Name", "Division", "Rank", "Discord", "Status", "Date Joined", "Last Promo", "AIR1", "SPEED", "Notes", "Actions"].map((h) => (
+                  {["Call Sign", "Char ID", "Name", "Phone No", "Division", "Rank", "Discord Username", "Discord UID", "Rockstar License ID", "Steam Profile", "Steam 64 Hex ID", "Steam 2 ID", "Ins.", "Status", "Date Joined PD", "Last Promo/Demo", "AIR1", "SPEED", "Notes", "Actions"].map((h) => (
                     <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -313,11 +313,11 @@ export default function ExPdOfficersPage() {
               <tbody className="divide-y divide-border/50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={13} className="text-center py-10 text-muted-foreground">Loading...</td>
+                    <td colSpan={20} className="text-center py-10 text-muted-foreground">Loading...</td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={13} className="text-center py-10 text-muted-foreground">No records found</td>
+                    <td colSpan={20} className="text-center py-10 text-muted-foreground">No records found</td>
                   </tr>
                 ) : (
                   filtered.map((o) => (
@@ -325,9 +325,16 @@ export default function ExPdOfficersPage() {
                       <td className="px-3 py-2 font-mono font-semibold text-primary whitespace-nowrap">{o.callSign || "—"}</td>
                       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{o.characterId || "—"}</td>
                       <td className="px-3 py-2 font-medium whitespace-nowrap">{o.name}</td>
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{o.phoneNo || "—"}</td>
                       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{o.division || "—"}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{o.rank || "—"}</td>
                       <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{o.discordUsername || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground font-mono whitespace-nowrap">{o.discordUid || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground font-mono whitespace-nowrap max-w-[140px] truncate" title={o.rockstarLicenseId ?? ""}>{o.rockstarLicenseId || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{o.steamProfile || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground font-mono whitespace-nowrap">{o.steam64HexId || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground font-mono whitespace-nowrap">{o.steam2Id || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{o.insurance || "—"}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {o.status ? (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${STATUS_COLORS[o.status] ?? "bg-secondary/30 text-foreground border-border"}`}>
@@ -343,7 +350,7 @@ export default function ExPdOfficersPage() {
                       <td className="px-3 py-2 text-center">
                         {o.speed ? <Check className="w-3.5 h-3.5 text-green-400 mx-auto" /> : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground max-w-[140px] truncate">{o.notes || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground max-w-[140px] truncate" title={o.notes ?? ""}>{o.notes || "—"}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {deleteConfirm === o.id ? (
                           <div className="flex items-center gap-1">
