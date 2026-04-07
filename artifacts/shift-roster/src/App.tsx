@@ -23,6 +23,7 @@ import ProfilePage from "@/pages/profile";
 import CitationsPage from "@/pages/citations";
 import FirPage from "@/pages/fir";
 import StudentProgressionsPage from "@/pages/student-progressions";
+import ExPdOfficersPage from "@/pages/ex-pd-officers";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +75,7 @@ function Router() {
       <Route path="/fir">{() => <ProtectedRoute component={FirPage} />}</Route>
       <Route path="/profile">{() => <ProtectedRoute component={ProfilePage} />}</Route>
       <Route path="/student-progressions">{() => <ProtectedRoute component={StudentProgressionsPage} />}</Route>
+      <Route path="/ex-pd-officers">{() => <ProtectedRoute component={ExPdOfficersPage} />}</Route>
 
       <Route component={NotFound} />
     </Switch>
