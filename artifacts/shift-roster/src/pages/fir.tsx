@@ -40,11 +40,13 @@ interface FirStats {
   topOfficers: { officer_name: string; firs: number }[];
 }
 
+const BDT = "Asia/Dhaka";
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   return {
-    date: d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric", timeZone: "UTC" }),
-    time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "UTC" }),
+    date: d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric", timeZone: BDT }),
+    time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: BDT }),
   };
 }
 
@@ -200,8 +202,8 @@ function FirCard({ fir }: { fir: Fir }) {
               <div className="space-y-2">
                 {fir.threadReplies.map((reply, i) => {
                   const t = new Date(reply.timestamp);
-                  const replyTime = t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "UTC" });
-                  const replyDate = t.toLocaleDateString("en-US", { month: "short", day: "2-digit", timeZone: "UTC" });
+                  const replyTime = t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: BDT });
+                  const replyDate = t.toLocaleDateString("en-US", { month: "short", day: "2-digit", timeZone: BDT });
                   const isImage = (url: string) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
                   return (
                     <div key={i} className="flex gap-2.5 bg-background/30 rounded-md px-3 py-2 border border-border/30">
