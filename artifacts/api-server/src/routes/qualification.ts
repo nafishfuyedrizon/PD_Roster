@@ -473,6 +473,40 @@ router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> =
   }
 });
 
+// GET /api/qualification-chart/:id/feedback — list all feedback for an entry
+router.get("/qualification-chart/:id/feedback", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const rows = await db.execute(sql`
+    SELECT id, author_name, note, created_at
+    FROM qc_feedback
+    WHERE qual_chart_id = ${id}
+    ORDER BY created_at ASC
+  `);
+  res.json(rows.rows);
+});
+
+// POST /api/qualification-chart/:id/feedback — add feedback
+router.post("/qualification-chart/:id/feedback", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const { authorName, note } = req.body;
+  if (!authorName?.trim() || !note?.trim()) {
+    res.status(400).json({ error: "authorName and note required" }); return;
+  }
+  const [row] = (await db.execute(sql`
+    INSERT INTO qc_feedback (qual_chart_id, author_name, note)
+    VALUES (${id}, ${authorName.trim()}, ${note.trim()})
+    RETURNING id, author_name, note, created_at
+  `)).rows as any[];
+  res.json(row);
+});
+
+// DELETE /api/qualification-chart/feedback/:feedbackId — delete a feedback entry
+router.delete("/qualification-chart/feedback/:feedbackId", async (req, res): Promise<void> => {
+  const feedbackId = Number(req.params.feedbackId);
+  await db.execute(sql`DELETE FROM qc_feedback WHERE id = ${feedbackId}`);
+  res.json({ ok: true });
+});
+
 // PATCH /api/qualification-chart/:id/notes — update only notes inline
 router.patch("/qualification-chart/:id/notes", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
