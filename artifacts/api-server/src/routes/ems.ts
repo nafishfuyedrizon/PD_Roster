@@ -96,8 +96,12 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
   }
 
   const { weekPeriod, shiftType } = parsed.data;
-  const resolvedShift = shiftType && shiftType !== "ALL" ? shiftType : "ALL";
-  const shiftCond = eq(emsDutyLogsTable.shiftType, resolvedShift);
+  // Support comma-separated multi-shift: "SHIFT1,SHIFT2"
+  const rawShifts = shiftType ? shiftType.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  const resolvedShifts = rawShifts.length === 0 || rawShifts.includes("ALL") ? ["ALL"] : rawShifts;
+  const shiftCond = resolvedShifts.length === 1
+    ? eq(emsDutyLogsTable.shiftType, resolvedShifts[0]!)
+    : inArray(emsDutyLogsTable.shiftType, resolvedShifts);
 
   // Get all weeks to determine current week and monthly window
   const allWeeks = await db
@@ -137,7 +141,7 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
     (o) => o.status === "Active" && logCsSet.has(o.callSign)
   ).length;
 
-  // Monthly total across all PD officer logs
+  // Monthly total across all PD officer logs (aggregate across selected shifts)
   const pdLogSecs: Record<string, number> = {};
   for (const l of allLogs) {
     if (pdMap[l.csNumber]) {
@@ -145,11 +149,14 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
     }
   }
 
-  // Incorporate duty adjustments into monthly totals
+  // Incorporate duty adjustments into monthly totals (aggregate across selected shifts)
+  const adjCond = resolvedShifts.length === 1
+    ? eq(dutyAdjustmentsTable.shiftType, resolvedShifts[0]!)
+    : inArray(dutyAdjustmentsTable.shiftType, resolvedShifts);
   const allAdjustments = await db
     .select()
     .from(dutyAdjustmentsTable)
-    .where(eq(dutyAdjustmentsTable.shiftType, resolvedShift));
+    .where(adjCond);
   for (const adj of allAdjustments) {
     if (pdMap[adj.officerCs]) {
       pdLogSecs[adj.officerCs] = (pdLogSecs[adj.officerCs] ?? 0) + adj.adjustmentSeconds;
@@ -158,7 +165,7 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
 
   const monthlyTotalSecs = Object.values(pdLogSecs).reduce((a, b) => a + b, 0);
 
-  // Top performers this week — PD officers only
+  // Top performers this week — PD officers only (aggregate across selected shifts)
   const weekLogSecs: Record<string, number> = {};
   for (const l of weekLogs) {
     if (pdMap[l.csNumber]) {
@@ -195,8 +202,12 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
   }
 
   const { shiftType } = parsed.data;
-  const resolvedShift = shiftType && shiftType !== "ALL" ? shiftType : "ALL";
-  const shiftCond = eq(emsDutyLogsTable.shiftType, resolvedShift);
+  // Support comma-separated multi-shift: "SHIFT1,SHIFT2"
+  const rawShifts = shiftType ? shiftType.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  const resolvedShifts = rawShifts.length === 0 || rawShifts.includes("ALL") ? ["ALL"] : rawShifts;
+  const shiftCond = resolvedShifts.length === 1
+    ? eq(emsDutyLogsTable.shiftType, resolvedShifts[0]!)
+    : inArray(emsDutyLogsTable.shiftType, resolvedShifts);
 
   const logs = await db
     .select()
@@ -216,19 +227,32 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     .orderBy(officersTable.rank, officersTable.callSign);
 
   // Build a map of duty log data keyed by csNumber + weekPeriod
-  const logMap: Record<string, Record<string, string | null>> = {};
+  // When multiple shifts selected, SUM hours per officer per weekPeriod
+  const logWeekSecsMap: Record<string, Record<string, number>> = {};
   const logSecsMap: Record<string, number> = {};
   for (const l of logs) {
-    if (!logMap[l.csNumber]) logMap[l.csNumber] = {};
-    logMap[l.csNumber]![l.weekPeriod] = l.dutyHours ?? null;
+    if (!logWeekSecsMap[l.csNumber]) logWeekSecsMap[l.csNumber] = {};
+    logWeekSecsMap[l.csNumber]![l.weekPeriod] =
+      (logWeekSecsMap[l.csNumber]![l.weekPeriod] ?? 0) + parseHms(l.dutyHours);
     logSecsMap[l.csNumber] = (logSecsMap[l.csNumber] ?? 0) + parseHms(l.dutyHours);
+  }
+  // Convert seconds back to HH:MM:SS for the week map
+  const logMap: Record<string, Record<string, string | null>> = {};
+  for (const [cs, weekMap] of Object.entries(logWeekSecsMap)) {
+    logMap[cs] = {};
+    for (const [wp, secs] of Object.entries(weekMap)) {
+      logMap[cs]![wp] = secondsToHms(secs);
+    }
   }
 
   // Fetch duty adjustments and build per-officer, per-month maps
+  const adjCond = resolvedShifts.length === 1
+    ? eq(dutyAdjustmentsTable.shiftType, resolvedShifts[0]!)
+    : inArray(dutyAdjustmentsTable.shiftType, resolvedShifts);
   const allAdjustments = await db
     .select()
     .from(dutyAdjustmentsTable)
-    .where(eq(dutyAdjustmentsTable.shiftType, resolvedShift));
+    .where(adjCond);
 
   // adjMonthMap[csNumber][MONTH] = total adjustment seconds for that month
   const adjMonthMap: Record<string, Record<string, number>> = {};

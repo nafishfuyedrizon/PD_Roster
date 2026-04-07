@@ -422,7 +422,7 @@ function useOfficerDuty(callSign: string | null) {
 }
 
 export default function PdDutyHourPage() {
-  const [shiftType, setShiftType] = useState("ALL");
+  const [selectedShifts, setSelectedShifts] = useState<Set<string>>(new Set(["ALL"]));
   const [search, setSearch] = useState("");
   const [weekNav, setWeekNav] = useState(0);
   const [monthNav, setMonthNav] = useState(0);
@@ -499,8 +499,12 @@ export default function PdDutyHourPage() {
   const { data: shiftConfigs = [] } = useShiftConfigs();
   const SHIFT_TYPES = [ALL_SHIFTS_TAB, ...shiftConfigs.map((s) => ({ value: s.key, label: s.label, sub: s.sub, icon: s.icon, startHour: s.startHour, endHour: s.endHour, sortOrder: s.sortOrder }))];
 
-  const statsParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
-  const breakdownParams = { shiftType: shiftType !== "ALL" ? shiftType : undefined };
+  const multiShiftParam = selectedShifts.has("ALL") ? undefined : [...selectedShifts].join(",");
+  const statsParams = { shiftType: multiShiftParam };
+  const breakdownParams = { shiftType: multiShiftParam };
+  const shiftLabel = selectedShifts.has("ALL")
+    ? "All shifts"
+    : SHIFT_TYPES.filter((s) => s.value !== "ALL" && selectedShifts.has(s.value)).map((s) => s.label).join(" + ");
 
   const { data: stats, isLoading: statsLoading } = useGetEmsStats(statsParams, {
     query: { queryKey: getGetEmsStatsQueryKey(statsParams), refetchInterval: 60_000 },
@@ -638,28 +642,49 @@ export default function PdDutyHourPage() {
         </div>
       </div>
 
-      {/* Shift type filter */}
+      {/* Shift type filter — multi-select */}
       <div className="flex flex-wrap items-center gap-2" data-testid="shift-type-filters">
-        {SHIFT_TYPES.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => setShiftType(s.value)}
-            data-testid={`shift-filter-${s.value.toLowerCase()}`}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold border transition-colors ${
-              shiftType === s.value
-                ? "bg-primary/10 text-primary border-primary"
-                : "bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
-            }`}
-          >
-            <span className={`text-base leading-none ${shiftType === s.value ? "text-primary" : "text-muted-foreground/60"}`}>
-              {s.icon}
-            </span>
-            <span className="flex flex-col items-start">
-              <span>{s.label}</span>
-              {s.startHour > 0 || s.endHour > 0 ? <span className="text-[10px] font-mono opacity-60 font-normal">{shiftSub(s.startHour, s.endHour)}</span> : null}
-            </span>
-          </button>
-        ))}
+        {SHIFT_TYPES.map((s) => {
+          const isAll = s.value === "ALL";
+          const isActive = isAll ? selectedShifts.has("ALL") : selectedShifts.has(s.value);
+          const handleClick = () => {
+            if (isAll) {
+              setSelectedShifts(new Set(["ALL"]));
+            } else {
+              setSelectedShifts((prev) => {
+                const next = new Set(prev);
+                next.delete("ALL");
+                if (next.has(s.value)) {
+                  next.delete(s.value);
+                } else {
+                  next.add(s.value);
+                }
+                if (next.size === 0) next.add("ALL");
+                return next;
+              });
+            }
+          };
+          return (
+            <button
+              key={s.value}
+              onClick={handleClick}
+              data-testid={`shift-filter-${s.value.toLowerCase()}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold border transition-colors ${
+                isActive
+                  ? "bg-primary/10 text-primary border-primary"
+                  : "bg-card border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              }`}
+            >
+              <span className={`text-base leading-none ${isActive ? "text-primary" : "text-muted-foreground/60"}`}>
+                {s.icon}
+              </span>
+              <span className="flex flex-col items-start">
+                <span>{s.label}</span>
+                {s.startHour > 0 || s.endHour > 0 ? <span className="text-[10px] font-mono opacity-60 font-normal">{shiftSub(s.startHour, s.endHour)}</span> : null}
+              </span>
+            </button>
+          );
+        })}
         <button
           onClick={() => setShiftConfigOpen(true)}
           title="Edit shift types"
@@ -682,7 +707,7 @@ export default function PdDutyHourPage() {
                 Top Performers — {weekLabel}
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5 font-mono">
-                All shifts — {selectedWeekPeriod ?? "—"}
+                {shiftLabel} — {selectedWeekPeriod ?? "—"}
               </div>
             </div>
             <div className="flex gap-1 flex-shrink-0">
