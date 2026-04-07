@@ -13,6 +13,7 @@ import citationsRouter, { startSheetAutoSync } from "./citations";
 import firRouter from "./fir";
 import studentProgressionsRouter from "./student-progressions";
 import exPdOfficersRouter from "./ex-pd-officers";
+import fivemRouter from "./fivem";
 
 // Start Google Sheet auto-sync on boot
 startSheetAutoSync();
@@ -33,5 +34,6 @@ router.use(citationsRouter);
 router.use(firRouter);
 router.use(studentProgressionsRouter);
 router.use(exPdOfficersRouter);
+router.use(fivemRouter);
 
 export default router;

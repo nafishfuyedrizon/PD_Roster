@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Users, Clock, RefreshCw, ChevronDown, TrendingDown, Copy, Check } from "lucide-react";
+import { Activity, Users, Clock, RefreshCw, ChevronDown, TrendingDown, Copy, Check, Wifi, WifiOff, Shield, ShieldOff, Settings2 } from "lucide-react";
 
 interface LiveOfficer {
   licenseId: string;
@@ -125,6 +125,34 @@ export default function DashboardPage() {
   const { data, isLoading, refetch } = useDashboard(weekView, threshold, 15000);
   const [expandedStatus, setExpandedStatus] = useState<string | null>(null);
   const [copiedList, setCopiedList] = useState(false);
+  const [fivemUrlEdit, setFivemUrlEdit] = useState(false);
+  const [fivemUrlInput, setFivemUrlInput] = useState("");
+  const [savingUrl, setSavingUrl] = useState(false);
+
+  const { data: fivemData, isLoading: fivemLoading, refetch: refetchFivem } = useQuery<{
+    configured: boolean; online: boolean; serverUrl?: string;
+    players: { serverId: number; fivemName: string; ping: number; license: string | null;
+      officer: { name: string; rank: string; callSign: string; department: string } | null;
+      onDuty: boolean; }[];
+  }>({
+    queryKey: ["fivem-players"],
+    queryFn: () => fetch("/api/fivem/players", { credentials: "include" }).then((r) => r.json()),
+    refetchInterval: 30_000,
+    staleTime: 0,
+  });
+
+  async function saveFivemUrl() {
+    setSavingUrl(true);
+    try {
+      await fetch("/api/fivem/server-url", {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: fivemUrlInput }),
+      });
+      setFivemUrlEdit(false);
+      refetchFivem();
+    } finally { setSavingUrl(false); }
+  }
 
   function copyLowDutyList() {
     const list = data?.lowestWeekly ?? [];
@@ -220,32 +248,104 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bottom row: Rank Distribution + Status Overview */}
+      {/* Bottom row: FiveM Live Players + Status Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Rank Distribution */}
-        <div className="bg-card border border-border rounded-lg p-4">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-0.5 flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5" /> Rank Distribution
+        {/* FiveM Live Players */}
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center gap-2 flex-wrap">
+            {fivemData?.online
+              ? <Wifi className="w-4 h-4 text-green-400 shrink-0" />
+              : <WifiOff className="w-4 h-4 text-red-400 shrink-0" />}
+            <span className="text-[10px] font-mono uppercase tracking-widest font-bold shrink-0">
+              FiveM Server
+            </span>
+            {fivemData?.online && (
+              <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full shrink-0">
+                {fivemData.players.length} online
+              </span>
+            )}
+            {!fivemData?.online && fivemData?.configured && (
+              <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full shrink-0">Offline</span>
+            )}
+            <button
+              onClick={() => { setFivemUrlEdit(true); setFivemUrlInput(fivemData?.serverUrl ?? ""); }}
+              className="ml-auto p-1 rounded hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
+              title="Configure server URL"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <div className="text-xs text-muted-foreground mb-4">Current personnel structure</div>
-          {isLoading ? (
-            <div className="space-y-2">{[1,2,3,4,5,6,7].map((i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
-          ) : (
-            <div className="space-y-2.5">
-              {data?.rankDistribution.map(({ rank, count }) => (
-                <div key={rank} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-36 shrink-0 truncate">{rank}</span>
-                  <div className="flex-1 h-2 bg-secondary/40 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary/70 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.round((count / maxRankCount) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-mono font-bold text-foreground w-4 text-right">{count}</span>
-                </div>
-              ))}
+
+          {fivemUrlEdit && (
+            <div className="px-4 py-3 border-b border-border flex gap-2 items-center bg-secondary/10">
+              <input
+                value={fivemUrlInput}
+                onChange={(e) => setFivemUrlInput(e.target.value)}
+                placeholder="http://your-server-ip:30120"
+                className="flex-1 text-xs font-mono bg-secondary/40 border border-border rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                onKeyDown={(e) => e.key === "Enter" && saveFivemUrl()}
+              />
+              <button onClick={saveFivemUrl} disabled={savingUrl} className="px-3 py-1.5 text-xs font-mono font-bold rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                {savingUrl ? "..." : "Save"}
+              </button>
+              <button onClick={() => setFivemUrlEdit(false)} className="px-2 py-1.5 text-xs rounded border border-border hover:bg-secondary/50 text-muted-foreground">✕</button>
             </div>
           )}
+
+          <div className="overflow-y-auto max-h-80">
+            {fivemLoading ? (
+              <div className="p-4 space-y-2">{[1,2,3,4].map((i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+            ) : !fivemData?.configured ? (
+              <div className="px-4 py-8 text-center">
+                <WifiOff className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground font-mono">Server URL not configured</p>
+                <button onClick={() => { setFivemUrlEdit(true); setFivemUrlInput(""); }} className="mt-2 text-xs text-primary hover:underline font-mono">Click ⚙ to add server URL</button>
+              </div>
+            ) : !fivemData.online ? (
+              <div className="px-4 py-8 text-center">
+                <WifiOff className="w-8 h-8 text-red-400/30 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground font-mono">Server offline or unreachable</p>
+              </div>
+            ) : fivemData.players.length === 0 ? (
+              <div className="px-4 py-8 text-center text-xs text-muted-foreground font-mono">No players online</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-secondary/40">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">ID</th>
+                    <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">FiveM Name</th>
+                    <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">Officer</th>
+                    <th className="px-3 py-2 text-center font-mono uppercase text-[10px] text-muted-foreground">PD Duty</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {fivemData.players.map((p) => (
+                    <tr key={p.serverId} className="hover:bg-secondary/20">
+                      <td className="px-3 py-2 font-mono text-muted-foreground">[{p.serverId}]</td>
+                      <td className="px-3 py-2 text-foreground truncate max-w-[120px]">{p.fivemName}</td>
+                      <td className="px-3 py-2">
+                        {p.officer ? (
+                          <div>
+                            <span className="font-mono text-primary font-bold">{p.officer.callSign}</span>
+                            <span className="text-muted-foreground ml-1">{p.officer.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/40 font-mono">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {p.officer ? (
+                          p.onDuty
+                            ? <Shield className="w-3.5 h-3.5 text-green-400 mx-auto" title="On Duty" />
+                            : <ShieldOff className="w-3.5 h-3.5 text-muted-foreground/40 mx-auto" title="Off Duty" />
+                        ) : <span className="text-muted-foreground/30">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
         {/* Status Overview */}
