@@ -261,7 +261,12 @@ export default function DashboardPage() {
             </span>
             {fivemData?.online && (
               <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full shrink-0">
-                {fivemData.players.length} online
+                {fivemData.players.filter(p => p.officer).length} PD online
+              </span>
+            )}
+            {fivemData?.online && (
+              <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                / {fivemData.players.length} total
               </span>
             )}
             {!fivemData?.online && fivemData?.configured && (
@@ -306,39 +311,35 @@ export default function DashboardPage() {
                 <WifiOff className="w-8 h-8 text-red-400/30 mx-auto mb-2" />
                 <p className="text-xs text-muted-foreground font-mono">Server offline or unreachable</p>
               </div>
-            ) : fivemData.players.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-muted-foreground font-mono">No players online</div>
+            ) : fivemData.players.filter(p => p.officer).length === 0 ? (
+              <div className="px-4 py-8 text-center text-xs text-muted-foreground font-mono">No PD officers online</div>
             ) : (
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-secondary/40">
                   <tr>
-                    <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">ID</th>
+                    <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">PD Name</th>
                     <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">FiveM Name</th>
-                    <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">Officer</th>
+                    <th className="px-3 py-2 text-center font-mono uppercase text-[10px] text-muted-foreground">Ping</th>
                     <th className="px-3 py-2 text-center font-mono uppercase text-[10px] text-muted-foreground">PD Duty</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {fivemData.players.map((p) => (
+                  {fivemData.players.filter(p => p.officer).map((p) => (
                     <tr key={p.serverId} className="hover:bg-secondary/20">
-                      <td className="px-3 py-2 font-mono text-muted-foreground">[{p.serverId}]</td>
-                      <td className="px-3 py-2 text-foreground truncate max-w-[120px]">{p.fivemName}</td>
                       <td className="px-3 py-2">
-                        {p.officer ? (
-                          <div>
-                            <span className="font-mono text-primary font-bold">{p.officer.callSign}</span>
-                            <span className="text-muted-foreground ml-1">{p.officer.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/40 font-mono">—</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-primary font-bold text-[10px]">{p.officer!.callSign}</span>
+                          <span className="text-foreground">{p.officer!.name}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{p.officer!.rank}</div>
                       </td>
+                      <td className="px-3 py-2 text-muted-foreground truncate max-w-[110px]">{p.fivemName}</td>
+                      <td className="px-3 py-2 text-center font-mono text-muted-foreground">{p.ping}ms</td>
                       <td className="px-3 py-2 text-center">
-                        {p.officer ? (
-                          p.onDuty
-                            ? <Shield className="w-3.5 h-3.5 text-green-400 mx-auto" title="On Duty" />
-                            : <ShieldOff className="w-3.5 h-3.5 text-muted-foreground/40 mx-auto" title="Off Duty" />
-                        ) : <span className="text-muted-foreground/30">—</span>}
+                        {p.onDuty
+                          ? <Shield className="w-3.5 h-3.5 text-green-400 mx-auto" title="On Duty" />
+                          : <ShieldOff className="w-3.5 h-3.5 text-muted-foreground/40 mx-auto" title="Off Duty" />
+                        }
                       </td>
                     </tr>
                   ))}
