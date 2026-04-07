@@ -24,6 +24,7 @@ import CitationsPage from "@/pages/citations";
 import FirPage from "@/pages/fir";
 import StudentProgressionsPage from "@/pages/student-progressions";
 import ExPdOfficersPage from "@/pages/ex-pd-officers";
+import FtoDocumentsPage from "@/pages/fto-documents";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +64,7 @@ function Router() {
       <Route path="/dept/:department">{() => <ProtectedRoute component={RosterPage} />}</Route>
       <Route path="/stats">{() => <ProtectedRoute component={StatsPage} />}</Route>
       <Route path="/fto-pairs">{() => <ProtectedRoute component={FtoPairsPage} />}</Route>
+      <Route path="/fto-documents">{() => <ProtectedRoute component={FtoDocumentsPage} />}</Route>
       <Route path="/pd-duty-hour">{() => <ProtectedRoute component={PdDutyHourPage} />}</Route>
       <Route path="/dashboard">{() => <ProtectedRoute component={DashboardPage} />}</Route>
       <Route path="/admin">{() => <ProtectedRoute component={AdminPage} />}</Route>
