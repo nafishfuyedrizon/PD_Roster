@@ -420,9 +420,9 @@ router.get("/admin/staff-roles", async (req, res): Promise<void> => {
 
 router.post("/admin/staff-roles", async (req, res): Promise<void> => {
   const sessionUser = (req.session as any)?.user;
-  // Minimum level 3 (High Command) required to add staff members
+  // Minimum level 2 (FTP Supervisor) required to add staff members
   const addLevel = sessionUser?.isOwner ? 5 : sessionUser?.isSuperAdmin ? 4 : sessionUser?.isSeniorStaff ? 3 : sessionUser?.isStaff ? 2 : sessionUser?.isTrusted ? 1 : 0;
-  if (addLevel < 3) { res.status(403).json({ error: "High Command or above required to add staff members" }); return; }
+  if (addLevel < 2) { res.status(403).json({ error: "FTP Supervisor or above required to add staff members" }); return; }
   const { discordUid, displayName } = req.body;
   if (!discordUid?.trim()) { res.status(400).json({ error: "discordUid required" }); return; }
   try {
@@ -478,7 +478,7 @@ router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
 router.delete("/admin/staff-roles/:id", async (req, res): Promise<void> => {
   const sessionUser = (req.session as any)?.user;
   const myLevel = sessionUser?.isOwner ? 5 : sessionUser?.isSuperAdmin ? 4 : sessionUser?.isSeniorStaff ? 3 : sessionUser?.isStaff ? 2 : sessionUser?.isTrusted ? 1 : 0;
-  if (myLevel < 3) { res.status(403).json({ error: "High Command or above required to remove staff members" }); return; }
+  if (myLevel < 2) { res.status(403).json({ error: "FTP Supervisor or above required to remove staff members" }); return; }
   const id = parseInt(req.params.id, 10);
   const [sr] = await db.select().from(staffRolesTable).where(eq(staffRolesTable.id, id)).limit(1);
   if (!sr) { res.status(404).json({ error: "Not found" }); return; }

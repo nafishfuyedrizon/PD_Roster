@@ -215,7 +215,7 @@ export default function AdminStaffRolesPage() {
             Player role management · panel login access
           </span>
         </div>
-        {myLevel >= 3 && (
+        {myLevel >= 2 && (
           <Button
             size="sm"
             onClick={() => setShowAdd((v) => !v)}
