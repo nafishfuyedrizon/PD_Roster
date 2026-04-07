@@ -126,6 +126,23 @@ function progressColor(pct: number) {
   return "bg-blue-500";
 }
 
+function getCurrentSection(c: Cadet): string {
+  const onboardingDone = c.discordInterview && c.inCityInterview;
+  if (!onboardingDone) return "Onboarding";
+  const phase1Done = c.basicTraining && c.obsH2 && c.obsH4 && c.obsH6 && c.obsH8 && c.obsH10 && c.obsH12 && c.obsH14;
+  if (!phase1Done) return "Phase 1";
+  const classroomDone = c.mdt && c.advanceTraining;
+  if (!classroomDone) return "Classroom";
+  return "Phase 2";
+}
+
+const SECTION_COLORS: Record<string, string> = {
+  "Onboarding": "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+  "Phase 1":    "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "Classroom":  "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  "Phase 2":    "bg-purple-500/20 text-purple-300 border-purple-500/30",
+};
+
 function CheckboxCell({
   value, onClick, locked,
 }: { value: boolean; onClick: () => void; locked?: boolean }) {
@@ -282,17 +299,22 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
         </div>
 
         {/* Phase + Status */}
-        <div className="flex gap-1 items-center w-36 shrink-0">
-          {cadet.currentPhase && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${PHASE_COLORS[cadet.currentPhase] ?? "bg-secondary text-secondary-foreground border-border"}`}>
-              {cadet.currentPhase}
-            </span>
-          )}
-          {cadet.status && (
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${STATUS_COLORS[cadet.status] ?? "bg-secondary text-secondary-foreground border-border"}`}>
-              {cadet.status}
-            </span>
-          )}
+        <div className="flex flex-col gap-0.5 w-36 shrink-0">
+          <div className="flex gap-1 items-center flex-wrap">
+            {(() => {
+              const section = getCurrentSection(cadet);
+              return (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${SECTION_COLORS[section] ?? "bg-secondary text-secondary-foreground border-border"}`}>
+                  {section}
+                </span>
+              );
+            })()}
+            {cadet.status && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${STATUS_COLORS[cadet.status] ?? "bg-secondary text-secondary-foreground border-border"}`}>
+                {cadet.status}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Strikes + TZ */}
