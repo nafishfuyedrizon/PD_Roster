@@ -34,27 +34,53 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
 
   // Get all officers
   const officers = await db.select().from(officersTable);
+
+  // Map 1: license → officer (from rockstarLicenseId in officers table)
   const licenseMap = new Map<string, typeof officers[0]>();
-  const fivemNameMap = new Map<string, typeof officers[0]>();
   for (const o of officers) {
     if (o.rockstarLicenseId) {
       const rawId = (o.rockstarLicenseId as string).replace(/^license:/i, "").toLowerCase();
       licenseMap.set(rawId, o);
     }
+  }
+
+  // Map 2: fivemName → officer (manually set in roster)
+  const fivemNameMap = new Map<string, typeof officers[0]>();
+  for (const o of officers) {
     if (o.fivemName) {
       fivemNameMap.set((o.fivemName as string).toLowerCase().trim(), o);
     }
   }
 
-  // Get latest duty event per license to determine on-duty status
+  // Get all duty events — sorted newest first
   const dutyEvents = await db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt));
+
+  // Map 3: FiveM character name → officer (from discord_duty_events officer_name + license_id)
+  // discord_duty_events stores the FiveM display name in officer_name and the license in license_id
+  const dutyNameMap = new Map<string, typeof officers[0]>();
+  for (const ev of dutyEvents) {
+    const evName = (ev.officerName ?? "").toLowerCase().trim();
+    if (!evName || dutyNameMap.has(evName)) continue;
+    const rawId = (ev.licenseId ?? "").replace(/^license:/i, "").toLowerCase();
+    const officer = rawId ? licenseMap.get(rawId) : null;
+    if (officer) dutyNameMap.set(evName, officer);
+  }
+
+  // Latest duty event per license for on-duty check
   const latestByLicense = new Map<string, typeof dutyEvents[0]>();
   for (const ev of dutyEvents) {
     const rawId = (ev.licenseId ?? "").replace(/^license:/i, "").toLowerCase();
     if (rawId && !latestByLicense.has(rawId)) latestByLicense.set(rawId, ev);
   }
 
-  // Match players — try license first, then fivemName fallback
+  // Latest duty event per FiveM display name (for players whose license isn't exposed)
+  const latestByFivemName = new Map<string, typeof dutyEvents[0]>();
+  for (const ev of dutyEvents) {
+    const evName = (ev.officerName ?? "").toLowerCase().trim();
+    if (evName && !latestByFivemName.has(evName)) latestByFivemName.set(evName, ev);
+  }
+
+  // Match players — priority: license → manual fivemName → duty log name
   const players = fivemPlayers.map((p: any) => {
     const rawLicense = (p.identifiers ?? [])
       .find((id: string) => id.startsWith("license:"))
@@ -62,9 +88,21 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
       .toLowerCase() ?? null;
 
     const playerFivemName = (p.name ?? "").toLowerCase().trim();
-    const officer = (rawLicense ? licenseMap.get(rawLicense) : null) ?? fivemNameMap.get(playerFivemName) ?? null;
-    const latestDuty = rawLicense ? latestByLicense.get(rawLicense) ?? null : null;
-    const onDuty = latestDuty?.eventType === "on_duty";
+
+    const officer =
+      (rawLicense ? licenseMap.get(rawLicense) : null) ??
+      fivemNameMap.get(playerFivemName) ??
+      dutyNameMap.get(playerFivemName) ??
+      null;
+
+    // Duty status: check by license first, then by FiveM display name
+    const latestDuty =
+      (rawLicense ? latestByLicense.get(rawLicense) : null) ??
+      latestByFivemName.get(playerFivemName) ??
+      null;
+
+    // event_type in discord_duty_events is "on" or "off"
+    const onDuty = latestDuty?.eventType === "on" || latestDuty?.eventType === "on_duty";
 
     return {
       serverId: p.id,

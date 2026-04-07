@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Users, Clock, RefreshCw, ChevronDown, TrendingDown, Copy, Check, Wifi, WifiOff, Shield, ShieldOff, Settings2 } from "lucide-react";
+import { Activity, Users, Clock, RefreshCw, ChevronDown, TrendingDown, Copy, Check, Wifi, WifiOff, Settings2, CheckCircle2, XCircle } from "lucide-react";
 
 interface LiveOfficer {
   licenseId: string;
@@ -344,8 +344,8 @@ export default function DashboardPage() {
                       <td className="px-3 py-2 text-center">
                         {p.officer ? (
                           p.onDuty
-                            ? <Shield className="w-3.5 h-3.5 text-green-400 mx-auto" title="On Duty" />
-                            : <ShieldOff className="w-3.5 h-3.5 text-muted-foreground/40 mx-auto" title="Off Duty" />
+                            ? <CheckCircle2 className="w-4 h-4 text-green-400 mx-auto" title="On Duty" />
+                            : <XCircle className="w-4 h-4 text-red-400/70 mx-auto" title="Not on Duty" />
                         ) : <span className="text-muted-foreground/20">—</span>}
                       </td>
                     </tr>
