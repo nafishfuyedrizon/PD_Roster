@@ -469,13 +469,18 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
       }
     }
 
-    // Build notes: PTA phase note takes priority; otherwise build from FTP/FTO flags
-    let notesValue: string | null = ftpNotes;
-    if (!notesValue) {
-      const noteParts: string[] = [];
-      if (officer.ftp) noteParts.push("FTP Certified");
-      if (officer.appointedFto) noteParts.push(`FTO: ${officer.appointedFto}`);
-      notesValue = noteParts.length > 0 ? noteParts.join(" | ") : null;
+    // Build auto notes: always include rank + FTP status; PTA cadets also get phase
+    const rankPart = officer.rank ? `Rank: ${officer.rank}` : null;
+    const ftpPart = officer.ftp ? "FTP: Yes" : "FTP: No";
+    const ftoPart = officer.appointedFto ? `FTO: ${officer.appointedFto}` : null;
+    const baseParts = [rankPart, ftpPart, ftoPart].filter(Boolean) as string[];
+
+    let notesValue: string | null;
+    if (ftpNotes) {
+      // PTA cadet: prepend rank line then add phase info
+      notesValue = [...baseParts, ftpNotes].join(" | ");
+    } else {
+      notesValue = baseParts.join(" | ");
     }
 
     // 1) Insert into ex_pd_officers if name is available
