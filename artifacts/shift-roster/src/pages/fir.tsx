@@ -582,6 +582,7 @@ export default function FirPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [liveTime, setLiveTime] = useState(new Date());
   const [sseConnected, setSseConnected] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -606,13 +607,19 @@ export default function FirPage() {
     refetchInterval: 120000,
   });
 
-  const firs = [...rawFirs].sort((a, b) => {
-    const priority = (s: string) => (s === "pending" ? 0 : 1);
-    const pa = priority(a.status ?? "pending");
-    const pb = priority(b.status ?? "pending");
-    if (pa !== pb) return pa - pb;
-    return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
-  });
+  const pendingCount   = rawFirs.filter(f => (f.status ?? "pending") === "pending").length;
+  const acceptedCount  = rawFirs.filter(f => f.status === "accepted").length;
+  const rejectedCount  = rawFirs.filter(f => f.status === "rejected").length;
+
+  const firs = [...rawFirs]
+    .filter(f => statusFilter === "all" || (f.status ?? "pending") === statusFilter)
+    .sort((a, b) => {
+      const priority = (s: string) => (s === "pending" ? 0 : 1);
+      const pa = priority(a.status ?? "pending");
+      const pb = priority(b.status ?? "pending");
+      if (pa !== pb) return pa - pb;
+      return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
+    });
 
   const { data: stats, refetch: refetchStats } = useQuery<FirStats>({
     queryKey: ["/api/fir/stats"],
@@ -719,6 +726,33 @@ export default function FirPage() {
             <div className="text-xs text-muted-foreground">Showing</div>
             <div className="text-2xl font-bold text-foreground">{firs.length}</div>
           </div>
+        </div>
+
+        {/* Status filter tabs */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {([
+            { key: "all",      label: "All",      count: rawFirs.length,  active: "bg-secondary/60 text-foreground border-border/60" },
+            { key: "pending",  label: "Pending",  count: pendingCount,   active: "bg-amber-600/20 text-amber-300 border-amber-600/40" },
+            { key: "accepted", label: "Accepted", count: acceptedCount,  active: "bg-green-600/20 text-green-300 border-green-600/40" },
+            { key: "rejected", label: "Rejected", count: rejectedCount,  active: "bg-red-600/20 text-red-300 border-red-600/40" },
+          ] as const).map(({ key, label, count, active }) => (
+            <button
+              key={key}
+              onClick={() => setStatusFilter(key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors ${
+                statusFilter === key
+                  ? active
+                  : "bg-transparent text-muted-foreground border-border/30 hover:bg-secondary/30 hover:text-foreground"
+              }`}
+            >
+              {label}
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                statusFilter === key ? "bg-white/10" : "bg-secondary/50"
+              }`}>
+                {count}
+              </span>
+            </button>
+          ))}
         </div>
 
         {/* Search */}
