@@ -652,10 +652,10 @@ function CitationDetailPopup({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div>
-            <p className="text-xs font-mono uppercase text-muted-foreground tracking-wider">Citations</p>
+            <p className="text-xs font-mono uppercase text-muted-foreground tracking-wider">All Citations</p>
             <p className="text-base font-semibold text-foreground">{officerName}</p>
             {since && (
-              <p className="text-[11px] text-muted-foreground font-mono">Since promotion: {since}</p>
+              <p className="text-[11px] text-muted-foreground font-mono">Promotion date: {since}</p>
             )}
           </div>
           <button

@@ -356,7 +356,7 @@ router.post("/citations/ingest", async (req, res): Promise<void> => {
 
 // ── Officer citation breakdown (for Qual Chart drill-down) ───────────────────
 // GET /api/citations/officer-breakdown?name=...&since=M/D/YYYY
-router.get("/officer-breakdown", async (req, res) => {
+router.get("/citations/officer-breakdown", async (req, res) => {
   const name = (req.query.name as string | undefined)?.trim();
   const since = (req.query.since as string | undefined)?.trim();
   if (!name) { res.status(400).json({ error: "name required" }); return; }
@@ -372,6 +372,9 @@ router.get("/officer-breakdown", async (req, res) => {
     }
   }
 
+  // Strip trailing " [number]" callsign from stored officer_name before comparing
+  // NOTE: We show ALL citations for the officer (no since-date filter) so the popup
+  // is always useful even when the qual-chart count includes a manual adjustment.
   const rows = await db
     .select({
       id: pdCitationsTable.id,
@@ -383,11 +386,7 @@ router.get("/officer-breakdown", async (req, res) => {
       postedAt: pdCitationsTable.postedAt,
     })
     .from(pdCitationsTable)
-    .where(
-      sinceDate
-        ? sql`${pdCitationsTable.officerName} ILIKE ${name} AND ${pdCitationsTable.postedAt} >= ${sinceDate}`
-        : sql`${pdCitationsTable.officerName} ILIKE ${name}`
-    )
+    .where(sql`REGEXP_REPLACE(${pdCitationsTable.officerName}, '\\s*\\[\\d+\\]$', '') ILIKE ${name}`)
     .orderBy(desc(pdCitationsTable.postedAt));
 
   res.json(rows);
