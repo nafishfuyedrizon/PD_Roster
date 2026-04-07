@@ -232,12 +232,14 @@ function StatusBadge({ status }: { status: string | null }) {
 }
 
 function InlineStatusSelect({ entryId, currentStatus }: { entryId: number; currentStatus: string | null }) {
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const qc = useQueryClient();
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value || null;
     setSaving(true);
+    setEditing(false);
     try {
       await fetch(`/api/qualification-chart/${entryId}/status`, {
         method: "PATCH",
@@ -250,20 +252,33 @@ function InlineStatusSelect({ entryId, currentStatus }: { entryId: number; curre
     }
   };
 
-  return (
-    <div className="relative inline-flex items-center justify-center" title="Click to change status">
-      <StatusBadge status={currentStatus} />
+  if (editing) {
+    return (
       <select
-        value={currentStatus ?? ""}
+        autoFocus
+        defaultValue={currentStatus ?? ""}
         onChange={handleChange}
+        onBlur={() => setEditing(false)}
         disabled={saving}
-        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        className="text-[11px] font-mono bg-secondary border border-primary/40 rounded px-2 py-1 text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary min-w-[120px]"
       >
         {STATUS_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
-    </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+      disabled={saving}
+      title="Click to change status"
+      className="inline-flex items-center gap-1 cursor-pointer hover:ring-2 hover:ring-primary/40 rounded-full transition-all disabled:opacity-50"
+    >
+      <StatusBadge status={currentStatus} />
+    </button>
   );
 }
 
