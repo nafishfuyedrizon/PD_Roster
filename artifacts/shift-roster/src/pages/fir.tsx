@@ -216,12 +216,8 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
 
   const status = fir.status ?? "pending";
 
-  const { data: profileData } = useQuery<{ officer: { name: string } | null }>({
-    queryKey: ["profile"],
-    queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
-    staleTime: 60_000,
-  });
-  const myName = profileData?.officer?.name ?? null;
+  const { user } = useAuth();
+  const myName = user?.displayName ?? null;
 
   async function handleBookmark() {
     setBookmarking(true);
