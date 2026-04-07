@@ -615,7 +615,7 @@ export default function FirPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [liveTime, setLiveTime] = useState(new Date());
   const [sseConnected, setSseConnected] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "accepted" | "rejected" | "bookmarked">("all");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -640,12 +640,17 @@ export default function FirPage() {
     refetchInterval: 120000,
   });
 
-  const pendingCount   = rawFirs.filter(f => (f.status ?? "pending") === "pending").length;
-  const acceptedCount  = rawFirs.filter(f => f.status === "accepted").length;
-  const rejectedCount  = rawFirs.filter(f => f.status === "rejected").length;
+  const pendingCount    = rawFirs.filter(f => (f.status ?? "pending") === "pending").length;
+  const acceptedCount   = rawFirs.filter(f => f.status === "accepted").length;
+  const rejectedCount   = rawFirs.filter(f => f.status === "rejected").length;
+  const bookmarkedCount = rawFirs.filter(f => f.bookmarked).length;
 
   const firs = [...rawFirs]
-    .filter(f => statusFilter === "all" || (f.status ?? "pending") === statusFilter)
+    .filter(f => {
+      if (statusFilter === "bookmarked") return f.bookmarked;
+      if (statusFilter === "all") return true;
+      return (f.status ?? "pending") === statusFilter;
+    })
     .sort((a, b) => {
       const priority = (s: string) => (s === "pending" ? 0 : 1);
       const pa = priority(a.status ?? "pending");
@@ -764,10 +769,11 @@ export default function FirPage() {
         {/* Status filter tabs */}
         <div className="flex items-center gap-2 flex-wrap">
           {([
-            { key: "all",      label: "All",      count: rawFirs.length,  active: "bg-secondary/60 text-foreground border-border/60" },
-            { key: "pending",  label: "Pending",  count: pendingCount,   active: "bg-amber-600/20 text-amber-300 border-amber-600/40" },
-            { key: "accepted", label: "Accepted", count: acceptedCount,  active: "bg-green-600/20 text-green-300 border-green-600/40" },
-            { key: "rejected", label: "Rejected", count: rejectedCount,  active: "bg-red-600/20 text-red-300 border-red-600/40" },
+            { key: "all",        label: "All",       count: rawFirs.length,  active: "bg-secondary/60 text-foreground border-border/60" },
+            { key: "pending",    label: "Pending",   count: pendingCount,    active: "bg-amber-600/20 text-amber-300 border-amber-600/40" },
+            { key: "accepted",   label: "Accepted",  count: acceptedCount,   active: "bg-green-600/20 text-green-300 border-green-600/40" },
+            { key: "rejected",   label: "Rejected",  count: rejectedCount,   active: "bg-red-600/20 text-red-300 border-red-600/40" },
+            { key: "bookmarked", label: "Bookmarks", count: bookmarkedCount, active: "bg-yellow-500/20 text-yellow-300 border-yellow-500/40" },
           ] as const).map(({ key, label, count, active }) => (
             <button
               key={key}
@@ -778,6 +784,7 @@ export default function FirPage() {
                   : "bg-transparent text-muted-foreground border-border/30 hover:bg-secondary/30 hover:text-foreground"
               }`}
             >
+              {key === "bookmarked" && <Bookmark className="w-3 h-3" />}
               {label}
               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                 statusFilter === key ? "bg-white/10" : "bg-secondary/50"
@@ -807,10 +814,10 @@ export default function FirPage() {
           )}
         </div>
 
-        {/* Bookmarks section */}
+        {/* Bookmarks section — hidden when the Bookmarks filter tab is active */}
         {(() => {
           const bookmarked = rawFirs.filter(f => f.bookmarked);
-          if (bookmarked.length === 0) return null;
+          if (bookmarked.length === 0 || statusFilter === "bookmarked") return null;
           return (
             <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2 border-b border-yellow-500/20 bg-yellow-500/10">
