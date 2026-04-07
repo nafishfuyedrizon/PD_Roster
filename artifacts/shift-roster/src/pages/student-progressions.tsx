@@ -114,6 +114,7 @@ function progressColor(pct: number) {
 }
 
 function getCurrentSection(c: Cadet): string {
+  if (c.currentPhase === "Solo Cadet") return "Solo Cadet";
   const onboardingDone = c.discordInterview && c.inCityInterview;
   if (!onboardingDone) return "Onboarding";
   const phase1Done = c.basicTraining && c.obsH2 && c.obsH4 && c.obsH6 && c.obsH8 && c.obsH10 && c.obsH12 && c.obsH14;
@@ -124,10 +125,11 @@ function getCurrentSection(c: Cadet): string {
 }
 
 const SECTION_COLORS: Record<string, string> = {
-  "Onboarding": "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-  "Phase 1":    "bg-blue-500/20 text-blue-300 border-blue-500/30",
-  "Classroom":  "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  "Phase 2":    "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  "Onboarding":  "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+  "Phase 1":     "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "Classroom":   "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  "Phase 2":     "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  "Solo Cadet":  "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
 };
 
 function CheckboxCell({
@@ -146,18 +148,20 @@ function CheckboxCell({
   );
 }
 
-function CadetRow({ cadet, onToggle, onDelete }: {
+function CadetRow({ cadet, onToggle, onDelete, onConfirmSolo }: {
   cadet: Cadet;
   onToggle: (field: string, value: boolean) => void;
   onDelete: () => void;
+  onConfirmSolo: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [locked, setLocked] = useState(true);
   const [confirmUnlock, setConfirmUnlock] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmSolo, setConfirmSolo] = useState(false);
 
   const pct = cadet.progressPct;
-  const isSoloReady = pct >= 80;
+  const isSoloReady = pct >= 80 && cadet.currentPhase !== "Solo Cadet";
 
   const renderGroup = (group: CheckboxGroup) => (
     <div key={group.label} className="flex flex-col gap-1 min-w-0">
@@ -240,7 +244,29 @@ function CadetRow({ cadet, onToggle, onDelete }: {
             </span>
           </div>
           {isSoloReady && (
-            <div className="text-[10px] text-green-400 font-semibold mt-0.5">✓ Solo Ready</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] text-green-400 font-semibold">✓ Solo Ready</span>
+              {confirmSolo ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 font-semibold hover:bg-yellow-500/30 transition-colors"
+                    onClick={() => { onConfirmSolo(cadet.id); setConfirmSolo(false); }}
+                  >Yes</button>
+                  <button
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border hover:bg-secondary/80 transition-colors"
+                    onClick={() => setConfirmSolo(false)}
+                  >No</button>
+                </div>
+              ) : (
+                <button
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 font-semibold hover:bg-yellow-500/20 transition-colors"
+                  onClick={() => setConfirmSolo(true)}
+                >Confirm Solo</button>
+              )}
+            </div>
+          )}
+          {cadet.currentPhase === "Solo Cadet" && (
+            <div className="text-[10px] text-yellow-400 font-semibold mt-0.5">★ Solo Cadet</div>
           )}
         </div>
 
@@ -423,6 +449,21 @@ export default function StudentProgressionsPage() {
     },
   });
 
+  const confirmSoloMutation = useMutation({
+    mutationFn: (id: number) =>
+      fetch(`/api/student-progressions/${id}`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPhase: "Solo Cadet" }),
+      }).then((r) => r.json()),
+    onSuccess: (updated: Cadet) => {
+      qc.setQueryData(["/api/student-progressions"], (old: Cadet[] | undefined) =>
+        old?.map((c) => (c.id === updated.id ? { ...c, currentPhase: "Solo Cadet" } : c)) ?? [],
+      );
+      toast({ title: "Solo Cadet confirmed", description: `${updated.name} is now a Solo Cadet` });
+    },
+  });
+
   // Auto-sync with roster on page load
   useEffect(() => {
     fetch("/api/student-progressions/sync-roster", { method: "POST", credentials: "include" })
@@ -540,6 +581,7 @@ export default function StudentProgressionsPage() {
                 cadet={cadet}
                 onToggle={(field, value) => toggleMutation.mutate({ id: cadet.id, field, value })}
                 onDelete={() => { if (confirm(`Remove ${cadet.name}?`)) deleteMutation.mutate(cadet.id); }}
+                onConfirmSolo={(id) => confirmSoloMutation.mutate(id)}
               />
             ))
           )}
