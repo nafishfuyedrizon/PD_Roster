@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, qualificationChartTable, officersTable } from "@workspace/db";
+import { db, qualificationChartTable, officersTable, studentProgressionsTable } from "@workspace/db";
 import { eq, sql, notInArray, or, ilike, and } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
 
@@ -81,7 +81,8 @@ function todayMDY(): string {
   return `${mm}/${dd}/${d.getFullYear()}`;
 }
 
-/** Auto-insert any roster officers that are not yet in the qual chart. */
+/** Auto-insert any roster officers that are not yet in the qual chart.
+ *  PTA officers are only included if they are confirmed Solo Cadets. */
 async function syncRosterToQualChart(): Promise<void> {
   // Get all names already in qual chart (with their lastPromotion)
   const existing = await db
@@ -89,13 +90,26 @@ async function syncRosterToQualChart(): Promise<void> {
     .from(qualificationChartTable);
   const existingNames = existing.map((r) => r.name);
 
+  // Solo Cadets from student_progressions (by badgeNumber which matches callSign)
+  const soloCadets = await db
+    .select({ badgeNumber: studentProgressionsTable.badgeNumber })
+    .from(studentProgressionsTable)
+    .where(eq(studentProgressionsTable.currentPhase, "Solo Cadet"));
+  const soloBadges = new Set(soloCadets.map((s) => s.badgeNumber).filter(Boolean));
+
   // All roster officers (with lastPromotion from officers table)
   const allOfficers = await db
-    .select({ name: officersTable.name, rank: officersTable.rank, department: officersTable.department, lastPromotion: officersTable.lastPromotion })
+    .select({ name: officersTable.name, rank: officersTable.rank, department: officersTable.department, lastPromotion: officersTable.lastPromotion, callSign: officersTable.callSign })
     .from(officersTable);
 
+  // Eligible: non-PTA officers, or PTA officers who are Solo Cadets
+  const eligibleOfficers = allOfficers.filter((o) => {
+    if (o.department !== "PTA") return true;
+    return soloBadges.has(o.callSign ?? "");
+  });
+
   // Insert any officers not yet in qual chart
-  const missing = allOfficers.filter((o) => !existingNames.includes(o.name ?? ""));
+  const missing = eligibleOfficers.filter((o) => !existingNames.includes(o.name ?? ""));
   if (missing.length > 0) {
     await db.insert(qualificationChartTable).values(
       missing.map((o) => ({
@@ -131,7 +145,8 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
   // Ensure all roster officers have a qual chart entry, and voter columns are in sync
   await Promise.all([syncRosterToQualChart(), syncVotersToQualChart()]);
 
-  // Only show officers who are in the roster (officers table is primary)
+  // Only show officers who are in the roster (officers table is primary).
+  // PTA officers are only shown if they are confirmed Solo Cadets in student_progressions.
   const rows = await db
     .select({
       id: qualificationChartTable.id,
@@ -158,6 +173,16 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     })
     .from(officersTable)
     .leftJoin(qualificationChartTable, eq(officersTable.name, qualificationChartTable.name))
+    .where(
+      or(
+        sql`${officersTable.department} != 'PTA'`,
+        sql`EXISTS (
+          SELECT 1 FROM student_progressions sp
+          WHERE sp.badge_number = ${officersTable.callSign}
+            AND sp.current_phase = 'Solo Cadet'
+        )`,
+      )!,
+    )
     .orderBy(qualificationChartTable.id);
 
   // Dynamically compute hoursInRank from duty logs since lastPromotion (or joiningDate)
