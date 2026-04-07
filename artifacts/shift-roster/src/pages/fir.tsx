@@ -334,9 +334,30 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
         )}
         {status === "accepted" && (
           <>
-            <span className="text-[11px] text-green-400 font-semibold flex items-center gap-1">
-              <CheckCircle className="w-3 h-3" /> Accepted by {fir.acceptedBy ?? "—"}
-            </span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-[11px] text-green-400 font-semibold flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                <span>Accepted by</span>
+                <button
+                  onClick={() => navigateToOfficer(fir.acceptedBy)}
+                  className="text-green-300 hover:text-green-100 hover:underline transition-colors"
+                >
+                  {fir.acceptedBy ?? "—"}
+                </button>
+              </span>
+              {fir.officerName && (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Shield className="w-3 h-3 text-teal-400" />
+                  <span className="text-teal-400/80">Officer:</span>
+                  <button
+                    onClick={() => navigateToOfficer(fir.officerName)}
+                    className="text-teal-300 hover:text-teal-100 hover:underline transition-colors font-semibold"
+                  >
+                    {fir.officerName}
+                  </button>
+                </span>
+              )}
+            </div>
             <button
               disabled={actionLoading}
               onClick={handleResetPending}
