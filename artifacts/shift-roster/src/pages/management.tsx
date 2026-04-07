@@ -50,11 +50,9 @@ export default function ManagementPage() {
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
-  const MGMT_ROLE_ORDER: Record<string, number> = { "COMMAND": 1, "MEMBER": 2 };
-
   const members = [...officers].sort((a, b) => {
-    const ra = MGMT_ROLE_ORDER[getManagementRole(a.rank).toUpperCase()] ?? 3;
-    const rb = MGMT_ROLE_ORDER[getManagementRole(b.rank).toUpperCase()] ?? 3;
+    const ra = getRankOrder(a.rank);
+    const rb = getRankOrder(b.rank);
     if (ra !== rb) return ra - rb;
     return (a.callSign ?? "").localeCompare(b.callSign ?? "");
   });
@@ -112,7 +110,6 @@ export default function ManagementPage() {
                 </tr>
               ) : (
                 members.map((o, i) => {
-                  const role = getManagementRole(o.rank);
                   const isActive = o.status === "Active";
                   const isRemoving = removingId === o.id;
                   return (
@@ -122,7 +119,7 @@ export default function ManagementPage() {
                     >
                       <td className="py-3 px-6 text-center font-mono font-bold text-foreground">{o.callSign}</td>
                       <td className="py-3 px-6 text-center font-medium text-foreground">{o.name}</td>
-                      <td className="py-3 px-6 text-center text-foreground/90">{role}</td>
+                      <td className="py-3 px-6 text-center text-foreground/90">{o.rank}</td>
                       <td className="py-3 px-6 text-center">
                         <span
                           className={`inline-block px-4 py-0.5 rounded text-sm font-semibold ${
