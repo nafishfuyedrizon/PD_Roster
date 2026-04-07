@@ -20,7 +20,7 @@ import {
 import { GraduationCap, Plus, Trash2, ChevronDown, ChevronUp, Pencil, CheckCircle2, Circle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const TOTAL = 38;
+const TOTAL = 43;
 
 type Cadet = {
   id: number;
