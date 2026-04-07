@@ -334,8 +334,8 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
         )}
         {status === "accepted" && (
           <>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-[11px] text-green-400 font-semibold flex items-center gap-1">
+            <div className="flex items-center gap-3 flex-wrap min-w-0">
+              <span className="text-[11px] text-green-400 font-semibold flex items-center gap-1 shrink-0">
                 <CheckCircle className="w-3 h-3" />
                 <span>Accepted by</span>
                 <button
@@ -345,23 +345,19 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
                   {fir.acceptedBy ?? "—"}
                 </button>
               </span>
-              {fir.officerName && (
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                  <Shield className="w-3 h-3 text-teal-400" />
-                  <span className="text-teal-400/80">Officer:</span>
-                  <button
-                    onClick={() => navigateToOfficer(fir.officerName)}
-                    className="text-teal-300 hover:text-teal-100 hover:underline transition-colors font-semibold"
-                  >
-                    {fir.officerName}
-                  </button>
+              <span className="text-muted-foreground/40 text-[11px] shrink-0">·</span>
+              <span className="text-[11px] flex items-center gap-1">
+                <FileSearch className="w-3 h-3 text-amber-400 shrink-0" />
+                <span className="text-amber-400/80 shrink-0">FIR:</span>
+                <span className="text-foreground font-semibold truncate">
+                  {fir.complainantName ?? "—"}
                 </span>
-              )}
+              </span>
             </div>
             <button
               disabled={actionLoading}
               onClick={handleResetPending}
-              className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-[10px] text-muted-foreground border border-border/40 hover:bg-secondary/50 transition-colors disabled:opacity-50"
+              className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-[10px] text-muted-foreground border border-border/40 hover:bg-secondary/50 transition-colors disabled:opacity-50 shrink-0"
             >
               <X className="w-2.5 h-2.5" /> Reset
             </button>
