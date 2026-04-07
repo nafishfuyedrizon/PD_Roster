@@ -406,12 +406,19 @@ function FeedbackModal({ entry, currentOfficerName, onClose }: { entry: QualEntr
         </div>
 
         <div className="border-t border-border p-4 space-y-2 shrink-0">
-          <input
-            value={authorName}
-            onChange={(e) => setAuthorName(e.target.value)}
-            placeholder="Your PD officer name..."
-            className="w-full rounded-md border border-border bg-secondary/30 px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/40 bg-secondary/10">
+            <span className="text-[11px] font-mono text-muted-foreground uppercase">By:</span>
+            {authorName ? (
+              <span className="text-sm font-mono font-bold text-primary">{authorName}</span>
+            ) : (
+              <input
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                placeholder="Your PD officer name..."
+                className="flex-1 bg-transparent text-sm font-mono focus:outline-none text-foreground placeholder:text-muted-foreground/50"
+              />
+            )}
+          </div>
           <textarea
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
