@@ -814,26 +814,6 @@ export default function FirPage() {
           )}
         </div>
 
-        {/* Bookmarks section — hidden when the Bookmarks filter tab is active */}
-        {(() => {
-          const bookmarked = rawFirs.filter(f => f.bookmarked);
-          if (bookmarked.length === 0 || statusFilter === "bookmarked") return null;
-          return (
-            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-2 border-b border-yellow-500/20 bg-yellow-500/10">
-                <BookmarkCheck className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-xs font-semibold text-yellow-300 uppercase tracking-wider">Bookmarks</span>
-                <span className="ml-auto text-[10px] font-mono text-yellow-400/60">{bookmarked.length} saved</span>
-              </div>
-              <div className="divide-y divide-yellow-500/10">
-                {bookmarked.map((fir) => (
-                  <FirCard key={fir.id} fir={fir} onStatusChange={() => qc.invalidateQueries({ queryKey: ["/api/fir"] })} />
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-
         {/* FIR list */}
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground text-sm gap-2">
