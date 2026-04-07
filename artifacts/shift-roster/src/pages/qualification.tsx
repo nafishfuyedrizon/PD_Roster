@@ -617,27 +617,71 @@ type CitationBrief = {
   postedAt: string;
 };
 
+type DeletionLogEntry = {
+  at: Date;
+  deletedBy: string;
+  citationId: number;
+  incident: string | null;
+};
+
 function CitationDetailPopup({
   officerName,
   since,
+  currentUser,
   onClose,
 }: {
   officerName: string;
   since: string | null;
+  currentUser: string | null;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const qc = useQueryClient();
+  const { toast } = useToast();
   const params = new URLSearchParams({ name: officerName });
   if (since) params.set("since", since);
 
-  const { data: citations, isLoading } = useQuery<CitationBrief[]>({
+  const [deletionLog, setDeletionLog] = useState<DeletionLogEntry[]>([]);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const { data: citations, isLoading, refetch } = useQuery<CitationBrief[]>({
     queryKey: ["citation-breakdown", officerName, since],
     queryFn: () =>
       fetch(`/api/citations/officer-breakdown?${params.toString()}`, {
         credentials: "include",
       }).then((r) => r.json()),
-    staleTime: 30_000,
+    staleTime: 0,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (c: CitationBrief) => {
+      const res = await fetch(`/api/citations/${c.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      return c;
+    },
+    onSuccess: (c) => {
+      setDeletionLog((prev) => [
+        { at: new Date(), deletedBy: currentUser ?? "Unknown", citationId: c.id, incident: c.incident },
+        ...prev,
+      ]);
+      refetch();
+      qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
+      toast({ title: "Citation deleted", description: c.incident ?? `#${c.id}` });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    },
+    onSettled: () => setDeletingId(null),
+  });
+
+  function handleDelete(c: CitationBrief) {
+    if (!confirm(`Delete citation "${c.incident ?? `#${c.id}`}"?\nThis cannot be undone.`)) return;
+    setDeletingId(c.id);
+    deleteMutation.mutate(c);
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -690,13 +734,15 @@ function CitationDetailPopup({
             const irLinks = (c.incidentReport ?? "").match(/https?:\/\/[^\s]+/g) ?? [];
             const irText = irLinks.length === 0 && c.incidentReport?.trim() ? c.incidentReport.trim() : null;
 
+            const isBeingDeleted = deletingId === c.id;
+
             return (
               <div
                 key={c.id}
-                className="rounded-lg border border-border bg-secondary/30 px-4 py-3 space-y-1.5"
+                className={`rounded-lg border border-border bg-secondary/30 px-4 py-3 space-y-1.5 transition-opacity ${isBeingDeleted ? "opacity-40 pointer-events-none" : ""}`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5 min-w-0">
+                  <div className="space-y-0.5 min-w-0 flex-1">
                     {c.title && (
                       <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{c.title}</p>
                     )}
@@ -709,9 +755,19 @@ function CitationDetailPopup({
                       </p>
                     )}
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap shrink-0 text-right">
-                    {dateStr}<br />{timeStr} BDT
-                  </span>
+                  <div className="flex items-start gap-2 shrink-0">
+                    <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap text-right">
+                      {dateStr}<br />{timeStr} BDT
+                    </span>
+                    <button
+                      onClick={() => handleDelete(c)}
+                      disabled={isBeingDeleted || deleteMutation.isPending}
+                      className="p-1 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors shrink-0 mt-0.5"
+                      title="Delete citation"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 {(c.suspectName || c.suspectCid || c.suspectContact) && (
                   <div className="text-[11px] text-muted-foreground space-y-0.5">
@@ -759,6 +815,25 @@ function CitationDetailPopup({
             );
           })}
         </div>
+
+        {deletionLog.length > 0 && (
+          <div className="px-4 py-3 border-t border-border shrink-0 space-y-1">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">Deletion Log</p>
+            {deletionLog.map((entry, i) => {
+              const t = entry.at.toLocaleTimeString("en-GB", {
+                hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Dhaka",
+              });
+              return (
+                <p key={i} className="text-[11px] text-muted-foreground">
+                  <span className="text-red-400 font-medium">{entry.deletedBy}</span>
+                  {" deleted "}
+                  <span className="text-foreground font-medium">"{entry.incident ?? `#${entry.citationId}`}"</span>
+                  <span className="font-mono ml-1 text-[10px]">· {t} BDT</span>
+                </p>
+              );
+            })}
+          </div>
+        )}
 
         <div className="px-5 py-3 border-t border-border shrink-0 text-right">
           <span className="text-xs font-mono text-muted-foreground">
@@ -1164,6 +1239,7 @@ export default function QualificationPage() {
         <CitationDetailPopup
           officerName={citationDetail.name}
           since={citationDetail.since}
+          currentUser={currentOfficerName}
           onClose={() => setCitationDetail(null)}
         />
       )}

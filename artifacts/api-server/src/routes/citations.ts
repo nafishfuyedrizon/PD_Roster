@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, pdCitationsTable, siteSettingsTable } from "@workspace/db";
-import { desc, eq, ilike, or, sql } from "drizzle-orm";
+import { desc, eq, ilike, or, sql, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 const router = Router();
@@ -352,6 +352,21 @@ router.post("/citations/ingest", async (req, res): Promise<void> => {
 
   if (!inserted) { res.json({ ok: true, duplicate: true }); return; }
   res.json({ ok: true, id: inserted.id });
+});
+
+// ── Delete a citation ─────────────────────────────────────────────────────────
+// DELETE /api/citations/:id  (requires session)
+router.delete("/citations/:id", async (req, res): Promise<void> => {
+  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id!, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const deleted = await db.delete(pdCitationsTable).where(eq(pdCitationsTable.id, id)).returning({
+    id: pdCitationsTable.id,
+    incident: pdCitationsTable.incident,
+    officerName: pdCitationsTable.officerName,
+  });
+  if (!deleted.length) { res.status(404).json({ error: "Not found" }); return; }
+  res.json({ ok: true, deleted: deleted[0] });
 });
 
 // ── Officer citation breakdown (for Qual Chart drill-down) ───────────────────
