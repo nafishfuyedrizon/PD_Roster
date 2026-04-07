@@ -1249,7 +1249,7 @@ function FirDetailPopup({
 
 export default function QualificationPage() {
   const { user } = useAuth();
-  const isOwner = user?.isOwner ?? false;
+  const isOwner = (user?.isOwner || user?.isSuperAdmin) ?? false;
 
   const { data: profileData } = useQuery<{ officer: { name: string } | null }>({
     queryKey: ["profile"],
