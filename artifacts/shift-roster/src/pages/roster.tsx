@@ -39,7 +39,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, Shield, SearchX, Check, X, LayoutGrid, ArrowUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield, SearchX, Check, X, LayoutGrid, ArrowUp, UserMinus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const RANK_ORDER: Record<string, number> = {
@@ -159,6 +159,12 @@ export default function RosterPage() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editOfficer, setEditOfficer] = useState<Officer | null>(null);
+  const [exPdOfficer, setExPdOfficer] = useState<Officer | null>(null);
+  const [exPdExitStatus, setExPdExitStatus] = useState("RESIGNED");
+  const [exPdExitDate, setExPdExitDate] = useState(() => {
+    const d = new Date();
+    return `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`;
+  });
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -219,6 +225,43 @@ export default function RosterPage() {
   };
 
   const EXIT_STATUSES = ["DISCHARGED", "FIRED", "REMOVED", "TERMINATED", "RESIGNED"];
+
+  function openMakeExPd(officer: Officer) {
+    setExPdOfficer(officer);
+    setExPdExitStatus("RESIGNED");
+    const d = new Date();
+    setExPdExitDate(`${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}/${d.getFullYear()}`);
+  }
+
+  function handleMakeExPdConfirm() {
+    if (!exPdOfficer) return;
+    const o = exPdOfficer;
+    updateOfficer.mutate(
+      {
+        id: o.id,
+        data: {
+          status: exPdExitStatus,
+          callSign: o.callSign,
+          discordId: o.discordId ?? "",
+          weekPeriod: o.weekPeriod ?? "",
+          exitDate: exPdExitDate,
+        } as any,
+      },
+      {
+        onSuccess: () => {
+          invalidateAll();
+          setExPdOfficer(null);
+          toast({
+            title: "Officer moved to Ex-PD",
+            description: `${o.name ?? o.callSign} has been removed from Roster & QC and added to Ex-PD Officers.`,
+          });
+        },
+        onError: (err: any) => {
+          toast({ title: "Error", description: err?.message ?? "Something went wrong.", variant: "destructive" });
+        },
+      }
+    );
+  }
 
   const handleUpdate = (data: any) => {
     if (!editOfficer) return;
@@ -509,8 +552,18 @@ export default function RosterPage() {
                           className="h-7 w-7"
                           onClick={() => setEditOfficer(o)}
                           data-testid={`button-edit-${o.id}`}
+                          title="Edit officer"
                         >
                           <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-orange-400 hover:text-orange-300 hover:bg-orange-400/20"
+                          onClick={() => openMakeExPd(o)}
+                          title="Make Ex-PD"
+                        >
+                          <UserMinus className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -518,6 +571,7 @@ export default function RosterPage() {
                           className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/20"
                           onClick={() => handleDelete(o.id, o.name ?? null)}
                           data-testid={`button-delete-${o.id}`}
+                          title="Delete officer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -548,6 +602,98 @@ export default function RosterPage() {
               onSubmit={handleUpdate}
               isSubmitting={updateOfficer.isPending}
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Make Ex-PD Dialog */}
+      <Dialog open={!!exPdOfficer} onOpenChange={(open) => !open && setExPdOfficer(null)}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-400">
+              <UserMinus className="w-5 h-5" />
+              MAKE EX PD
+            </DialogTitle>
+          </DialogHeader>
+          {exPdOfficer && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm">
+                  Moving <span className="font-bold">{exPdOfficer.name ?? exPdOfficer.callSign}</span>{" "}
+                  <span className="text-muted-foreground">({exPdOfficer.callSign} · {exPdOfficer.rank})</span> to Ex PD.
+                </p>
+                <p className="text-xs text-orange-400 mt-1">
+                  This will remove them from Roster and Qual Chart automatically.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Exit Status</label>
+                  <Select value={exPdExitStatus} onValueChange={setExPdExitStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RESIGNED">🟣 RESIGNED</SelectItem>
+                      <SelectItem value="DISCHARGED">⚫ DISCHARGED</SelectItem>
+                      <SelectItem value="FIRED">🔴 FIRED</SelectItem>
+                      <SelectItem value="REMOVED">🟡 REMOVED</SelectItem>
+                      <SelectItem value="TERMINATED">🟠 TERMINATED</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Exit Date</label>
+                  <Input
+                    value={exPdExitDate}
+                    onChange={(e) => setExPdExitDate(e.target.value)}
+                    placeholder="MM/DD/YYYY"
+                    className="font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Qualifications auto-detected */}
+              {(() => {
+                const quals: string[] = [];
+                if (exPdOfficer.pilot) quals.push("Pilot");
+                if (exPdOfficer.mdt) quals.push("MDT");
+                if (exPdOfficer.seu) quals.push("SEU");
+                if (exPdOfficer.smg) quals.push("SMG");
+                if (exPdOfficer.rifle) quals.push("Rifle");
+                if (exPdOfficer.shotgun) quals.push("Shotgun");
+                if (exPdOfficer.rifleTierII) quals.push("Rifle Tier II");
+                if (exPdOfficer.ftp) quals.push("FTP");
+                return quals.length > 0 ? (
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Qualifications <span className="text-green-400 normal-case">(auto-detected)</span>
+                    </label>
+                    <div className="flex flex-wrap gap-1">
+                      {quals.map(q => (
+                        <span key={q} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                          <Check className="w-3 h-3" /> {q}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="outline" onClick={() => setExPdOfficer(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                  onClick={handleMakeExPdConfirm}
+                  disabled={updateOfficer.isPending}
+                >
+                  {updateOfficer.isPending ? "Processing..." : "Confirm — Make Ex PD"}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

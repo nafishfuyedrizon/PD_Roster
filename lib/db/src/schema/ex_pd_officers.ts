@@ -17,6 +17,7 @@ export const exPdOfficersTable = pgTable("ex_pd_officers", {
   steam2Id: text("steam_2_id"),
   insurance: text("insurance"),
   status: text("status"),
+  exitDate: text("exit_date"),
   dateOfJoining: text("date_of_joining"),
   lastPromotion: text("last_promotion"),
   air1: boolean("air1").default(false).notNull(),

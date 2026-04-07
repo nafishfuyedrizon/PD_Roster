@@ -332,6 +332,9 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  // Read extra fields not in the Zod schema (e.g. exitDate from Make Ex PD dialog)
+  const exitDate: string | undefined = typeof req.body.exitDate === "string" ? req.body.exitDate : undefined;
+
   // Fetch current record so we know the old callSign before any update
   const [existing] = await db.select().from(officersTable).where(eq(officersTable.id, params.data.id));
   if (!existing) {
@@ -459,6 +462,7 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
         discordUid: officer.discordUid ?? officer.discordId ?? null,
         rockstarLicenseId: officer.rockstarLicenseId ?? null,
         status: officer.status,
+        exitDate: exitDate ?? null,
         dateOfJoining: officer.dateOfJoining ?? null,
         lastPromotion: officer.lastPromotion ?? null,
         air1: false,
