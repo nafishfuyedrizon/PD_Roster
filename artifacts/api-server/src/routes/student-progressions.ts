@@ -14,7 +14,7 @@ async function getObsSessionCounts(names: string[]): Promise<Map<string, number>
   const rawRows = await db.execute(sql`
     SELECT officer_name, COUNT(*)::int AS session_count
     FROM pd_duty_logs
-    WHERE officer_name = ANY(${names})
+    WHERE officer_name = ANY(ARRAY[${sql.join(names.map((n) => sql`${n}`), sql`, `)}])
       AND (
         CAST(SPLIT_PART(duration, ':', 1) AS INT) * 3600 +
         CAST(SPLIT_PART(duration, ':', 2) AS INT) * 60 +

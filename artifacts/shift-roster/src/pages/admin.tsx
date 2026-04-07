@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Settings, Trash2, ChevronLeft, ChevronRight, Clock, Minus, Plus } from "lucide-react";
+import { Settings, Trash2, ChevronLeft, ChevronRight, Clock, Minus, Plus, Bot, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AdjOfficer {
@@ -41,6 +41,18 @@ interface ShiftConfig {
   label: string;
   sub: string;
   icon: string;
+}
+
+interface AdminLog {
+  id: number;
+  actionType: string;
+  entityType: string;
+  entityId: string | null;
+  entityName: string | null;
+  changedBy: string;
+  changedByUid: string | null;
+  changes: Record<string, unknown> | null;
+  createdAt: string;
 }
 
 const MONTH_NAMES = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
@@ -131,6 +143,18 @@ export default function AdminPage() {
     queryFn: () => fetchAdjustments(adjMonth, String(adjYear), adjShift),
     refetchInterval: 60_000,
   });
+
+  const { data: allLogs = [], isLoading: logsLoading, refetch: refetchLogs } = useQuery<AdminLog[]>({
+    queryKey: ["admin", "logs"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/logs?limit=200");
+      if (!res.ok) throw new Error("Failed to fetch logs");
+      return res.json();
+    },
+    refetchInterval: 30_000,
+  });
+
+  const botLogs = allLogs.filter((l) => l.changedBy === "Discord Bot");
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -381,6 +405,84 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bot Activity Log */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden mb-6">
+        <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
+          <Bot className="w-4 h-4 text-teal-400" />
+          <span className="font-semibold text-sm tracking-wide uppercase">Bot Activity Log</span>
+          <span className="ml-2 text-[11px] font-mono text-muted-foreground">Discord Bot — auto-sync events</span>
+          <button
+            onClick={() => refetchLogs()}
+            className="ml-auto p-1.5 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            title="Refresh"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {logsLoading ? (
+          <div className="p-8 text-center text-muted-foreground text-sm font-mono">Loading…</div>
+        ) : botLogs.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground text-sm font-mono">
+            No bot activity recorded yet. Bot events will appear here after the next sync.
+          </div>
+        ) : (
+          <div className="divide-y divide-border max-h-[480px] overflow-y-auto">
+            {botLogs.map((log) => {
+              const entityLabel: Record<string, string> = {
+                "duty-hours": "Duty Hours",
+                "fir": "FIR Reports",
+                "citation": "Citations",
+                "bot": "Bot",
+              };
+              const actionLabel: Record<string, string> = {
+                "SYNC": "Sync",
+                "CONNECT": "Connected",
+              };
+              const badgeColor: Record<string, string> = {
+                "duty-hours": "bg-blue-500/20 text-blue-300 border-blue-500/40",
+                "fir": "bg-orange-500/20 text-orange-300 border-orange-500/40",
+                "citation": "bg-purple-500/20 text-purple-300 border-purple-500/40",
+                "bot": "bg-green-500/20 text-green-300 border-green-500/40",
+              };
+              const color = badgeColor[log.entityType] ?? "bg-secondary text-muted-foreground border-border";
+              const changesText = log.changes
+                ? Object.entries(log.changes)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(", ")
+                : null;
+              const ts = new Date(log.createdAt);
+              return (
+                <div key={log.id} className="px-5 py-3 flex items-start gap-3">
+                  <div className="mt-0.5 shrink-0">
+                    <Bot className="w-3.5 h-3.5 text-teal-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-mono font-semibold ${color}`}>
+                        {actionLabel[log.actionType] ?? log.actionType} — {entityLabel[log.entityType] ?? log.entityType}
+                      </span>
+                      {log.entityName && (
+                        <span className="text-xs text-foreground font-medium">{log.entityName}</span>
+                      )}
+                    </div>
+                    {changesText && (
+                      <p className="text-[11px] text-muted-foreground mt-1 font-mono">{changesText}</p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
+                      {ts.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}{" "}
+                      {ts.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -9,10 +9,25 @@ import {
   shiftConfigsTable,
   pdCitationsTable,
   pdFirTable,
+  adminLogsTable,
   type FirThreadMessage,
 } from "@workspace/db";
 import { eq, and, asc, desc, or, lt, gte, lte } from "drizzle-orm";
 import { logger } from "./logger";
+
+async function botLog(actionType: string, entityType: string, entityName: string | null, changes: Record<string, unknown> | null = null) {
+  try {
+    await db.insert(adminLogsTable).values({
+      actionType,
+      entityType,
+      entityId: null,
+      entityName,
+      changedBy: "Discord Bot",
+      changedByUid: null,
+      changes: changes as any,
+    });
+  } catch (_) {}
+}
 
 const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID!;
 const CITATION_CHANNEL_ID = process.env.DISCORD_CITATION_CHANNEL_ID ?? "";
@@ -417,6 +432,7 @@ async function backfillHistory(channel: TextChannel) {
   }
 
   logger.info({ processed }, "History backfill complete");
+  await botLog("SYNC", "duty-hours", "History Backfill", { processed });
 }
 
 // ── Recompute all ──────────────────────────────────────────────────────────
@@ -440,6 +456,7 @@ export async function recomputeAllDutyHours(): Promise<{ pairs: number; updated:
   }
 
   logger.info({ pairs: rows.length, updated }, "Full recompute complete");
+  await botLog("SYNC", "duty-hours", "Full Recompute", { pairs: rows.length, updated });
   return { pairs: rows.length, updated };
 }
 
@@ -654,6 +671,7 @@ async function backfillFir(channel: TextChannel) {
   }
 
   logger.info({ channelId: channel.id, total }, "FIR backfill complete");
+  await botLog("SYNC", "fir", "FIR Backfill", { total });
 }
 
 async function processCitationMessage(msg: Message) {
@@ -718,6 +736,7 @@ async function backfillCitations(channel: TextChannel) {
   }
 
   logger.info({ total }, "Citation backfill complete");
+  await botLog("SYNC", "citation", "Citation Backfill", { total });
 }
 
 // ── Bot start ──────────────────────────────────────────────────────────────
@@ -738,6 +757,7 @@ export async function startDiscordBot() {
 
   client.once("clientReady", async () => {
     logger.info({ tag: client.user?.tag }, "Discord bot connected");
+    await botLog("CONNECT", "bot", client.user?.tag ?? "Discord Bot", null);
 
     const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
     if (!channel || !(channel instanceof TextChannel)) {
