@@ -618,10 +618,12 @@ type CitationBrief = {
 };
 
 type DeletionLogEntry = {
-  at: Date;
-  deletedBy: string;
+  id: number;
   citationId: number;
   incident: string | null;
+  officerName: string | null;
+  deletedBy: string;
+  deletedAt: string;
 };
 
 function CitationDetailPopup({
@@ -641,13 +643,21 @@ function CitationDetailPopup({
   const params = new URLSearchParams({ name: officerName });
   if (since) params.set("since", since);
 
-  const [deletionLog, setDeletionLog] = useState<DeletionLogEntry[]>([]);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const { data: citations, isLoading, refetch } = useQuery<CitationBrief[]>({
     queryKey: ["citation-breakdown", officerName, since],
     queryFn: () =>
       fetch(`/api/citations/officer-breakdown?${params.toString()}`, {
+        credentials: "include",
+      }).then((r) => r.json()),
+    staleTime: 0,
+  });
+
+  const { data: deletionLog = [], refetch: refetchLog } = useQuery<DeletionLogEntry[]>({
+    queryKey: ["citation-deletion-log", officerName],
+    queryFn: () =>
+      fetch(`/api/citations/deletion-log?officerName=${encodeURIComponent(officerName)}`, {
         credentials: "include",
       }).then((r) => r.json()),
     staleTime: 0,
@@ -663,11 +673,8 @@ function CitationDetailPopup({
       return c;
     },
     onSuccess: (c) => {
-      setDeletionLog((prev) => [
-        { at: new Date(), deletedBy: currentUser ?? "Unknown", citationId: c.id, incident: c.incident },
-        ...prev,
-      ]);
       refetch();
+      refetchLog();
       qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
       toast({ title: "Citation deleted", description: c.incident ?? `#${c.id}` });
     },
@@ -817,19 +824,27 @@ function CitationDetailPopup({
         </div>
 
         {deletionLog.length > 0 && (
-          <div className="px-4 py-3 border-t border-border shrink-0 space-y-1">
-            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">Deletion Log</p>
-            {deletionLog.map((entry, i) => {
-              const t = entry.at.toLocaleTimeString("en-GB", {
-                hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Dhaka",
+          <div className="px-4 py-3 border-t border-red-500/20 bg-red-500/5 shrink-0 space-y-1.5">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-red-400/70 mb-2">Deletion Log</p>
+            {deletionLog.map((entry) => {
+              const dt = new Date(entry.deletedAt);
+              const dateStr = dt.toLocaleDateString("en-GB", {
+                day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Dhaka",
+              });
+              const timeStr = dt.toLocaleTimeString("en-GB", {
+                hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka",
               });
               return (
-                <p key={i} className="text-[11px] text-muted-foreground">
-                  <span className="text-red-400 font-medium">{entry.deletedBy}</span>
-                  {" deleted "}
-                  <span className="text-foreground font-medium">"{entry.incident ?? `#${entry.citationId}`}"</span>
-                  <span className="font-mono ml-1 text-[10px]">· {t} BDT</span>
-                </p>
+                <div key={entry.id} className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    <span className="text-red-400 font-semibold">{entry.deletedBy}</span>
+                    {" deleted "}
+                    <span className="text-foreground font-medium">"{entry.incident ?? `#${entry.citationId}`}"</span>
+                  </p>
+                  <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap shrink-0 text-right">
+                    {dateStr}<br />{timeStr} BDT
+                  </span>
+                </div>
               );
             })}
           </div>

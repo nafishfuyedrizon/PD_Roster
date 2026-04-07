@@ -11,3 +11,4 @@ export * from "./admin_logs";
 export * from "./staff_roles";
 export * from "./pd_citations";
 export * from "./pd_fir";
+export * from "./citation_deletion_logs";

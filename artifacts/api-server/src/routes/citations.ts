@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, pdCitationsTable, siteSettingsTable } from "@workspace/db";
+import { db, pdCitationsTable, siteSettingsTable, citationDeletionLogsTable } from "@workspace/db";
 import { desc, eq, ilike, or, sql, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
@@ -354,19 +354,46 @@ router.post("/citations/ingest", async (req, res): Promise<void> => {
   res.json({ ok: true, id: inserted.id });
 });
 
-// ── Delete a citation ─────────────────────────────────────────────────────────
+// ── Delete a citation (with persistent log) ───────────────────────────────────
 // DELETE /api/citations/:id  (requires session)
 router.delete("/citations/:id", async (req, res): Promise<void> => {
-  if (!(req.session as any)?.user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const sessionUser = (req.session as any)?.user;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
   const id = parseInt(req.params.id!, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const deleted = await db.delete(pdCitationsTable).where(eq(pdCitationsTable.id, id)).returning({
+
+  // Fetch citation details before deleting
+  const [citation] = await db.select({
     id: pdCitationsTable.id,
     incident: pdCitationsTable.incident,
     officerName: pdCitationsTable.officerName,
+  }).from(pdCitationsTable).where(eq(pdCitationsTable.id, id)).limit(1);
+  if (!citation) { res.status(404).json({ error: "Not found" }); return; }
+
+  // Log deletion (deletedBy = session officer name)
+  const deletedBy = sessionUser.displayName ?? sessionUser.username ?? sessionUser.id ?? "Unknown";
+  await db.insert(citationDeletionLogsTable).values({
+    citationId: citation.id,
+    incident: citation.incident,
+    officerName: citation.officerName,
+    deletedBy,
   });
-  if (!deleted.length) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ ok: true, deleted: deleted[0] });
+
+  await db.delete(pdCitationsTable).where(eq(pdCitationsTable.id, id));
+  res.json({ ok: true, deleted: citation });
+});
+
+// ── Get citation deletion log for an officer ──────────────────────────────────
+// GET /api/citations/deletion-log?officerName=...
+router.get("/citations/deletion-log", async (req, res): Promise<void> => {
+  const officerName = (req.query.officerName as string | undefined)?.trim();
+  if (!officerName) { res.status(400).json({ error: "officerName required" }); return; }
+  const rows = await db.select()
+    .from(citationDeletionLogsTable)
+    .where(sql`REGEXP_REPLACE(${citationDeletionLogsTable.officerName}, '\\s*\\[\\d+\\]$', '') ILIKE ${officerName}`)
+    .orderBy(desc(citationDeletionLogsTable.deletedAt))
+    .limit(50);
+  res.json(rows);
 });
 
 // ── Officer citation breakdown (for Qual Chart drill-down) ───────────────────
