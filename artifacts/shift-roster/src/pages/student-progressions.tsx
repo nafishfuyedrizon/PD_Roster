@@ -336,21 +336,18 @@ function CadetRow({ cadet, onToggle, onDelete }: {
                     </div>
                   </div>
                 </div>
-                {/* Obs Hours — bot only, counts only in Phase 1 */}
+                {/* Obs Hours — bot only, auto-checked by duty session count */}
                 <div className="flex flex-col gap-1 min-w-0">
                   <div className="text-[10px] text-muted-foreground font-semibold text-center">Obs Hours</div>
                   <div className="flex gap-1 justify-center flex-wrap">
                     {(["obsH2","obsH4","obsH6","obsH8","obsH10","obsH12","obsH14"] as const).map((f, idx) => {
-                      const isPhase1 = cadet.currentPhase === "Phase 1";
-                      const isChecked = isPhase1
-                        ? idx < (cadet.autoObsCount ?? 0)
-                        : false;
+                      const isChecked = idx < (cadet.autoObsCount ?? 0);
                       return (
                         <div key={f} className="flex flex-col items-center gap-0.5">
                           <span className="text-[9px] text-muted-foreground">{FIELD_LABELS[f]}</span>
                           <div
                             className="flex items-center justify-center w-full h-full py-1 pointer-events-none select-none"
-                            title={isPhase1 ? (isChecked ? `⚡ Auto-verified by bot: ${cadet.autoObsCount} duty sessions ≥2h` : "Not yet reached") : "Only counted in Phase 1"}
+                            title={isChecked ? `⚡ Auto-verified by bot: ${cadet.autoObsCount} duty sessions ≥2h` : "Not yet reached"}
                           >
                             {isChecked ? (
                               <CheckCircle2 className="w-4 h-4 text-blue-400/70" />

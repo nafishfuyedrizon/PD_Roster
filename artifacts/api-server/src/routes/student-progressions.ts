@@ -7,15 +7,12 @@ const router = Router();
 const OBS_FIELDS = ["obsH2", "obsH4", "obsH6", "obsH8", "obsH10", "obsH12", "obsH14"] as const;
 
 function calcProgress(row: Record<string, unknown>, autoObsCount: number): number {
-  const isPhase1 = row.currentPhase === "Phase 1";
   let checked = 0;
   for (const f of CHECKPOINT_FIELDS) {
     if (OBS_FIELDS.includes(f as typeof OBS_FIELDS[number])) {
-      // Obs hours: only count via bot autoObsCount when in Phase 1
-      if (isPhase1) {
-        const obsIdx = OBS_FIELDS.indexOf(f as typeof OBS_FIELDS[number]);
-        if (obsIdx < autoObsCount) checked++;
-      }
+      // Obs hours: always use bot autoObsCount (never manual DB flags)
+      const obsIdx = OBS_FIELDS.indexOf(f as typeof OBS_FIELDS[number]);
+      if (obsIdx < autoObsCount) checked++;
     } else {
       if (row[f] === true) checked++;
     }
