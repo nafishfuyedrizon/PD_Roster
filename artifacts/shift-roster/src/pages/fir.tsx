@@ -346,6 +346,24 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
               <span>{threadCount} reply{threadCount !== 1 ? "s" : ""}</span>
             </div>
           )}
+          {status === "pending" && (
+            <div className="flex items-center gap-1 mt-1.5">
+              <button
+                disabled={actionLoading}
+                onClick={() => setShowAcceptModal(true)}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-green-600/20 text-green-300 border border-green-600/30 hover:bg-green-600/30 transition-colors disabled:opacity-50"
+              >
+                <CheckCircle className="w-3 h-3" /> Accept
+              </button>
+              <button
+                disabled={actionLoading}
+                onClick={handleReject}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-red-600/20 text-red-300 border border-red-600/30 hover:bg-red-600/30 transition-colors disabled:opacity-50"
+              >
+                <XCircle className="w-3 h-3" /> Reject
+              </button>
+            </div>
+          )}
           {hasMore && (
             <button
               onClick={() => setExpanded((v) => !v)}
@@ -358,26 +376,9 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
         </div>
       </div>
 
-      {/* Accept / Reject action bar */}
+      {/* Status action bar — only for accepted / rejected */}
+      {status !== "pending" && (
       <div className="border-t border-border/30 px-4 py-2 bg-background/10 flex items-center gap-2">
-        {status === "pending" && (
-          <>
-            <button
-              disabled={actionLoading}
-              onClick={() => setShowAcceptModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-semibold bg-green-600/20 text-green-300 border border-green-600/30 hover:bg-green-600/30 transition-colors disabled:opacity-50"
-            >
-              <CheckCircle className="w-3 h-3" /> Accept
-            </button>
-            <button
-              disabled={actionLoading}
-              onClick={handleReject}
-              className="flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-semibold bg-red-600/20 text-red-300 border border-red-600/30 hover:bg-red-600/30 transition-colors disabled:opacity-50"
-            >
-              <XCircle className="w-3 h-3" /> Reject
-            </button>
-          </>
-        )}
         {status === "accepted" && (
           <>
             <div className="flex items-center gap-3 flex-wrap min-w-0">
@@ -431,6 +432,7 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
           </>
         )}
       </div>
+      )}
 
       {expanded && (
         <div className="border-t border-border/40 px-4 py-3 space-y-3 bg-background/20">
