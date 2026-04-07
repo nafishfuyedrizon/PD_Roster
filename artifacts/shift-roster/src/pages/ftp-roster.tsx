@@ -37,6 +37,14 @@ const FTP_ROLES = [
   "Field Training Program",
 ];
 
+const FTP_ROLE_ORDER: Record<string, number> = {
+  "COMMAND": 1,
+  "FIELD TRAINING SUPERVISOR": 2,
+  "FIELD TRAINING TRAINER": 3,
+  "FIELD TRAINING TRAINEE": 4,
+  "FIELD TRAINING PROGRAM": 5,
+};
+
 function getFtpRole(rank: string): string {
   const upper = rank.toUpperCase();
   if (FTP_ROLES.map((r) => r.toUpperCase()).includes(upper)) {
@@ -48,6 +56,11 @@ function getFtpRole(rank: string): string {
   if (order <= 8) return "Field Training Trainer";
   if (order <= 12) return "Field Training Trainee";
   return "Field Training Program";
+}
+
+function getFtpRoleOrder(rank: string): number {
+  const role = getFtpRole(rank).toUpperCase();
+  return FTP_ROLE_ORDER[role] ?? 6;
 }
 
 export default function FtpRosterPage() {
@@ -62,8 +75,11 @@ export default function FtpRosterPage() {
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
-  const members = officers
-    .sort((a, b) => getRankOrder(a.rank) - getRankOrder(b.rank));
+  const members = [...officers].sort((a, b) => {
+    const roleDiff = getFtpRoleOrder(a.rank) - getFtpRoleOrder(b.rank);
+    if (roleDiff !== 0) return roleDiff;
+    return getRankOrder(a.rank) - getRankOrder(b.rank);
+  });
 
   function handleRemove(id: number) {
     setRemovingId(id);
