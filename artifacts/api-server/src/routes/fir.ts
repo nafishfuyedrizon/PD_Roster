@@ -119,6 +119,31 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
   res.json(row);
 });
 
+// ── FIR breakdown for Qual Chart drill-down ───────────────────────────────────
+// GET /api/fir/officer-breakdown?name=...  — FIRs accepted_by the officer
+router.get("/fir/officer-breakdown", async (req, res): Promise<void> => {
+  const name = (req.query.name as string | undefined)?.trim();
+  if (!name) { res.status(400).json({ error: "name required" }); return; }
+  const rows = await db
+    .select({
+      id: pdFirTable.id,
+      complainantName: pdFirTable.complainantName,
+      complainantCid: pdFirTable.complainantCid,
+      complainantContact: pdFirTable.complainantContact,
+      eventDescription: pdFirTable.eventDescription,
+      suspectDetails: pdFirTable.suspectDetails,
+      evidence: pdFirTable.evidence,
+      officerName: pdFirTable.officerName,
+      acceptedBy: pdFirTable.acceptedBy,
+      acceptedAt: pdFirTable.acceptedAt,
+      postedAt: pdFirTable.postedAt,
+    })
+    .from(pdFirTable)
+    .where(sql`${pdFirTable.acceptedBy} ILIKE ${name} AND ${pdFirTable.status} = 'accepted'`)
+    .orderBy(desc(pdFirTable.acceptedAt));
+  res.json(rows);
+});
+
 router.get("/fir/stats", async (_req, res): Promise<void> => {
   const [total] = await db.select({ count: sql<number>`count(*)::int` }).from(pdFirTable);
   const topOfficers = await db.execute(

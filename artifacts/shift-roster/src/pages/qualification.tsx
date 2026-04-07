@@ -860,6 +860,143 @@ function CitationDetailPopup({
   );
 }
 
+// ── FIR Detail Popup ─────────────────────────────────────────────────────────
+type FirBrief = {
+  id: number;
+  complainantName: string | null;
+  complainantCid: string | null;
+  complainantContact: string | null;
+  eventDescription: string | null;
+  suspectDetails: string | null;
+  evidence: string | null;
+  officerName: string | null;
+  acceptedBy: string | null;
+  acceptedAt: string | null;
+  postedAt: string;
+};
+
+function FirDetailPopup({
+  officerName,
+  onClose,
+}: {
+  officerName: string;
+  onClose: () => void;
+}) {
+  const { data: firs, isLoading } = useQuery<FirBrief[]>({
+    queryKey: ["fir-breakdown", officerName],
+    queryFn: () =>
+      fetch(`/api/fir/officer-breakdown?name=${encodeURIComponent(officerName)}`, {
+        credentials: "include",
+      }).then((r) => r.json()),
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="relative bg-[hsl(var(--card))] border border-border rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div>
+            <p className="text-xs font-mono uppercase text-muted-foreground tracking-wider">FIRs Accepted</p>
+            <p className="text-base font-semibold text-foreground">{officerName}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+          {isLoading && (
+            <p className="text-sm text-center text-muted-foreground py-6">Loading…</p>
+          )}
+          {!isLoading && (!firs || firs.length === 0) && (
+            <p className="text-sm text-center text-muted-foreground py-6">No accepted FIRs found</p>
+          )}
+          {!isLoading && firs && firs.map((f) => {
+            const postedDt = new Date(f.postedAt);
+            const acceptedDt = f.acceptedAt ? new Date(f.acceptedAt) : null;
+            const fmt = (dt: Date) => ({
+              date: dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Dhaka" }),
+              time: dt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" }),
+            });
+            const posted = fmt(postedDt);
+            const accepted = acceptedDt ? fmt(acceptedDt) : null;
+            const evidenceLinks = (f.evidence ?? "").match(/https?:\/\/[^\s]+/g) ?? [];
+
+            return (
+              <div key={f.id} className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <p className="text-xs font-mono text-amber-400/70 uppercase tracking-wider">FIR #{f.id}</p>
+                    {f.complainantName && (
+                      <p className="text-sm font-semibold text-foreground">
+                        {f.complainantName}
+                        {f.complainantCid && <span className="font-mono text-muted-foreground text-xs ml-1">(CID: {f.complainantCid})</span>}
+                      </p>
+                    )}
+                    {f.complainantContact && (
+                      <p className="text-[11px] text-muted-foreground">Contact: {f.complainantContact}</p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 text-[10px] font-mono text-muted-foreground">
+                    <p>Filed: {posted.date}</p>
+                    <p>{posted.time} BDT</p>
+                  </div>
+                </div>
+                {f.eventDescription && (
+                  <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3">{f.eventDescription}</p>
+                )}
+                {f.suspectDetails && (
+                  <p className="text-[11px] text-orange-300">
+                    <span className="font-medium">Suspect: </span>{f.suspectDetails}
+                  </p>
+                )}
+                {f.officerName && (
+                  <p className="text-[11px] text-muted-foreground">
+                    🛡 Officer: <span className="text-foreground font-medium">{f.officerName}</span>
+                  </p>
+                )}
+                {accepted && (
+                  <p className="text-[11px] text-emerald-400 font-mono">
+                    ✓ Accepted {accepted.date} {accepted.time} BDT
+                  </p>
+                )}
+                {evidenceLinks.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {evidenceLinks.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                        <ExternalLink className="w-3 h-3" />Evidence{evidenceLinks.length > 1 ? ` ${i + 1}` : ""}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="px-5 py-3 border-t border-border shrink-0 text-right">
+          <span className="text-xs font-mono text-muted-foreground">
+            Total: <span className="text-amber-400 font-bold">{firs?.length ?? "…"}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function QualificationPage() {
   const { user } = useAuth();
   const isOwner = user?.isOwner ?? false;
@@ -897,6 +1034,7 @@ export default function QualificationPage() {
   const [editEntry, setEditEntry] = useState<QualEntry | null | "NEW">(undefined as unknown as null);
   const [deleteEntry, setDeleteEntry] = useState<QualEntry | null>(null);
   const [citationDetail, setCitationDetail] = useState<{ name: string; since: string | null } | null>(null);
+  const [firDetail, setFirDetail] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -1163,7 +1301,13 @@ export default function QualificationPage() {
                       <td className="px-4 py-3 text-center hidden md:table-cell">
                         <span className="font-mono font-semibold">
                           {(e.acceptedFirCount ?? 0) > 0 ? (
-                            <span className="text-amber-400">{e.acceptedFirCount}</span>
+                            <button
+                              onClick={() => setFirDetail(e.name)}
+                              className="text-amber-400 hover:text-amber-300 hover:underline underline-offset-2 transition-colors cursor-pointer"
+                              title="Click to view accepted FIRs"
+                            >
+                              {e.acceptedFirCount}
+                            </button>
                           ) : (
                             <span className="text-muted-foreground/50">—</span>
                           )}
@@ -1256,6 +1400,13 @@ export default function QualificationPage() {
           since={citationDetail.since}
           currentUser={currentOfficerName}
           onClose={() => setCitationDetail(null)}
+        />
+      )}
+
+      {firDetail && (
+        <FirDetailPopup
+          officerName={firDetail}
+          onClose={() => setFirDetail(null)}
         />
       )}
     </Layout>
