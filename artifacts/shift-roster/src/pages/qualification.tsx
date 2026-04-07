@@ -1488,7 +1488,7 @@ export default function QualificationPage() {
                       VOTE BY HC
                     </th>
                   )}
-                  <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">Actions</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">Feedback</th>
                 </tr>
               </thead>
               <tbody>
