@@ -159,14 +159,12 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
           </button>
         </div>
 
-        <OfficerPicker
-          label="Accepted By"
-          color="green"
-          placeholder="Search officer name..."
-          value={acceptedByName}
-          onChange={setAcceptedByName}
-          officers={officers}
-        />
+        <div className="space-y-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-green-400">Accepted By</div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-500/10 border border-green-500/30 text-sm font-semibold text-green-300 font-mono">
+            {acceptedByName ?? "—"}
+          </div>
+        </div>
 
         <OfficerPicker
           label="Officer (FIR against)"
