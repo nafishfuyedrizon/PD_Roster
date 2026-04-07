@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
 import { db, pdFirTable, officersTable, type FirThreadMessage } from "@workspace/db";
-import { desc, ilike, or, sql, inArray } from "drizzle-orm";
+import { desc, ilike, or, sql, inArray, eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -99,6 +99,22 @@ router.get("/fir", async (req, res): Promise<void> => {
   }));
 
   res.json(result);
+});
+
+router.patch("/fir/:id", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const { status, acceptedBy } = req.body as { status: "accepted" | "rejected" | "pending"; acceptedBy?: string };
+  if (!["accepted", "rejected", "pending"].includes(status)) {
+    res.status(400).json({ error: "Invalid status" }); return;
+  }
+  const [row] = await db.update(pdFirTable).set({
+    status,
+    acceptedBy: status === "accepted" ? (acceptedBy ?? null) : null,
+    acceptedAt: status === "accepted" ? new Date() : null,
+  }).where(eq(pdFirTable.id, id)).returning();
+  if (!row) { res.status(404).json({ error: "FIR not found" }); return; }
+  broadcastFirEvent("thread_update");
+  res.json(row);
 });
 
 router.get("/fir/stats", async (_req, res): Promise<void> => {

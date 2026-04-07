@@ -21,6 +21,9 @@ export const pdFirTable = pgTable("pd_fir", {
   rawContent: text("raw_content"),
   threadId: text("thread_id"),
   threadReplies: jsonb("thread_replies").$type<FirThreadMessage[]>(),
+  status: text("status").default("pending").notNull(),
+  acceptedBy: text("accepted_by"),
+  acceptedAt: timestamp("accepted_at"),
   postedAt: timestamp("posted_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

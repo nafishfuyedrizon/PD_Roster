@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import {
   FileSearch, Search, Phone, Hash,
   RefreshCw, ChevronDown, ChevronUp, ExternalLink,
   AlertTriangle, Shield, Clock, MessageSquare, ImageIcon,
+  CheckCircle, XCircle, X, UserSearch,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -31,6 +32,9 @@ interface Fir {
   officerName: string | null;
   rawContent: string | null;
   threadReplies: FirThreadMessage[] | null;
+  status: string;
+  acceptedBy: string | null;
+  acceptedAt: string | null;
   postedAt: string;
   createdAt: string;
 }
@@ -50,13 +54,148 @@ function formatDate(iso: string) {
   };
 }
 
-function FirCard({ fir }: { fir: Fir }) {
+interface OfficerItem { id: number; name: string | null }
+
+function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; onDone: () => void }) {
+  const [searchText, setSearchText] = useState("");
+  const [selected, setSelected] = useState<string | null>(fir.acceptedBy ?? null);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data: officers = [] } = useQuery<OfficerItem[]>({
+    queryKey: ["/api/roster"],
+    queryFn: async () => {
+      const res = await fetch("/api/roster", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const filtered = searchText.trim()
+    ? officers.filter((o) => o.name?.toLowerCase().includes(searchText.toLowerCase()))
+    : officers.slice(0, 10);
+
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 50); }, []);
+
+  async function confirm() {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/fir/${fir.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "accepted", acceptedBy: selected }),
+      });
+      onDone();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <UserSearch className="w-4 h-4 text-green-400" />
+            Accept FIR — Select Officer
+          </h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <Input
+          ref={inputRef}
+          placeholder="Search officer name..."
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          className="h-9 text-sm bg-secondary/30"
+        />
+        <div className="max-h-52 overflow-y-auto space-y-1">
+          {filtered.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">No officers found</p>
+          )}
+          {filtered.map((o) => (
+            <button
+              key={o.id}
+              onClick={() => setSelected(o.name ?? "")}
+              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                selected === o.name
+                  ? "bg-green-600/30 text-green-200 border border-green-600/40"
+                  : "hover:bg-secondary/50 text-foreground"
+              }`}
+            >
+              {o.name}
+            </button>
+          ))}
+        </div>
+        {selected && (
+          <div className="text-xs text-green-400 font-medium">
+            Selected: <span className="font-semibold">{selected}</span>
+          </div>
+        )}
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={onClose} className="flex-1 h-8 text-xs">
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={confirm}
+            disabled={!selected || saving}
+            className="flex-1 h-8 text-xs bg-green-600 hover:bg-green-500 text-white"
+          >
+            {saving ? "Saving..." : "Confirm Accept"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { date, time } = formatDate(fir.postedAt);
   const evidenceLinks = (fir.evidence ?? "").match(/https?:\/\/[^\s]+/g) ?? [];
   const hasMore = !!(fir.eventDescription || fir.suspectDetails || evidenceLinks.length > 0 || (fir.threadReplies && fir.threadReplies.length > 0));
   const threadCount = fir.threadReplies?.length ?? 0;
+
+  const status = fir.status ?? "pending";
+
+  async function handleReject() {
+    setActionLoading(true);
+    try {
+      await fetch(`/api/fir/${fir.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "rejected" }),
+      });
+      onStatusChange();
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleResetPending() {
+    setActionLoading(true);
+    try {
+      await fetch(`/api/fir/${fir.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "pending" }),
+      });
+      onStatusChange();
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   async function navigateToOfficer(name: string | null | undefined) {
     if (!name) return;
@@ -75,16 +214,36 @@ function FirCard({ fir }: { fir: Fir }) {
     }
   }
 
+  const borderColor = status === "accepted" ? "border-green-600/40" : status === "rejected" ? "border-red-600/40" : "border-border/50";
+
   return (
-    <div className="bg-secondary/30 border border-border/50 rounded-md overflow-hidden">
+    <>
+    {showAcceptModal && (
+      <AcceptModal
+        fir={fir}
+        onClose={() => setShowAcceptModal(false)}
+        onDone={() => { setShowAcceptModal(false); onStatusChange(); }}
+      />
+    )}
+    <div className={`bg-secondary/30 border ${borderColor} rounded-md overflow-hidden`}>
       <div className="flex items-start justify-between gap-3 px-4 py-3 flex-wrap">
         <div className="flex items-start gap-3 min-w-0 flex-1">
-          <FileSearch className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+          <FileSearch className={`w-4 h-4 mt-0.5 shrink-0 ${status === "accepted" ? "text-green-400" : status === "rejected" ? "text-red-400" : "text-amber-400"}`} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge className="bg-amber-600/20 text-amber-300 border-amber-600/30 text-[11px] px-1.5 font-semibold">
                 FIR
               </Badge>
+              {status === "accepted" && (
+                <Badge className="bg-green-600/20 text-green-300 border-green-600/30 text-[11px] px-1.5 font-semibold flex items-center gap-1">
+                  <CheckCircle className="w-2.5 h-2.5" /> ACCEPTED
+                </Badge>
+              )}
+              {status === "rejected" && (
+                <Badge className="bg-red-600/20 text-red-300 border-red-600/30 text-[11px] px-1.5 font-semibold flex items-center gap-1">
+                  <XCircle className="w-2.5 h-2.5" /> REJECTED
+                </Badge>
+              )}
               {fir.complainantName && (
                 <span className="text-sm font-semibold text-foreground">{fir.complainantName}</span>
               )}
@@ -119,6 +278,17 @@ function FirCard({ fir }: { fir: Fir }) {
                 </button>
               </div>
             )}
+            {status === "accepted" && fir.acceptedBy && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <CheckCircle className="w-3 h-3 text-green-400" />
+                <button
+                  onClick={() => navigateToOfficer(fir.acceptedBy)}
+                  className="text-[11px] text-green-300 hover:text-green-100 hover:underline transition-colors cursor-pointer"
+                >
+                  Accepted by: {fir.acceptedBy}
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -140,6 +310,56 @@ function FirCard({ fir }: { fir: Fir }) {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Accept / Reject action bar */}
+      <div className="border-t border-border/30 px-4 py-2 bg-background/10 flex items-center gap-2">
+        {status === "pending" && (
+          <>
+            <button
+              disabled={actionLoading}
+              onClick={() => setShowAcceptModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-semibold bg-green-600/20 text-green-300 border border-green-600/30 hover:bg-green-600/30 transition-colors disabled:opacity-50"
+            >
+              <CheckCircle className="w-3 h-3" /> Accept
+            </button>
+            <button
+              disabled={actionLoading}
+              onClick={handleReject}
+              className="flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-semibold bg-red-600/20 text-red-300 border border-red-600/30 hover:bg-red-600/30 transition-colors disabled:opacity-50"
+            >
+              <XCircle className="w-3 h-3" /> Reject
+            </button>
+          </>
+        )}
+        {status === "accepted" && (
+          <>
+            <span className="text-[11px] text-green-400 font-semibold flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" /> Accepted by {fir.acceptedBy ?? "—"}
+            </span>
+            <button
+              disabled={actionLoading}
+              onClick={handleResetPending}
+              className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-[10px] text-muted-foreground border border-border/40 hover:bg-secondary/50 transition-colors disabled:opacity-50"
+            >
+              <X className="w-2.5 h-2.5" /> Reset
+            </button>
+          </>
+        )}
+        {status === "rejected" && (
+          <>
+            <span className="text-[11px] text-red-400 font-semibold flex items-center gap-1">
+              <XCircle className="w-3 h-3" /> Rejected
+            </span>
+            <button
+              disabled={actionLoading}
+              onClick={handleResetPending}
+              className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-[10px] text-muted-foreground border border-border/40 hover:bg-secondary/50 transition-colors disabled:opacity-50"
+            >
+              <X className="w-2.5 h-2.5" /> Reset
+            </button>
+          </>
+        )}
       </div>
 
       {expanded && (
@@ -259,11 +479,13 @@ function FirCard({ fir }: { fir: Fir }) {
         </div>
       )}
     </div>
+    </>
   );
 }
 
 export default function FirPage() {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [liveTime, setLiveTime] = useState(new Date());
@@ -432,7 +654,11 @@ export default function FirPage() {
         ) : (
           <div className="space-y-2">
             {firs.map((fir) => (
-              <FirCard key={fir.id} fir={fir} />
+              <FirCard
+                key={fir.id}
+                fir={fir}
+                onStatusChange={() => qc.invalidateQueries({ queryKey: ["/api/fir"] })}
+              />
             ))}
           </div>
         )}
