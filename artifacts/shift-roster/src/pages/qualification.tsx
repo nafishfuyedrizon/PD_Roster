@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Search, Award, CheckCircle2, XCircle, AlertTriangle,
-  FileText, Clock, Calendar, Pencil, Trash2, Plus, X, Save, UserPlus,
+  FileText, Clock, Calendar, Pencil, Trash2, X, Save, UserPlus,
   MapPin, ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -1144,13 +1144,6 @@ export default function QualificationPage() {
             Officer promotion eligibility &amp; performance tracking
           </p>
         </div>
-        <Button
-          onClick={() => setEditEntry("NEW")}
-          className="gap-2 h-9 text-sm shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          Add Officer
-        </Button>
       </div>
 
       {/* Summary cards */}
