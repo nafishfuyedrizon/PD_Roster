@@ -457,13 +457,13 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
                           <button
                             onClick={locked ? undefined : () => onToggle(f, !cadet[f])}
                             disabled={locked}
-                            title={isAutoChecked ? `Auto-checked: ${cadet.autoObsCount} duty sessions ≥2h logged` : undefined}
+                            title={isAutoChecked ? `⚡ Auto-verified: ${cadet.autoObsCount} duty sessions ≥2h in PD logs` : isManual ? "Manually checked" : undefined}
                             className={`flex items-center justify-center w-full h-full py-1 ${locked ? "pointer-events-none select-none" : "cursor-pointer"}`}
                           >
-                            {isManual ? (
-                              <CheckCircle2 className={`w-4 h-4 ${locked ? "text-green-500/60" : "text-green-400 hover:text-green-300"}`} />
-                            ) : isAutoChecked ? (
+                            {isAutoChecked ? (
                               <CheckCircle2 className={`w-4 h-4 ${locked ? "text-blue-400/60" : "text-blue-400 hover:text-blue-300"}`} />
+                            ) : isManual ? (
+                              <CheckCircle2 className={`w-4 h-4 ${locked ? "text-green-500/60" : "text-green-400 hover:text-green-300"}`} />
                             ) : (
                               <Circle className={`w-4 h-4 ${locked ? "text-gray-700/50" : "text-gray-600 hover:text-gray-400"}`} />
                             )}
