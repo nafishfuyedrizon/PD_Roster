@@ -29,7 +29,7 @@ router.get("/fto-docs", async (req, res): Promise<void> => {
 // POST /api/fto-docs — add item (level >= 2)
 router.post("/fto-docs", async (req, res): Promise<void> => {
   const lvl = callerLevel(req);
-  if (lvl < 2) { res.status(403).json({ error: "Staff or above required" }); return; }
+  if (lvl < 3) { res.status(403).json({ error: "High Command or above required" }); return; }
 
   const { docId, sectionId, itemText, itemType, isImportant, isHighlight, sortOrder } = req.body;
   if (!docId || !sectionId || !itemText) {
@@ -50,10 +50,10 @@ router.post("/fto-docs", async (req, res): Promise<void> => {
   res.status(201).json(row);
 });
 
-// PATCH /api/fto-docs/:id — update item text/flags (level >= 2)
+// PATCH /api/fto-docs/:id — update item text/flags (level >= 3)
 router.patch("/fto-docs/:id", async (req, res): Promise<void> => {
   const lvl = callerLevel(req);
-  if (lvl < 2) { res.status(403).json({ error: "Staff or above required" }); return; }
+  if (lvl < 3) { res.status(403).json({ error: "High Command or above required" }); return; }
 
   const id = parseInt(req.params.id, 10);
   const allowed = ["itemText", "itemType", "isImportant", "isHighlight", "sortOrder"];
@@ -69,10 +69,10 @@ router.patch("/fto-docs/:id", async (req, res): Promise<void> => {
   res.json(row);
 });
 
-// DELETE /api/fto-docs/:id — delete item (level >= 2)
+// DELETE /api/fto-docs/:id — delete item (level >= 3)
 router.delete("/fto-docs/:id", async (req, res): Promise<void> => {
   const lvl = callerLevel(req);
-  if (lvl < 2) { res.status(403).json({ error: "Staff or above required" }); return; }
+  if (lvl < 3) { res.status(403).json({ error: "High Command or above required" }); return; }
 
   const id = parseInt(req.params.id, 10);
   const [row] = await db.delete(ftoDocItemsTable).where(eq(ftoDocItemsTable.id, id)).returning();

@@ -465,7 +465,7 @@ export default function FtoDocumentsPage() {
   const qc = useQueryClient();
 
   const myLevel = user?.isOwner ? 5 : user?.isSuperAdmin ? 4 : user?.isSeniorStaff ? 3 : user?.isStaff ? 2 : user?.isTrusted ? 1 : 0;
-  const canEdit = myLevel >= 2;
+  const canEdit = myLevel >= 3;
 
   const [active, setActive] = useState<DocId>("interview");
   const [expanded, setExpanded] = useState(true);
