@@ -239,6 +239,7 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
 }) {
   const [expanded, setExpanded] = useState(false);
   const [locked, setLocked] = useState(true);
+  const [confirmUnlock, setConfirmUnlock] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const pct = cadet.progressPct;
@@ -362,16 +363,30 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
           {/* Edit lock toggle */}
           <div className="flex items-center justify-end gap-2">
             {locked ? (
-              <button
-                onClick={() => setLocked(false)}
-                className="flex items-center gap-1 text-[11px] text-yellow-400 hover:text-yellow-300 border border-yellow-500/30 rounded px-2 py-0.5 transition-colors"
-              >
-                <Lock className="w-3 h-3" /> Locked — click to edit
-              </button>
+              confirmUnlock ? (
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground">Enable editing?</span>
+                  <button
+                    onClick={() => { setLocked(false); setConfirmUnlock(false); }}
+                    className="text-[11px] text-yellow-400 hover:text-yellow-300 border border-yellow-500/40 rounded px-2 py-0.5 transition-colors"
+                  >Yes</button>
+                  <button
+                    onClick={() => setConfirmUnlock(false)}
+                    className="text-[11px] text-muted-foreground hover:text-foreground border border-border rounded px-2 py-0.5 transition-colors"
+                  >No</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmUnlock(true)}
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-yellow-400 border border-border hover:border-yellow-500/30 rounded px-2 py-0.5 transition-colors"
+                >
+                  <Lock className="w-3 h-3" /> Locked
+                </button>
+              )
             ) : (
               <button
                 onClick={() => setLocked(true)}
-                className="flex items-center gap-1 text-[11px] text-green-400 hover:text-green-300 border border-green-500/30 rounded px-2 py-0.5 transition-colors"
+                className="flex items-center gap-1 text-[11px] text-yellow-400 hover:text-yellow-300 border border-yellow-500/40 rounded px-2 py-0.5 transition-colors"
               >
                 <Unlock className="w-3 h-3" /> Editing — click to lock
               </button>
