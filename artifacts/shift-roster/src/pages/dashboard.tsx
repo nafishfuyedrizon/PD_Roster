@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Users, Clock, Zap, Trophy, RefreshCw, ChevronDown, TrendingDown, Copy, Check } from "lucide-react";
+import { Activity, Users, Clock, RefreshCw, ChevronDown, TrendingDown, Copy, Check } from "lucide-react";
 
 interface LiveOfficer {
   licenseId: string;
@@ -214,76 +214,6 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Members */}
-        <div className="bg-card border border-border rounded-lg px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Total Members</span>
-            <Users className="w-4 h-4 text-muted-foreground/40" />
-          </div>
-          {isLoading ? <Skeleton className="h-9 w-16 mb-1" /> : (
-            <div className="text-3xl font-bold text-foreground tabular-nums">{data?.stats.totalMembers ?? 0}</div>
-          )}
-          {!isLoading && data && (
-            <div className="text-[10px] font-mono mt-1 flex gap-2">
-              <span className="text-green-400">{data.stats.active} Active</span>
-              <span className="text-yellow-400">{data.stats.loa} LOA</span>
-              <span className="text-red-400">{data.stats.inactive} Inactive</span>
-            </div>
-          )}
-        </div>
-
-        {/* Duty Hours */}
-        <div className="bg-card border border-border rounded-lg px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Duty Hours</span>
-            <Clock className="w-4 h-4 text-muted-foreground/40" />
-          </div>
-          {isLoading ? <Skeleton className="h-9 w-28 mb-1" /> : (
-            <div className="text-xl font-bold text-primary font-mono tabular-nums">{data?.stats.thisWeekHours ?? "00:00:00"}</div>
-          )}
-          {!isLoading && data && (
-            <div className="text-[10px] font-mono text-muted-foreground mt-1">
-              This week · Month: {data.stats.monthlyHours.split(":")[0]}h
-            </div>
-          )}
-        </div>
-
-        {/* Peak Week */}
-        <div className="bg-card border border-border rounded-lg px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Peak Week</span>
-            <Zap className="w-4 h-4 text-yellow-400/40" />
-          </div>
-          {isLoading ? <Skeleton className="h-9 w-32 mb-1" /> : (
-            <div className="text-lg font-bold text-yellow-400 font-mono tabular-nums leading-tight">
-              {data?.stats.peakWeek.split("·")[1]?.trim() ?? "—"}
-            </div>
-          )}
-          {!isLoading && data && (
-            <div className="text-[10px] font-mono text-muted-foreground mt-1">{data.stats.peakWeek.split("·")[0]?.trim()}</div>
-          )}
-        </div>
-
-        {/* Top This Week */}
-        <div className="bg-card border border-border rounded-lg px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Top This Week</span>
-            <Trophy className="w-4 h-4 text-yellow-400/40" />
-          </div>
-          {isLoading ? <Skeleton className="h-9 w-24 mb-1" /> : data?.stats.topOfficer ? (
-            <>
-              <div className="font-mono text-sm font-bold text-primary">[{data.stats.topOfficer.csNumber}]</div>
-              <div className="text-sm font-semibold text-foreground truncate">{data.stats.topOfficer.name}</div>
-              <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{data.stats.topOfficer.hours}</div>
-            </>
-          ) : (
-            <div className="text-muted-foreground text-sm">—</div>
           )}
         </div>
       </div>
