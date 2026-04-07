@@ -30,7 +30,7 @@ const ROLES = [
   { key: "isSuperAdmin",  label: "Full Power",   icon: <ShieldCheck className="w-3.5 h-3.5 text-red-400" />,    color: "text-red-400" },
   { key: "isSeniorStaff", label: "High Command",   icon: <Shield className="w-3.5 h-3.5 text-orange-400" />,   color: "text-orange-400" },
   { key: "isStaff",       label: "FTP Supervisor",  icon: <Star className="w-3.5 h-3.5 text-blue-400" />,        color: "text-blue-400" },
-  { key: "isTrusted",     label: "Trusted",        icon: <CheckCircle className="w-3.5 h-3.5 text-green-400" />, color: "text-green-400" },
+  { key: "isTrusted",     label: "FTO",            icon: <CheckCircle className="w-3.5 h-3.5 text-green-400" />, color: "text-green-400" },
 ] as const;
 
 function Toggle({ active, onChange }: { active: boolean; onChange: (v: boolean) => void }) {

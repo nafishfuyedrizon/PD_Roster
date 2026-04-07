@@ -349,7 +349,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ) : user?.isStaff ? (
                   <div className="text-[10px] text-blue-400 font-mono">FTP SUPERVISOR</div>
                 ) : user?.isTrusted ? (
-                  <div className="text-[10px] text-green-400 font-mono">TRUSTED</div>
+                  <div className="text-[10px] text-green-400 font-mono">FTO</div>
                 ) : null}
               </div>
               <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${profileOpen ? "rotate-180" : ""}`} />

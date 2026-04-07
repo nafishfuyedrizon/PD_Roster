@@ -39,7 +39,7 @@ const FIELD_LABELS: Record<string, string> = {
   isSuperAdmin: "Full Power",
   isSeniorStaff: "High Command",
   isStaff: "FTP Supervisor",
-  isTrusted: "Trusted",
+  isTrusted: "FTO",
   displayName: "Display Name",
 };
 
