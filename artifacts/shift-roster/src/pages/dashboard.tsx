@@ -44,10 +44,10 @@ interface DashboardData {
   lowestWeekly: LowestEntry[];
 }
 
-function useDashboard(weekView: "current" | "previous", refetchInterval = 60_000) {
+function useDashboard(weekView: "current" | "previous", threshold: number, refetchInterval = 60_000) {
   return useQuery<DashboardData>({
-    queryKey: ["dashboard", weekView],
-    queryFn: () => fetch(`/api/dashboard?week=${weekView}`).then((r) => r.json()),
+    queryKey: ["dashboard", weekView, threshold],
+    queryFn: () => fetch(`/api/dashboard?week=${weekView}&threshold=${threshold}`).then((r) => r.json()),
     refetchInterval,
   });
 }
@@ -120,7 +120,9 @@ function titleCase(s: string) {
 
 export default function DashboardPage() {
   const [weekView, setWeekView] = useState<"current" | "previous">("current");
-  const { data, isLoading, refetch } = useDashboard(weekView, 15000);
+  const [threshold, setThreshold] = useState(5);
+  const [thresholdInput, setThresholdInput] = useState("5");
+  const { data, isLoading, refetch } = useDashboard(weekView, threshold, 15000);
   const [expandedStatus, setExpandedStatus] = useState<string | null>(null);
   const [copiedList, setCopiedList] = useState(false);
 
@@ -304,7 +306,29 @@ export default function DashboardPage() {
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border flex items-center gap-2 flex-wrap">
           <TrendingDown className="w-4 h-4 text-red-400 shrink-0" />
-          <span className="font-semibold text-sm tracking-wide uppercase shrink-0">Under 5 Hours</span>
+          <span className="font-semibold text-sm tracking-wide uppercase shrink-0">Under</span>
+          <input
+            type="number"
+            min={0.5}
+            max={24}
+            step={0.5}
+            value={thresholdInput}
+            onChange={(e) => setThresholdInput(e.target.value)}
+            onBlur={() => {
+              const v = parseFloat(thresholdInput);
+              if (!isNaN(v) && v >= 0.5 && v <= 24) {
+                setThreshold(v);
+                setThresholdInput(String(v));
+              } else {
+                setThresholdInput(String(threshold));
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            className="w-14 text-center text-sm font-bold font-mono bg-secondary/60 border border-border rounded px-1.5 py-0.5 text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <span className="font-semibold text-sm tracking-wide uppercase shrink-0">Hours</span>
           {(data?.lowestWeekly ?? []).length > 0 && (
             <span className="text-[11px] font-mono font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full shrink-0">
               {data!.lowestWeekly.length} officer{data!.lowestWeekly.length !== 1 ? "s" : ""}
@@ -386,7 +410,7 @@ export default function DashboardPage() {
               ))}
               {(data?.lowestWeekly ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">All officers have 5+ hours this week</td>
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">All officers have {threshold}+ hours this week</td>
                 </tr>
               )}
             </tbody>

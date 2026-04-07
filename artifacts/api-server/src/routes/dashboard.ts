@@ -42,6 +42,8 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   const currentWeek = getWeekPeriod(now);
   const previousWeek = getPreviousWeekPeriod(now);
   const weekParam = req.query.week === "previous" ? "previous" : "current";
+  const thresholdHours = Math.max(0.5, Math.min(24, Number(req.query.threshold) || 5));
+  const thresholdSecs = thresholdHours * 3600;
   const selectedWeek = weekParam === "previous" ? previousWeek : currentWeek;
 
   const [officers, allEvents, allLogs, siteSettings] = await Promise.all([
@@ -205,7 +207,7 @@ router.get("/dashboard", async (req, res): Promise<void> => {
     selectedWeekPerOfficer[l.csNumber] = (selectedWeekPerOfficer[l.csNumber] ?? 0) + parseHms(l.dutyHours);
   }
 
-  // All active officers with < 5 hours in selected week (excluding LOA), sorted lowest first
+  // All active officers with < threshold hours in selected week (excluding LOA), sorted lowest first
   const lowestWeekly = officers
     .filter((o) => o.status !== "LOA")
     .map((o) => ({
@@ -217,7 +219,7 @@ router.get("/dashboard", async (req, res): Promise<void> => {
       discordUid: o.discordUid ?? null,
       weekSecs: selectedWeekPerOfficer[o.callSign ?? ""] ?? 0,
     }))
-    .filter((o) => o.weekSecs < 18000)
+    .filter((o) => o.weekSecs < thresholdSecs)
     .sort((a, b) => a.weekSecs - b.weekSecs)
     .map((o) => ({ ...o, weekHours: secsToHms(o.weekSecs) }));
 
