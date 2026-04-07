@@ -47,8 +47,9 @@ const RANK_ORDER: Record<string, number> = {
 };
 function rankOrder(r: string) { return RANK_ORDER[r.toUpperCase()] ?? 99; }
 
-function getEndMonth(wp: string): number {
-  return parseInt(wp.slice(6, 8), 10);
+function getStartMonth(wp: string): number {
+  // weekPeriod format: "MM/DD-MM/DD" — start month is first 2 chars
+  return parseInt(wp.slice(0, 2), 10);
 }
 
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -91,7 +92,7 @@ function buildYearGroups(weekPeriods: string[]): YearGroup[] {
   const seenMonth = new Set<string>();
 
   for (const wp of weekPeriods) {
-    const mm = getEndMonth(wp);
+    const mm = getStartMonth(wp);
     if (mm > prevMm) scanYear -= 1;
     prevMm = mm;
     const yr = String(scanYear);

@@ -147,14 +147,14 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   const rankBreakdown = Object.entries(rankMap).map(([rank, count]) => ({ rank, count }));
 
   // Top performers come from ems_duty_logs, filtered by period when specified
-  // weekPeriod format: "MM/DD-MM/DD" — end-month at chars 7-8 (SQL 1-indexed)
+  // weekPeriod format: "MM/DD-MM/DD" — start-month at chars 1-2 (SQL 1-indexed)
   // dutyYear column stores the 4-digit year for cross-year correctness
   // Always filter by shift_type = 'ALL' to avoid double-counting per-shift rows
   const logConditions: ReturnType<typeof eq>[] = [eq(emsDutyLogsTable.shiftType, "ALL")];
   if (weekPeriod) {
     logConditions.push(eq(emsDutyLogsTable.weekPeriod, weekPeriod));
   } else {
-    if (month) logConditions.push(sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}` as ReturnType<typeof eq>);
+    if (month) logConditions.push(sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 1, 2) = ${month}` as ReturnType<typeof eq>);
     if (year)  logConditions.push(eq(emsDutyLogsTable.dutyYear, year));
   }
 
