@@ -270,7 +270,7 @@ function StatusSelect({ entryId, currentStatus }: { entryId: number; currentStat
       className={`text-[11px] font-mono font-bold border rounded-full px-2 py-0.5 cursor-pointer focus:outline-none disabled:opacity-50 ${colorClass}`}
     >
       {STATUS_OPTIONS.map((opt) => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
+        <option key={opt.value} value={opt.value} style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}>{opt.label}</option>
       ))}
     </select>
   );
