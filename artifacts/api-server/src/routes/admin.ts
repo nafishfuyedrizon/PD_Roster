@@ -437,11 +437,34 @@ router.post("/admin/staff-roles", async (req, res): Promise<void> => {
 });
 
 router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
+  const sessionUser = (req.session as any)?.user;
+
+  // Determine caller's level: owner=5, isSuperAdmin=4, isSeniorStaff=3, isStaff=2, isTrusted=1
+  function callerLevel(): number {
+    if (!sessionUser) return 0;
+    if (sessionUser.isOwner) return 5;
+    if (sessionUser.isSuperAdmin) return 4;
+    if (sessionUser.isSeniorStaff) return 3;
+    if (sessionUser.isStaff) return 2;
+    if (sessionUser.isTrusted) return 1;
+    return 0;
+  }
+  const ROLE_LEVEL: Record<string, number> = {
+    isSuperAdmin: 4, isSeniorStaff: 3, isStaff: 2, isTrusted: 1,
+  };
+  const myLevel = callerLevel();
   const id = parseInt(req.params.id, 10);
   const allowed = ["isSuperAdmin", "isSeniorStaff", "isStaff", "isTrusted", "displayName"];
   const updates: Record<string, unknown> = {};
   for (const k of allowed) {
-    if (k in req.body) updates[k] = req.body[k];
+    if (!(k in req.body)) continue;
+    const roleLevel = ROLE_LEVEL[k];
+    // Role fields: only allow if caller's level is strictly higher than the role being changed
+    if (roleLevel !== undefined && myLevel <= roleLevel) {
+      res.status(403).json({ error: `You cannot manage the '${k}' role — insufficient level` });
+      return;
+    }
+    updates[k] = req.body[k];
   }
   if (!Object.keys(updates).length) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [row] = await db.update(staffRolesTable).set(updates as any).where(eq(staffRolesTable.id, id)).returning();

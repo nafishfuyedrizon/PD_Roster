@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Users, Plus, Trash2, ShieldCheck, Shield, Star, CheckCircle, X, Search, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OfficerResult {
   id: number;
@@ -27,19 +28,21 @@ interface StaffRole {
 }
 
 const ROLES = [
-  { key: "isSuperAdmin",  label: "Full Power",   icon: <ShieldCheck className="w-3.5 h-3.5 text-red-400" />,    color: "text-red-400" },
-  { key: "isSeniorStaff", label: "High Command",   icon: <Shield className="w-3.5 h-3.5 text-orange-400" />,   color: "text-orange-400" },
-  { key: "isStaff",       label: "FTP Supervisor",  icon: <Star className="w-3.5 h-3.5 text-blue-400" />,        color: "text-blue-400" },
-  { key: "isTrusted",     label: "FTO",            icon: <CheckCircle className="w-3.5 h-3.5 text-green-400" />, color: "text-green-400" },
+  { key: "isSuperAdmin",  label: "Full Power",    level: 4, icon: <ShieldCheck className="w-3.5 h-3.5 text-red-400" />,    color: "text-red-400" },
+  { key: "isSeniorStaff", label: "High Command",  level: 3, icon: <Shield className="w-3.5 h-3.5 text-orange-400" />,      color: "text-orange-400" },
+  { key: "isStaff",       label: "FTP Supervisor", level: 2, icon: <Star className="w-3.5 h-3.5 text-blue-400" />,         color: "text-blue-400" },
+  { key: "isTrusted",     label: "FTO",            level: 1, icon: <CheckCircle className="w-3.5 h-3.5 text-green-400" />, color: "text-green-400" },
 ] as const;
 
-function Toggle({ active, onChange }: { active: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ active, onChange, disabled }: { active: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button
-      onClick={() => onChange(!active)}
+      onClick={() => !disabled && onChange(!active)}
+      disabled={disabled}
+      title={disabled ? "Insufficient level to manage this role" : undefined}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-        active ? "bg-green-500" : "bg-red-500/60"
-      }`}
+        disabled ? "opacity-30 cursor-not-allowed" : "cursor-pointer"
+      } ${active ? "bg-green-500" : "bg-red-500/60"}`}
     >
       <span
         className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
@@ -51,7 +54,28 @@ function Toggle({ active, onChange }: { active: boolean; onChange: (v: boolean) 
 }
 
 export default function AdminStaffRolesPage() {
+  const { user } = useAuth();
   const qc = useQueryClient();
+
+  // Compute caller's level: owner=5, superAdmin=4, seniorStaff=3, staff=2, trusted=1
+  const myLevel = user?.isOwner ? 5
+    : user?.isSuperAdmin ? 4
+    : user?.isSeniorStaff ? 3
+    : user?.isStaff ? 2
+    : user?.isTrusted ? 1
+    : 0;
+
+  // A user can toggle a role only if their level is strictly higher than that role's level
+  function canManageRole(roleLevel: number) { return myLevel > roleLevel; }
+  // A user can delete/manage a row only if they outrank the target's highest role
+  function targetLevel(s: StaffRole): number {
+    if (s.isSuperAdmin) return 4;
+    if (s.isSeniorStaff) return 3;
+    if (s.isStaff) return 2;
+    if (s.isTrusted) return 1;
+    return 0;
+  }
+  function canManageRow(s: StaffRole) { return myLevel > targetLevel(s); }
   const [newUid, setNewUid] = useState("");
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
@@ -348,6 +372,7 @@ export default function AdminStaffRolesPage() {
                         <div className="flex justify-center">
                           <Toggle
                             active={!!s[r.key]}
+                            disabled={!canManageRole(r.level)}
                             onChange={(v) => updateMutation.mutate({ id: s.id, field: r.key, value: v })}
                           />
                         </div>
@@ -355,9 +380,10 @@ export default function AdminStaffRolesPage() {
                     ))}
                     <td className="text-center px-3 py-3">
                       <button
-                        onClick={() => deleteMutation.mutate(s.id)}
-                        className="text-muted-foreground hover:text-red-400 transition-colors"
-                        title="Remove"
+                        onClick={() => canManageRow(s) && deleteMutation.mutate(s.id)}
+                        disabled={!canManageRow(s)}
+                        className={`transition-colors ${canManageRow(s) ? "text-muted-foreground hover:text-red-400" : "text-muted-foreground/20 cursor-not-allowed"}`}
+                        title={canManageRow(s) ? "Remove" : "Insufficient level to remove"}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
