@@ -605,10 +605,14 @@ function VoteRow({ entryId, voteType, voterName, value, isOwn }: {
 // ── Citation Detail Popup ────────────────────────────────────────────────────
 type CitationBrief = {
   id: number;
+  title: string | null;
   incident: string | null;
   location: string | null;
   suspectName: string | null;
+  suspectCid: string | null;
+  suspectContact: string | null;
   charges: string | null;
+  incidentReport: string | null;
   evidence: string | null;
   postedAt: string;
 };
@@ -683,13 +687,19 @@ function CitationDetailPopup({
             });
             const evidenceLinks = (c.evidence ?? "").match(/https?:\/\/[^\s]+/g) ?? [];
 
+            const irLinks = (c.incidentReport ?? "").match(/https?:\/\/[^\s]+/g) ?? [];
+            const irText = irLinks.length === 0 && c.incidentReport?.trim() ? c.incidentReport.trim() : null;
+
             return (
               <div
                 key={c.id}
                 className="rounded-lg border border-border bg-secondary/30 px-4 py-3 space-y-1.5"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 min-w-0">
+                    {c.title && (
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{c.title}</p>
+                    )}
                     {c.incident && (
                       <p className="text-sm font-semibold text-foreground">{c.incident}</p>
                     )}
@@ -699,20 +709,39 @@ function CitationDetailPopup({
                       </p>
                     )}
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap shrink-0">
+                  <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap shrink-0 text-right">
                     {dateStr}<br />{timeStr} BDT
                   </span>
                 </div>
-                {c.suspectName && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Suspect: <span className="text-foreground font-medium">{c.suspectName}</span>
-                  </p>
+                {(c.suspectName || c.suspectCid || c.suspectContact) && (
+                  <div className="text-[11px] text-muted-foreground space-y-0.5">
+                    {c.suspectName && (
+                      <p>
+                        Suspect: <span className="text-foreground font-medium">{c.suspectName}</span>
+                        {c.suspectCid && <span className="text-muted-foreground ml-1 font-mono">(CID: {c.suspectCid})</span>}
+                      </p>
+                    )}
+                    {c.suspectContact && (
+                      <p>Contact: <span className="text-foreground">{c.suspectContact}</span></p>
+                    )}
+                  </div>
                 )}
                 {c.charges && (
                   <p className="text-[11px] text-orange-300 font-medium">{c.charges}</p>
                 )}
+                {(irLinks.length > 0 || irText) && (
+                  <div className="flex flex-wrap gap-2">
+                    {irLinks.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] text-purple-400 hover:text-purple-300 underline underline-offset-2">
+                        <ExternalLink className="w-3 h-3" />Report{irLinks.length > 1 ? ` ${i + 1}` : ""}
+                      </a>
+                    ))}
+                    {irText && <p className="text-[11px] text-muted-foreground">{irText}</p>}
+                  </div>
+                )}
                 {evidenceLinks.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-0.5">
+                  <div className="flex flex-wrap gap-2">
                     {evidenceLinks.map((url, i) => (
                       <a
                         key={i}
@@ -721,7 +750,7 @@ function CitationDetailPopup({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 underline underline-offset-2"
                       >
-                        <ExternalLink className="w-3 h-3" />Evidence {evidenceLinks.length > 1 ? i + 1 : ""}
+                        <ExternalLink className="w-3 h-3" />Evidence{evidenceLinks.length > 1 ? ` ${i + 1}` : ""}
                       </a>
                     ))}
                   </div>

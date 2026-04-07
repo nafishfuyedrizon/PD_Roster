@@ -378,10 +378,14 @@ router.get("/citations/officer-breakdown", async (req, res) => {
   const rows = await db
     .select({
       id: pdCitationsTable.id,
+      title: pdCitationsTable.title,
       incident: pdCitationsTable.incident,
       location: pdCitationsTable.location,
       suspectName: pdCitationsTable.suspectName,
+      suspectCid: pdCitationsTable.suspectCid,
+      suspectContact: pdCitationsTable.suspectContact,
       charges: pdCitationsTable.charges,
+      incidentReport: pdCitationsTable.incidentReport,
       evidence: pdCitationsTable.evidence,
       postedAt: pdCitationsTable.postedAt,
     })
