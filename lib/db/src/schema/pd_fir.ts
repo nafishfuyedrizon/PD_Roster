@@ -2,6 +2,7 @@ import { pgTable, serial, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 
 export interface FirThreadMessage {
   author: string;
+  authorId: string;
   content: string;
   attachments: string[];
   timestamp: string;

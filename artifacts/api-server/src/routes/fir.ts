@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
-import { db, pdFirTable } from "@workspace/db";
-import { desc, ilike, or, sql } from "drizzle-orm";
+import { db, pdFirTable, officersTable, type FirThreadMessage } from "@workspace/db";
+import { desc, ilike, or, sql, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -57,7 +57,37 @@ router.get("/fir", async (req, res): Promise<void> => {
       ilike(pdFirTable.eventDescription, q),
     ));
   }
-  res.json(await query.limit(limit));
+  const firs = await query.limit(limit);
+
+  const discordIds = new Set<string>();
+  for (const fir of firs) {
+    for (const reply of (fir.threadReplies ?? []) as FirThreadMessage[]) {
+      if (reply.authorId) discordIds.add(reply.authorId);
+    }
+  }
+
+  const nameMap = new Map<string, string>();
+  if (discordIds.size > 0) {
+    const officers = await db
+      .select({ discordId: officersTable.discordId, name: officersTable.name })
+      .from(officersTable)
+      .where(inArray(officersTable.discordId, [...discordIds]));
+    for (const o of officers) {
+      if (o.discordId && o.name) nameMap.set(o.discordId, o.name);
+    }
+  }
+
+  const result = firs.map(fir => ({
+    ...fir,
+    threadReplies: fir.threadReplies
+      ? (fir.threadReplies as FirThreadMessage[]).map(reply => ({
+          ...reply,
+          author: (reply.authorId && nameMap.get(reply.authorId)) || reply.author,
+        }))
+      : null,
+  }));
+
+  res.json(result);
 });
 
 router.get("/fir/stats", async (_req, res): Promise<void> => {

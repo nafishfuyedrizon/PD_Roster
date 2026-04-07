@@ -585,6 +585,7 @@ async function fetchFirThreadReplies(msg: Message): Promise<FirThreadMessage[]> 
       .sort((a, b) => a.createdTimestamp - b.createdTimestamp)
       .map(m => ({
         author: m.author.globalName ?? m.author.username,
+        authorId: m.author.id,
         content: m.content,
         attachments: [...m.attachments.values()].map(a => a.url),
         timestamp: m.createdAt.toISOString(),
@@ -613,6 +614,7 @@ async function updateFirThreadByThreadId(threadId: string): Promise<void> {
       .sort((a: Message, b: Message) => a.createdTimestamp - b.createdTimestamp)
       .map((m: Message) => ({
         author: m.author.globalName ?? m.author.username,
+        authorId: m.author.id,
         content: m.content,
         attachments: [...m.attachments.values()].map((a: any) => a.url),
         timestamp: m.createdAt.toISOString(),
