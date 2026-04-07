@@ -132,6 +132,11 @@ const STATUS_STYLES: Record<string, string> = {
   "Suspended":   "text-red-500 border-red-600/30 bg-red-600/10",
   "LOA":         "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
   "Vacant":      "text-muted-foreground border-border bg-muted/20",
+  "DISCHARGED":  "text-blue-300 border-blue-500/30 bg-blue-500/20",
+  "FIRED":       "text-red-300 border-red-500/30 bg-red-500/20",
+  "REMOVED":     "text-yellow-300 border-yellow-500/30 bg-yellow-500/20",
+  "TERMINATED":  "text-orange-300 border-orange-500/30 bg-orange-500/20",
+  "RESIGNED":    "text-purple-300 border-purple-500/30 bg-purple-500/20",
 };
 
 function QualDot({ value }: { value: boolean | null | undefined }) {

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable } from "@workspace/db";
+import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable, exPdOfficersTable } from "@workspace/db";
 import { syncVotersToQualChart } from "./qualification.js";
 import { syncStudentProgressionsWithRoster } from "./student-progressions.js";
 import { auditLog } from "../lib/audit.js";
@@ -438,6 +438,29 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
   }
   if (Object.keys(diff).length > 0) {
     await auditLog(req, "UPDATE", "officer", officer.id, officer.name ?? officer.callSign, diff);
+  }
+
+  // Auto-add to Ex-PD list when status changes to an exit status
+  const EXIT_STATUSES = ["DISCHARGED", "FIRED", "REMOVED", "TERMINATED", "RESIGNED"];
+  const statusChanged = existing.status !== officer.status;
+  if (statusChanged && officer.status && EXIT_STATUSES.includes(officer.status) && officer.name) {
+    await db.insert(exPdOfficersTable).values({
+      callSign: officer.callSign ?? null,
+      characterId: officer.citizenId ?? null,
+      name: officer.name,
+      phoneNo: officer.phoneNumber ?? null,
+      division: officer.department ?? null,
+      rank: officer.rank ?? null,
+      discordUsername: officer.discordUsername ?? null,
+      discordUid: officer.discordId ?? null,
+      rockstarLicenseId: officer.rockstarLicenseId ?? null,
+      status: officer.status,
+      dateOfJoining: officer.dateOfJoining ?? null,
+      lastPromotion: officer.lastPromotion ?? null,
+      air1: false,
+      speed: false,
+      notes: null,
+    });
   }
 
   res.json(UpdateOfficerResponse.parse(officer));
