@@ -228,12 +228,16 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     hoursMap[r.officer_name] = (hoursMap[r.officer_name] ?? 0) + Number(r.total_adj_seconds) / 3600;
   }
 
-  // Dynamically compute citations since lastPromotion
+  // Dynamically compute citations since lastPromotion (or joiningDate if no promo date)
   const citationResult = await db.execute(sql`
     WITH officer_dates AS (
       SELECT
         o.name,
-        COALESCE(NULLIF(o.last_promotion, ''), NULLIF(q.last_promotion, ''), NULL) AS promo_date
+        COALESCE(
+          NULLIF(o.last_promotion, ''),
+          NULLIF(q.last_promotion, ''),
+          NULLIF(o.date_of_joining, '')
+        ) AS since_date
       FROM officers o
       LEFT JOIN qualification_chart q ON o.name = q.name
     )
@@ -243,11 +247,11 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     FROM officer_dates od
     LEFT JOIN pd_citations c ON c.officer_name = od.name
       AND (
-        od.promo_date IS NULL
+        od.since_date IS NULL
         OR c.posted_at >= MAKE_DATE(
-          SPLIT_PART(od.promo_date, '/', 3)::int,
-          SPLIT_PART(od.promo_date, '/', 1)::int,
-          SPLIT_PART(od.promo_date, '/', 2)::int
+          SPLIT_PART(od.since_date, '/', 3)::int,
+          SPLIT_PART(od.since_date, '/', 1)::int,
+          SPLIT_PART(od.since_date, '/', 2)::int
         )
       )
     GROUP BY od.name
