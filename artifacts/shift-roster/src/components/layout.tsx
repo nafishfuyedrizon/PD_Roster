@@ -345,7 +345,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ) : user?.isSuperAdmin ? (
                   <div className="text-[10px] text-red-400 font-mono">FULL POWER</div>
                 ) : user?.isSeniorStaff ? (
-                  <div className="text-[10px] text-orange-400 font-mono">SENIOR STAFF</div>
+                  <div className="text-[10px] text-orange-400 font-mono">HIGH COMMAND</div>
                 ) : user?.isStaff ? (
                   <div className="text-[10px] text-blue-400 font-mono">STAFF</div>
                 ) : user?.isTrusted ? (

@@ -37,7 +37,7 @@ const FIELD_LABELS: Record<string, string> = {
   notes: "Notes",
   isActive: "Active",
   isSuperAdmin: "Full Power",
-  isSeniorStaff: "Senior Staff",
+  isSeniorStaff: "High Command",
   isStaff: "Staff",
   isTrusted: "Trusted",
   displayName: "Display Name",
