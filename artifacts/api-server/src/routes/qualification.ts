@@ -334,8 +334,10 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
   const enrichedRows = rows.map((r) => {
     const autoCount = citationMap.get(r.name ?? "") ?? 0;
     const adjustment = r.citationCount ?? 0;
+    const computedHours = hoursMap[r.name ?? ""];
     return {
       ...r,
+      hoursInRank: computedHours !== undefined ? Math.round(computedHours * 100) / 100 : r.hoursInRank,
       citationAutoCount: autoCount,
       citationCount: autoCount + adjustment,
       acceptedFirCount: acceptedFirMap.get(r.name ?? "") ?? 0,
