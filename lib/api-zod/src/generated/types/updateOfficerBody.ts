@@ -32,6 +32,7 @@ export interface UpdateOfficerBody {
   discordUid?: string | null;
   discordId?: string;
   rockstarLicenseId?: string | null;
+  fivemName?: string | null;
   dutyHours?: string | null;
   completionStatus?: string | null;
   appointedFto?: string | null;
