@@ -30,6 +30,7 @@ export const officersTable = pgTable("officers", {
   discordUid: text("discord_uid"),
   discordId: text("discord_id").notNull().default(""),
   rockstarLicenseId: text("rockstar_license_id"),
+  fivemName: text("fivem_name"),
   dutyHours: text("duty_hours"),
   completionStatus: text("completion_status"),
   appointedFto: text("appointed_fto"),

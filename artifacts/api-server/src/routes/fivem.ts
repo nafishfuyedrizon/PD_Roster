@@ -32,13 +32,17 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
     online = false;
   }
 
-  // Get all officers with license IDs
+  // Get all officers
   const officers = await db.select().from(officersTable);
   const licenseMap = new Map<string, typeof officers[0]>();
+  const fivemNameMap = new Map<string, typeof officers[0]>();
   for (const o of officers) {
     if (o.rockstarLicenseId) {
       const rawId = (o.rockstarLicenseId as string).replace(/^license:/i, "").toLowerCase();
       licenseMap.set(rawId, o);
+    }
+    if (o.fivemName) {
+      fivemNameMap.set((o.fivemName as string).toLowerCase().trim(), o);
     }
   }
 
@@ -50,14 +54,15 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
     if (rawId && !latestByLicense.has(rawId)) latestByLicense.set(rawId, ev);
   }
 
-  // Match players
+  // Match players — try license first, then fivemName fallback
   const players = fivemPlayers.map((p: any) => {
     const rawLicense = (p.identifiers ?? [])
       .find((id: string) => id.startsWith("license:"))
       ?.replace(/^license:/i, "")
       .toLowerCase() ?? null;
 
-    const officer = rawLicense ? licenseMap.get(rawLicense) ?? null : null;
+    const playerFivemName = (p.name ?? "").toLowerCase().trim();
+    const officer = (rawLicense ? licenseMap.get(rawLicense) : null) ?? fivemNameMap.get(playerFivemName) ?? null;
     const latestDuty = rawLicense ? latestByLicense.get(rawLicense) ?? null : null;
     const onDuty = latestDuty?.eventType === "on_duty";
 
