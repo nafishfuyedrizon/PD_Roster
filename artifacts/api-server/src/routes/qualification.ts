@@ -378,6 +378,21 @@ router.put("/qualification-chart/:id", async (req, res): Promise<void> => {
     if ((before as any)?.[k] !== (row as any)[k]) diff[k] = { old: (before as any)?.[k], new: (row as any)[k] };
   }
   await auditLog(req, "UPDATE", "qual-entry", id, name ?? before?.name ?? null, Object.keys(diff).length ? diff : null);
+
+  // Sync lastPromotion, strikesMajor, strikesMinor back to officers (roster) by name
+  const officerName = row.name;
+  if (officerName) {
+    const syncFields: Partial<{ lastPromotion: string | null; strikesMajor: string | null; strikesMinor: string | null }> = {};
+    if (lastPromotion !== undefined) syncFields.lastPromotion = lastPromotion ?? null;
+    if (strikesMajor !== undefined) syncFields.strikesMajor = strikesMajor ?? null;
+    if (strikesMinor !== undefined) syncFields.strikesMinor = strikesMinor ?? null;
+    if (Object.keys(syncFields).length > 0) {
+      await db.update(officersTable)
+        .set(syncFields)
+        .where(eq(officersTable.name, officerName));
+    }
+  }
+
   res.json(row);
 });
 
