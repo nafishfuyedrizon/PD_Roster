@@ -108,6 +108,7 @@ function OfficerPicker({
 
 function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; onDone: () => void }) {
   const [officerName, setOfficerName] = useState<string | null>(fir.officerName ?? null);
+  const [acceptedByName, setAcceptedByName] = useState<string | null>(fir.acceptedBy ?? null);
   const [saving, setSaving] = useState(false);
 
   const { data: officers = [] } = useQuery<OfficerItem[]>({
@@ -126,17 +127,21 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
     staleTime: 60_000,
   });
   const myName = profileData?.officer?.name ?? null;
-  const acceptedBy = fir.acceptedBy ?? myName;
+
+  // Auto-fill acceptedBy from logged-in user once loaded
+  useEffect(() => {
+    if (!acceptedByName && myName) setAcceptedByName(myName);
+  }, [myName]);
 
   async function confirm() {
-    if (!acceptedBy || !officerName) return;
+    if (!acceptedByName || !officerName) return;
     setSaving(true);
     try {
       await fetch(`/api/fir/${fir.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "accepted", acceptedBy, officerName }),
+        body: JSON.stringify({ status: "accepted", acceptedBy: acceptedByName, officerName }),
       });
       onDone();
     } finally {
@@ -158,15 +163,14 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
           </button>
         </div>
 
-        <div className="space-y-1.5">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-green-400">Accepted By</div>
-          <div className="flex items-center gap-2 h-8 px-3 rounded-md border border-green-600/30 bg-green-600/10 text-green-200 text-xs font-semibold">
-            {acceptedBy
-              ? <><span className="text-green-400">✓</span> {acceptedBy}</>
-              : <span className="text-muted-foreground italic font-normal">Loading your profile…</span>
-            }
-          </div>
-        </div>
+        <OfficerPicker
+          label="Accepted By"
+          color="green"
+          placeholder="Search officer name..."
+          value={acceptedByName}
+          onChange={setAcceptedByName}
+          officers={officers}
+        />
 
         <OfficerPicker
           label="Officer (FIR against)"
@@ -177,11 +181,11 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
           officers={officers}
         />
 
-        {officerName && (
+        {(acceptedByName || officerName) && (
           <div className="text-[11px] text-muted-foreground bg-secondary/20 rounded-md px-3 py-2 border border-border/30 font-mono">
-            ✓ Accepted by <span className="text-green-400 font-semibold">{acceptedBy ?? "—"}</span>
-            {" · "}
-            🛡 Officer: <span className="text-teal-400 font-semibold">{officerName}</span>
+            {acceptedByName && <>✓ Accepted by <span className="text-green-400 font-semibold">{acceptedByName}</span></>}
+            {acceptedByName && officerName && " · "}
+            {officerName && <>🛡 Officer: <span className="text-teal-400 font-semibold">{officerName}</span></>}
           </div>
         )}
 
@@ -192,7 +196,7 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
           <Button
             size="sm"
             onClick={confirm}
-            disabled={!acceptedBy || !officerName || saving}
+            disabled={!acceptedByName || !officerName || saving}
             className="flex-1 h-8 text-xs bg-green-600 hover:bg-green-500 text-white"
           >
             {saving ? "Saving..." : "Confirm Accept"}
