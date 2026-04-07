@@ -148,17 +148,19 @@ function CheckboxCell({
   );
 }
 
-function CadetRow({ cadet, onToggle, onDelete, onConfirmSolo }: {
+function CadetRow({ cadet, onToggle, onDelete, onConfirmSolo, onRemoveSolo }: {
   cadet: Cadet;
   onToggle: (field: string, value: boolean) => void;
   onDelete: () => void;
   onConfirmSolo: (id: number) => void;
+  onRemoveSolo: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [locked, setLocked] = useState(true);
   const [confirmUnlock, setConfirmUnlock] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmSolo, setConfirmSolo] = useState(false);
+  const [confirmRemoveSolo, setConfirmRemoveSolo] = useState(false);
 
   const pct = cadet.progressPct;
   const isSoloReady = pct >= 80 && cadet.currentPhase !== "Solo Cadet";
@@ -266,7 +268,27 @@ function CadetRow({ cadet, onToggle, onDelete, onConfirmSolo }: {
             </div>
           )}
           {cadet.currentPhase === "Solo Cadet" && (
-            <div className="text-[10px] text-yellow-400 font-semibold mt-0.5">★ Solo Cadet</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] text-yellow-400 font-semibold">★ Solo Cadet</span>
+              {confirmRemoveSolo ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/20 text-red-400 border border-red-500/40 font-semibold hover:bg-destructive/30 transition-colors"
+                    onClick={() => { onRemoveSolo(cadet.id); setConfirmRemoveSolo(false); }}
+                  >Yes</button>
+                  <button
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border hover:bg-secondary/80 transition-colors"
+                    onClick={() => setConfirmRemoveSolo(false)}
+                  >No</button>
+                </div>
+              ) : (
+                <button
+                  className="text-[10px] px-1 py-0.5 rounded text-muted-foreground hover:text-red-400 transition-colors"
+                  title="Remove Solo Cadet status"
+                  onClick={() => setConfirmRemoveSolo(true)}
+                >✕</button>
+              )}
+            </div>
           )}
         </div>
 
@@ -464,6 +486,21 @@ export default function StudentProgressionsPage() {
     },
   });
 
+  const removeSoloMutation = useMutation({
+    mutationFn: (id: number) =>
+      fetch(`/api/student-progressions/${id}`, {
+        method: "PUT", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPhase: "Phase 2" }),
+      }).then((r) => r.json()),
+    onSuccess: (updated: Cadet) => {
+      qc.setQueryData(["/api/student-progressions"], (old: Cadet[] | undefined) =>
+        old?.map((c) => (c.id === updated.id ? { ...c, currentPhase: "Phase 2" } : c)) ?? [],
+      );
+      toast({ title: "Solo Cadet removed", description: `${updated.name} reverted to Phase 2` });
+    },
+  });
+
   // Auto-sync with roster on page load
   useEffect(() => {
     fetch("/api/student-progressions/sync-roster", { method: "POST", credentials: "include" })
@@ -582,6 +619,7 @@ export default function StudentProgressionsPage() {
                 onToggle={(field, value) => toggleMutation.mutate({ id: cadet.id, field, value })}
                 onDelete={() => { if (confirm(`Remove ${cadet.name}?`)) deleteMutation.mutate(cadet.id); }}
                 onConfirmSolo={(id) => confirmSoloMutation.mutate(id)}
+                onRemoveSolo={(id) => removeSoloMutation.mutate(id)}
               />
             ))
           )}
