@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, studentProgressionsTable, pdDutyLogsTable, CHECKPOINT_FIELDS } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, studentProgressionsTable, pdDutyLogsTable, officersTable, CHECKPOINT_FIELDS } from "@workspace/db";
+import { eq, sql, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -83,6 +83,59 @@ router.delete("/student-progressions/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   await db.delete(studentProgressionsTable).where(eq(studentProgressionsTable.id, id));
   res.json({ ok: true });
+});
+
+// ── Roster sync helper ────────────────────────────────────────────────────────
+export async function syncStudentProgressionsWithRoster(): Promise<{ added: string[]; terminated: string[] }> {
+  // Get all PTA officers
+  const ptaOfficers = await db
+    .select({ callSign: officersTable.callSign, name: officersTable.name, dateOfJoining: officersTable.dateOfJoining, timezone: officersTable.timezone, discordUid: officersTable.discordUid, discordUsername: officersTable.discordUsername })
+    .from(officersTable)
+    .where(eq(officersTable.department, "PTA"));
+
+  // Get all student progressions
+  const cadets = await db.select({ id: studentProgressionsTable.id, badgeNumber: studentProgressionsTable.badgeNumber, name: studentProgressionsTable.name, status: studentProgressionsTable.status }).from(studentProgressionsTable);
+
+  const ptaBadgeSet = new Set(ptaOfficers.map((o) => o.callSign));
+  const cadetBadgeSet = new Set(cadets.map((c) => c.badgeNumber).filter(Boolean));
+
+  const added: string[] = [];
+  const terminated: string[] = [];
+
+  // Add new PTA officers not yet in student_progressions
+  for (const officer of ptaOfficers) {
+    if (!cadetBadgeSet.has(officer.callSign)) {
+      await db.insert(studentProgressionsTable).values({
+        name: officer.name ?? officer.callSign,
+        badgeNumber: officer.callSign,
+        discordId: officer.discordUid ?? undefined,
+        discordName: officer.discordUsername ?? undefined,
+        timezone: officer.timezone ?? undefined,
+        status: "Active",
+        strikes: "0/4",
+        hireDate: officer.dateOfJoining ?? undefined,
+      });
+      added.push(`${officer.callSign} ${officer.name ?? ""}`);
+    }
+  }
+
+  // Terminate cadets no longer in PTA
+  for (const cadet of cadets) {
+    if (cadet.badgeNumber && !ptaBadgeSet.has(cadet.badgeNumber) && cadet.status !== "Terminated") {
+      await db.update(studentProgressionsTable)
+        .set({ status: "Terminated", updatedAt: new Date() })
+        .where(eq(studentProgressionsTable.id, cadet.id));
+      terminated.push(`${cadet.badgeNumber} ${cadet.name}`);
+    }
+  }
+
+  return { added, terminated };
+}
+
+// POST /student-progressions/sync-roster — manual sync with PTA officers
+router.post("/student-progressions/sync-roster", async (_req, res): Promise<void> => {
+  const result = await syncStudentProgressionsWithRoster();
+  res.json({ ok: true, ...result });
 });
 
 export default router;

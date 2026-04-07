@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, Plus, Trash2, ChevronDown, ChevronUp, Pencil, CheckCircle2, Circle, Lock, Unlock } from "lucide-react";
+import { GraduationCap, Plus, Trash2, ChevronDown, ChevronUp, Pencil, CheckCircle2, Circle, Lock, Unlock, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const TOTAL = 43;
@@ -557,6 +557,21 @@ export default function StudentProgressionsPage() {
     },
   });
 
+  const syncRosterMutation = useMutation({
+    mutationFn: () =>
+      fetch("/api/student-progressions/sync-roster", { method: "POST", credentials: "include" }).then((r) => r.json()),
+    onSuccess: (data: { ok: boolean; added: string[]; terminated: string[] }) => {
+      qc.invalidateQueries({ queryKey: ["/api/student-progressions"] });
+      const parts: string[] = [];
+      if (data.added?.length) parts.push(`Added: ${data.added.join(", ")}`);
+      if (data.terminated?.length) parts.push(`Terminated: ${data.terminated.join(", ")}`);
+      toast({
+        title: parts.length ? `Roster sync complete` : "Already in sync",
+        description: parts.join(" | ") || "No changes needed.",
+      });
+    },
+  });
+
   const filtered = cadets.filter((c) => {
     const matchSearch =
       !search ||
@@ -584,9 +599,21 @@ export default function StudentProgressionsPage() {
                 <p className="text-xs text-muted-foreground">Cadet training tracker — Phase 1 &amp; Phase 2</p>
               </div>
             </div>
-            <Button size="sm" onClick={() => setShowAdd(true)}>
-              <Plus className="w-4 h-4 mr-1" /> Add Cadet
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => syncRosterMutation.mutate()}
+                disabled={syncRosterMutation.isPending}
+                title="Sync PTA officers from roster into Student Progressions"
+              >
+                <RefreshCw className={`w-4 h-4 mr-1 ${syncRosterMutation.isPending ? "animate-spin" : ""}`} />
+                Sync from Roster
+              </Button>
+              <Button size="sm" onClick={() => setShowAdd(true)}>
+                <Plus className="w-4 h-4 mr-1" /> Add Cadet
+              </Button>
+            </div>
           </div>
 
           {/* Stats */}

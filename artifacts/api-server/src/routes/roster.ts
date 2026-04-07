@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable } from "@workspace/db";
 import { syncVotersToQualChart } from "./qualification.js";
+import { syncStudentProgressionsWithRoster } from "./student-progressions.js";
 import { auditLog } from "../lib/audit.js";
 import {
   ListOfficersQueryParams,
@@ -90,6 +91,11 @@ router.post("/roster", async (req, res): Promise<void> => {
         qualStatus: null,
       });
     }
+  }
+
+  // Auto-sync Student Progressions if new officer joins PTA
+  if (officer.department === "PTA") {
+    await syncStudentProgressionsWithRoster();
   }
 
   await auditLog(req, "CREATE", "officer", officer.id, officer.name ?? officer.callSign, null);
@@ -415,6 +421,11 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
   // Auto-sync FTP/Management voters to qual chart vote columns whenever those flags change
   if ("ftp" in parsed.data || "isManagement" in parsed.data) {
     await syncVotersToQualChart();
+  }
+
+  // Auto-sync Student Progressions when officer department changes involving PTA
+  if (deptChanged && (existing.department === "PTA" || officer.department === "PTA")) {
+    await syncStudentProgressionsWithRoster();
   }
 
   // Build a diff of what changed
