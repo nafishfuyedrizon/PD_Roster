@@ -421,12 +421,12 @@ function EditModal({
               />
             </div>
             <div>
-              <FieldLabel>Citations</FieldLabel>
+              <FieldLabel>Citations <span className="text-[10px] text-muted-foreground font-normal">(auto, since promotion)</span></FieldLabel>
               <Input
                 type="number" min={0}
                 value={form.citationCount}
-                onChange={(e) => set("citationCount", Number(e.target.value))}
-                className="h-9 text-sm font-mono bg-secondary/30"
+                readOnly
+                className="h-9 text-sm font-mono bg-secondary/50 opacity-60 cursor-not-allowed"
               />
             </div>
             <div>

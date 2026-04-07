@@ -228,12 +228,42 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     hoursMap[r.officer_name] = (hoursMap[r.officer_name] ?? 0) + Number(r.total_adj_seconds) / 3600;
   }
 
-  // Merge computed hoursInRank into rows
+  // Dynamically compute citations since lastPromotion
+  const citationResult = await db.execute(sql`
+    WITH officer_dates AS (
+      SELECT
+        o.name,
+        COALESCE(NULLIF(o.last_promotion, ''), NULLIF(q.last_promotion, ''), NULL) AS promo_date
+      FROM officers o
+      LEFT JOIN qualification_chart q ON o.name = q.name
+    )
+    SELECT
+      od.name AS officer_name,
+      COUNT(c.id)::int AS citation_count
+    FROM officer_dates od
+    LEFT JOIN pd_citations c ON c.officer_name = od.name
+      AND (
+        od.promo_date IS NULL
+        OR c.posted_at >= MAKE_DATE(
+          SPLIT_PART(od.promo_date, '/', 3)::int,
+          SPLIT_PART(od.promo_date, '/', 1)::int,
+          SPLIT_PART(od.promo_date, '/', 2)::int
+        )
+      )
+    GROUP BY od.name
+  `);
+  const citationMap = new Map<string, number>();
+  for (const r of citationResult.rows as any[]) {
+    citationMap.set(r.officer_name, Number(r.citation_count));
+  }
+
+  // Merge computed hoursInRank and citationCount into rows
   const enrichedRows = rows.map((r) => ({
     ...r,
     hoursInRank: hoursMap[r.name ?? ""] != null
       ? Number(hoursMap[r.name ?? ""].toFixed(2))
       : r.hoursInRank,
+    citationCount: citationMap.get(r.name ?? "") ?? 0,
   }));
 
   res.json(enrichedRows);
