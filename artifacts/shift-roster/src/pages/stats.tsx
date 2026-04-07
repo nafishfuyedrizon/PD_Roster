@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import {
   useGetRosterStats,
@@ -6,18 +6,8 @@ import {
   useListWeekPeriods,
   getListWeekPeriodsQueryKey,
 } from "@workspace/api-client-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectSeparator,
-  SelectLabel,
-  SelectGroup,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Users, UserMinus, ShieldAlert, Search } from "lucide-react";
+import { Activity, Users, UserMinus, ShieldAlert, Search, ChevronDown, ChevronRight, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   BarChart,
@@ -118,6 +108,33 @@ function buildYearGroups(weekPeriods: string[]): YearGroup[] {
 export default function StatsPage() {
   const [period, setPeriod] = useState<string>("ALL");
   const [topSearch, setTopSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  function toggleMonth(key: string) {
+    setExpandedMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function selectValue(val: string) {
+    setPeriod(val);
+    setDropdownOpen(false);
+  }
 
   const { data: weekPeriods = [] } = useListWeekPeriods({
     query: { queryKey: getListWeekPeriodsQueryKey() },
@@ -168,34 +185,71 @@ export default function StatsPage() {
 
         <div className="bg-card border border-border p-2 rounded-lg flex items-center gap-4">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider ml-2">Period</span>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[200px]" data-testid="select-stats-week">
-              <SelectValue>{selectedLabel}</SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-[400px]">
-              <SelectItem value="ALL">All Time</SelectItem>
+          <div ref={dropdownRef} className="relative" data-testid="select-stats-week">
+            <button
+              onClick={() => setDropdownOpen((v) => !v)}
+              className="flex items-center gap-2 w-[200px] px-3 py-2 text-sm bg-secondary/40 border border-border rounded-md hover:bg-secondary/60 transition-colors text-left"
+            >
+              <span className="flex-1 truncate">{selectedLabel}</span>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+            </button>
 
-              {yearGroups.map((yg) => (
-                <React.Fragment key={yg.year}>
-                  <SelectSeparator />
-                  <SelectGroup>
-                    <SelectLabel className="text-xs text-muted-foreground uppercase tracking-wider px-2">{yg.year}</SelectLabel>
-                    {yg.months.map((mo) => (
-                      <React.Fragment key={mo.value}>
-                        <SelectItem value={mo.value} className="font-medium">{mo.label}</SelectItem>
-                        {mo.weeks.map((wk) => (
-                          <SelectItem key={wk.value} value={wk.value} className="pl-7 text-xs text-muted-foreground">
-                            ↳ {wk.label}
-                          </SelectItem>
-                        ))}
-                      </React.Fragment>
-                    ))}
-                  </SelectGroup>
-                </React.Fragment>
-              ))}
+            {dropdownOpen && (
+              <div className="absolute z-50 mt-1 w-[220px] bg-card border border-border rounded-md shadow-lg overflow-y-auto max-h-[360px] py-1">
+                {/* All Time */}
+                <button
+                  onClick={() => selectValue("ALL")}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/50 transition-colors ${period === "ALL" ? "text-primary font-semibold" : "text-foreground"}`}
+                >
+                  {period === "ALL" && <Check className="w-3.5 h-3.5 shrink-0" />}
+                  <span className={period === "ALL" ? "" : "pl-5"}>All Time</span>
+                </button>
 
-            </SelectContent>
-          </Select>
+                {yearGroups.map((yg) => (
+                  <React.Fragment key={yg.year}>
+                    <div className="border-t border-border my-1" />
+                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{yg.year}</div>
+
+                    {yg.months.map((mo) => {
+                      const isExpanded = expandedMonths.has(mo.value);
+                      const isMonthSelected = period === mo.value;
+                      return (
+                        <React.Fragment key={mo.value}>
+                          <div className="flex items-center">
+                            <button
+                              onClick={() => selectValue(mo.value)}
+                              className={`flex-1 flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-secondary/50 transition-colors text-left ${isMonthSelected ? "text-primary font-semibold" : "text-foreground font-medium"}`}
+                            >
+                              {isMonthSelected ? <Check className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 shrink-0" />}
+                              {mo.label}
+                            </button>
+                            <button
+                              onClick={() => toggleMonth(mo.value)}
+                              className="px-2 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                              title={isExpanded ? "Collapse weeks" : "Expand weeks"}
+                            >
+                              {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+
+                          {isExpanded && mo.weeks.map((wk) => (
+                            <button
+                              key={wk.value}
+                              onClick={() => selectValue(wk.value)}
+                              className={`w-full flex items-center gap-2 pl-8 pr-3 py-1 text-xs hover:bg-secondary/50 transition-colors text-left ${period === wk.value ? "text-primary font-semibold" : "text-muted-foreground"}`}
+                            >
+                              {period === wk.value ? <Check className="w-3 h-3 shrink-0" /> : <span className="w-3 shrink-0 opacity-40">↳</span>}
+                              {wk.label}
+                            </button>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
