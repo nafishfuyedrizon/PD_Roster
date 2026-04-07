@@ -260,13 +260,8 @@ export default function DashboardPage() {
               FiveM Server
             </span>
             {fivemData?.online && (
-              <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full shrink-0">
-                {fivemData.players.filter(p => p.officer).length} PD online
-              </span>
-            )}
-            {fivemData?.online && (
               <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                / {fivemData.players.length} total
+                {fivemData.players.length} online
               </span>
             )}
             {!fivemData?.online && fivemData?.configured && (
