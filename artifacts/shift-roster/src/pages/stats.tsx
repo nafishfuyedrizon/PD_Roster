@@ -51,11 +51,29 @@ function getEndMonth(wp: string): number {
   return parseInt(wp.slice(6, 8), 10);
 }
 
+const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function formatWeekLabel(wp: string): string {
+  // wp format: "MM/DD-MM/DD"
+  const [start, end] = wp.split("-");
+  const [startMm, startDd] = start.split("/").map(Number);
+  const [endMm, endDd] = end.split("/").map(Number);
+  const startLabel = `${SHORT_MONTHS[startMm - 1]} ${startDd}`;
+  const endLabel = startMm === endMm ? `${endDd}` : `${SHORT_MONTHS[endMm - 1]} ${endDd}`;
+  return `${startLabel} – ${endLabel}`;
+}
+
+interface WeekOption {
+  value: string;
+  label: string;
+}
+
 interface MonthOption {
   value: string;
   label: string;
   mm: string;
   year: string;
+  weeks: WeekOption[];
 }
 
 interface YearGroup {
@@ -68,6 +86,7 @@ function buildYearGroups(weekPeriods: string[]): YearGroup[] {
   let scanYear = now.getFullYear();
   let prevMm = now.getMonth() + 1;
   const groupMap = new Map<string, MonthOption[]>();
+  const monthByKey = new Map<string, MonthOption>();
   const yearOrder: string[] = [];
   const seenMonth = new Set<string>();
 
@@ -80,13 +99,17 @@ function buildYearGroups(weekPeriods: string[]): YearGroup[] {
     if (!seenMonth.has(key)) {
       seenMonth.add(key);
       if (!groupMap.has(yr)) { groupMap.set(yr, []); yearOrder.push(yr); }
-      groupMap.get(yr)!.push({
+      const mo: MonthOption = {
         value: `month:${yr}-${String(mm).padStart(2, "0")}`,
         label: `${MONTH_NAMES[mm - 1]} ${yr}`,
         mm: String(mm).padStart(2, "0"),
         year: yr,
-      });
+        weeks: [],
+      };
+      groupMap.get(yr)!.push(mo);
+      monthByKey.set(key, mo);
     }
+    monthByKey.get(key)!.weeks.push({ value: wp, label: formatWeekLabel(wp) });
   }
   return yearOrder.map((yr) => ({ year: yr, months: groupMap.get(yr)! }));
 }
@@ -125,7 +148,8 @@ export default function StatsPage() {
       }
       return period.slice(6);
     }
-    return period;
+    // Individual week
+    return formatWeekLabel(period);
   }, [period, yearGroups]);
 
   return (
@@ -147,7 +171,7 @@ export default function StatsPage() {
             <SelectTrigger className="w-[200px]" data-testid="select-stats-week">
               <SelectValue>{selectedLabel}</SelectValue>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-[400px]">
               <SelectItem value="ALL">All Time</SelectItem>
 
               {yearGroups.map((yg) => (
@@ -156,7 +180,14 @@ export default function StatsPage() {
                   <SelectGroup>
                     <SelectLabel className="text-xs text-muted-foreground uppercase tracking-wider px-2">{yg.year}</SelectLabel>
                     {yg.months.map((mo) => (
-                      <SelectItem key={mo.value} value={mo.value}>{mo.label}</SelectItem>
+                      <React.Fragment key={mo.value}>
+                        <SelectItem value={mo.value} className="font-medium">{mo.label}</SelectItem>
+                        {mo.weeks.map((wk) => (
+                          <SelectItem key={wk.value} value={wk.value} className="pl-7 text-xs text-muted-foreground">
+                            ↳ {wk.label}
+                          </SelectItem>
+                        ))}
+                      </React.Fragment>
                     ))}
                   </SelectGroup>
                 </React.Fragment>
