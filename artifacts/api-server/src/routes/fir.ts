@@ -130,7 +130,7 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
 });
 
 // ── FIR breakdown for Qual Chart drill-down ───────────────────────────────────
-// GET /api/fir/officer-breakdown?name=...  — FIRs accepted_by the officer
+// GET /api/fir/officer-breakdown?name=...  — accepted FIRs filed against the officer
 router.get("/fir/officer-breakdown", async (req, res): Promise<void> => {
   const name = (req.query.name as string | undefined)?.trim();
   if (!name) { res.status(400).json({ error: "name required" }); return; }
@@ -149,7 +149,7 @@ router.get("/fir/officer-breakdown", async (req, res): Promise<void> => {
       postedAt: pdFirTable.postedAt,
     })
     .from(pdFirTable)
-    .where(sql`${pdFirTable.acceptedBy} ILIKE ${name} AND ${pdFirTable.status} = 'accepted'`)
+    .where(sql`${pdFirTable.officerName} ILIKE ${name} AND ${pdFirTable.status} = 'accepted'`)
     .orderBy(desc(pdFirTable.acceptedAt));
   res.json(rows);
 });

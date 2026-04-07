@@ -905,7 +905,7 @@ function FirDetailPopup({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div>
-            <p className="text-xs font-mono uppercase text-muted-foreground tracking-wider">FIRs Accepted</p>
+            <p className="text-xs font-mono uppercase text-muted-foreground tracking-wider">FIRs Filed Against</p>
             <p className="text-base font-semibold text-foreground">{officerName}</p>
           </div>
           <button

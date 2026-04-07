@@ -273,7 +273,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     citationMap.set(r.officer_name, Number(r.citation_count));
   }
 
-  // Count FIRs accepted by each officer SINCE their promotion date (or joining date if no promo)
+  // Count FIRs filed AGAINST each officer (officer_name field) SINCE their promotion date
   const acceptedFirResult = await db.execute(sql`
     WITH officer_dates AS (
       SELECT
@@ -283,13 +283,13 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       LEFT JOIN qualification_chart q ON o.name = q.name
     )
     SELECT
-      f.accepted_by AS officer_name,
+      f.officer_name,
       COUNT(*)::int AS accepted_count
     FROM pd_fir f
-    JOIN officer_dates od ON f.accepted_by = od.name
+    JOIN officer_dates od ON f.officer_name = od.name
     WHERE f.status = 'accepted'
-      AND f.accepted_by IS NOT NULL
-      AND f.accepted_by <> ''
+      AND f.officer_name IS NOT NULL
+      AND f.officer_name <> ''
       AND (
         od.since_date IS NULL
         OR f.accepted_at >= MAKE_DATE(
@@ -298,7 +298,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
           SPLIT_PART(od.since_date, '/', 2)::int
         )
       )
-    GROUP BY f.accepted_by
+    GROUP BY f.officer_name
   `);
   const acceptedFirMap = new Map<string, number>();
   for (const r of acceptedFirResult.rows as any[]) {
