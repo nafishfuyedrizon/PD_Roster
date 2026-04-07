@@ -336,30 +336,28 @@ function CadetRow({ cadet, onToggle, onDelete }: {
                     </div>
                   </div>
                 </div>
-                {/* Obs Hours — auto-check from duty log */}
+                {/* Obs Hours — bot only, counts only in Phase 1 */}
                 <div className="flex flex-col gap-1 min-w-0">
                   <div className="text-[10px] text-muted-foreground font-semibold text-center">Obs Hours</div>
                   <div className="flex gap-1 justify-center flex-wrap">
                     {(["obsH2","obsH4","obsH6","obsH8","obsH10","obsH12","obsH14"] as const).map((f, idx) => {
-                      const isAutoChecked = idx < (cadet.autoObsCount ?? 0);
-                      const isManual = cadet[f] as boolean;
+                      const isPhase1 = cadet.currentPhase === "Phase 1";
+                      const isChecked = isPhase1
+                        ? idx < (cadet.autoObsCount ?? 0)
+                        : false;
                       return (
                         <div key={f} className="flex flex-col items-center gap-0.5">
                           <span className="text-[9px] text-muted-foreground">{FIELD_LABELS[f]}</span>
-                          <button
-                            onClick={locked ? undefined : () => onToggle(f, !cadet[f])}
-                            disabled={locked}
-                            title={isAutoChecked ? `⚡ Auto-verified: ${cadet.autoObsCount} duty sessions ≥2h in PD logs` : isManual ? "Manually checked" : undefined}
-                            className={`flex items-center justify-center w-full h-full py-1 ${locked ? "pointer-events-none select-none" : "cursor-pointer"}`}
+                          <div
+                            className="flex items-center justify-center w-full h-full py-1 pointer-events-none select-none"
+                            title={isPhase1 ? (isChecked ? `⚡ Auto-verified by bot: ${cadet.autoObsCount} duty sessions ≥2h` : "Not yet reached") : "Only counted in Phase 1"}
                           >
-                            {isAutoChecked ? (
-                              <CheckCircle2 className={`w-4 h-4 ${locked ? "text-blue-400/60" : "text-blue-400 hover:text-blue-300"}`} />
-                            ) : isManual ? (
-                              <CheckCircle2 className={`w-4 h-4 ${locked ? "text-green-500/60" : "text-green-400 hover:text-green-300"}`} />
+                            {isChecked ? (
+                              <CheckCircle2 className="w-4 h-4 text-blue-400/70" />
                             ) : (
-                              <Circle className={`w-4 h-4 ${locked ? "text-gray-700/50" : "text-gray-600 hover:text-gray-400"}`} />
+                              <Circle className="w-4 h-4 text-gray-700/50" />
                             )}
-                          </button>
+                          </div>
                         </div>
                       );
                     })}
