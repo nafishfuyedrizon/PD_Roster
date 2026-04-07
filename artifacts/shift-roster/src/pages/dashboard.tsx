@@ -118,6 +118,21 @@ function titleCase(s: string) {
   return s.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
 }
 
+const RANK_ORDER: Record<string, number> = {
+  "CHIEF": 1, "ASSISTANT CHIEF": 2, "SHERIFF": 2, "COLONEL": 2,
+  "SENIOR DEPUTY CHIEF": 3, "UNDERSHERIFF": 3, "ASSISTANT COLONEL": 3,
+  "DEPUTY CHIEF": 4, "ASSISTANT SHERIFF": 4, "DEPUTY COLONEL": 4,
+  "CAPTAIN": 5, "LIEUTENANT": 6, "SERGEANT FIRST CLASS": 7, "SERGEANT": 8,
+  "CORPORAL": 9, "SENIOR TROOPER": 10, "SENIOR DEPUTY": 10, "SENIOR STATE TROOPER": 10,
+  "TROOPER FIRST CLASS": 11, "DEPUTY FIRST CLASS": 11, "STATE TROOPER FIRST CLASS": 11,
+  "TROOPER": 12, "DEPUTY": 12, "STATE TROOPER": 12,
+  "PROBATIONARY OFFICER": 13, "CADET": 14, "TRAINEE": 15,
+};
+
+function rankPriority(rank: string | null | undefined): number {
+  return RANK_ORDER[(rank ?? "").toUpperCase()] ?? 99;
+}
+
 export default function DashboardPage() {
   const [weekView, setWeekView] = useState<"current" | "previous">("current");
   const [threshold, setThreshold] = useState(5);
@@ -320,7 +335,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {fivemData.players.filter(p => p.officer).map((p) => (
+                  {[...fivemData.players.filter(p => p.officer)].sort((a, b) => rankPriority(a.officer!.rank) - rankPriority(b.officer!.rank)).map((p) => (
                     <tr key={p.serverId} className="hover:bg-secondary/20">
                       <td className="px-3 py-2">
                         <span className="text-muted-foreground">{p.fivemName}</span>
