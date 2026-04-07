@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, Plus, Trash2, ChevronDown, ChevronUp, Pencil, CheckCircle2, Circle } from "lucide-react";
+import { GraduationCap, Plus, Trash2, ChevronDown, ChevronUp, Pencil, CheckCircle2, Circle, Lock, Unlock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const TOTAL = 43;
@@ -127,13 +127,16 @@ function progressColor(pct: number) {
 }
 
 function CheckboxCell({
-  value, onClick,
-}: { value: boolean; onClick: () => void }) {
+  value, onClick, locked,
+}: { value: boolean; onClick: () => void; locked?: boolean }) {
   return (
-    <button onClick={onClick} className="flex items-center justify-center w-full h-full py-1">
+    <button
+      onClick={onClick}
+      className={`flex items-center justify-center w-full h-full py-1 ${locked ? "cursor-default" : "cursor-pointer"}`}
+    >
       {value
-        ? <CheckCircle2 className="w-4 h-4 text-green-400" />
-        : <Circle className="w-4 h-4 text-gray-600 hover:text-gray-400" />}
+        ? <CheckCircle2 className={`w-4 h-4 ${locked ? "text-green-400" : "text-green-400 hover:text-green-300"}`} />
+        : <Circle className={`w-4 h-4 ${locked ? "text-gray-700" : "text-gray-600 hover:text-gray-400"}`} />}
     </button>
   );
 }
@@ -235,6 +238,8 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
   onEdit: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [locked, setLocked] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const pct = cadet.progressPct;
   const isSoloReady = pct >= 80;
@@ -248,7 +253,8 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
             <span className="text-[9px] text-muted-foreground">{FIELD_LABELS[f as string] ?? f}</span>
             <CheckboxCell
               value={cadet[f] as boolean}
-              onClick={() => onToggle(f as string, !(cadet[f]))}
+              locked={locked}
+              onClick={locked ? () => {} : () => onToggle(f as string, !(cadet[f]))}
             />
           </div>
         ))}
@@ -334,9 +340,16 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}>
             <Pencil className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={onDelete}>
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+          {confirmDelete ? (
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive hover:text-destructive" onClick={onDelete}>Yes</Button>
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setConfirmDelete(false)}>No</Button>
+            </div>
+          ) : (
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExpanded((v) => !v)}>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
@@ -346,6 +359,24 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
       {/* Expanded checkboxes */}
       {expanded && (
         <div className="px-3 py-3 bg-secondary/10 border-t border-border space-y-3">
+          {/* Edit lock toggle */}
+          <div className="flex items-center justify-end gap-2">
+            {locked ? (
+              <button
+                onClick={() => setLocked(false)}
+                className="flex items-center gap-1 text-[11px] text-yellow-400 hover:text-yellow-300 border border-yellow-500/30 rounded px-2 py-0.5 transition-colors"
+              >
+                <Lock className="w-3 h-3" /> Locked — click to edit
+              </button>
+            ) : (
+              <button
+                onClick={() => setLocked(true)}
+                className="flex items-center gap-1 text-[11px] text-green-400 hover:text-green-300 border border-green-500/30 rounded px-2 py-0.5 transition-colors"
+              >
+                <Unlock className="w-3 h-3" /> Editing — click to lock
+              </button>
+            )}
+          </div>
           {/* Row 1: Onboarding, Phase 1, Classroom */}
           <div className="flex gap-4 flex-wrap">
             <div className="border border-border rounded-md px-3 py-2 bg-card/50">
