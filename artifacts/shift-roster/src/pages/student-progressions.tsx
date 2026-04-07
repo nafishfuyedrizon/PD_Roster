@@ -61,7 +61,10 @@ type Cadet = {
   // Phase 2 10-11
   t11Pri: boolean; t11Sec: boolean; t11Ter: boolean; t11Par: boolean;
   // Phase 2 PIT & 911
-  pit: boolean; calls911: boolean;
+  pit: boolean; pitSec: boolean; pitTer: boolean; pitPar: boolean;
+  calls911: boolean;
+  // Phase 2 extra
+  drvSolo: boolean; t11Solo: boolean;
 };
 
 type CheckboxGroup = { label: string; fields: (keyof Cadet)[] };
@@ -83,9 +86,9 @@ const PHASE2_GROUPS: CheckboxGroup[] = [
   { label: "10-90 Incident", fields: ["incPri", "incSec", "incTer", "incPar"] },
   { label: "10-90 Evidence", fields: ["eviPri", "eviSec", "eviTer", "eviPar"] },
   { label: "Suspect Proc.", fields: ["susPri", "susSec", "susTer", "susPar"] },
-  { label: "10-80 Drive", fields: ["drvPri", "drvSec", "drvTer", "drvPar"] },
-  { label: "10-11", fields: ["t11Pri", "t11Sec", "t11Ter", "t11Par"] },
-  { label: "PIT", fields: ["pit"] },
+  { label: "10-80 Drive", fields: ["drvPri", "drvSec", "drvTer", "drvPar", "drvSolo"] },
+  { label: "10-11", fields: ["t11Pri", "t11Sec", "t11Ter", "t11Par", "t11Solo"] },
+  { label: "PIT", fields: ["pit", "pitSec", "pitTer", "pitPar"] },
   { label: "911 Calls", fields: ["calls911"] },
 ];
 
@@ -98,9 +101,10 @@ const FIELD_LABELS: Record<string, string> = {
   incPri: "Pri.", incSec: "Sec.", incTer: "Ter.", incPar: "Par.",
   eviPri: "Pri.", eviSec: "Sec.", eviTer: "Ter.", eviPar: "Par.",
   susPri: "Pri.", susSec: "Sec.", susTer: "Ter.", susPar: "Par.",
-  drvPri: "Pri.", drvSec: "Sec.", drvTer: "Ter.", drvPar: "Par.",
-  t11Pri: "Pri.", t11Sec: "Sec.", t11Ter: "Ter.", t11Par: "Par.",
-  pit: "PIT", calls911: "911 Calls",
+  drvPri: "Pri.", drvSec: "Sec.", drvTer: "Ter.", drvPar: "Par.", drvSolo: "Solo",
+  t11Pri: "Pri.", t11Sec: "Sec.", t11Ter: "Ter.", t11Par: "Par.", t11Solo: "Solo",
+  pit: "Pri.", pitSec: "Sec.", pitTer: "Ter.", pitPar: "Par.",
+  calls911: "911 Calls",
 };
 
 const STATUS_COLORS: Record<string, string> = {
