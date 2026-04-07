@@ -27,7 +27,7 @@ interface StaffRole {
 }
 
 const ROLES = [
-  { key: "isSuperAdmin",  label: "Super Admin",   icon: <ShieldCheck className="w-3.5 h-3.5 text-red-400" />,    color: "text-red-400" },
+  { key: "isSuperAdmin",  label: "Full Power",   icon: <ShieldCheck className="w-3.5 h-3.5 text-red-400" />,    color: "text-red-400" },
   { key: "isSeniorStaff", label: "Senior Staff",   icon: <Shield className="w-3.5 h-3.5 text-orange-400" />,   color: "text-orange-400" },
   { key: "isStaff",       label: "Staff",          icon: <Star className="w-3.5 h-3.5 text-blue-400" />,        color: "text-blue-400" },
   { key: "isTrusted",     label: "Trusted",        icon: <CheckCircle className="w-3.5 h-3.5 text-green-400" />, color: "text-green-400" },
