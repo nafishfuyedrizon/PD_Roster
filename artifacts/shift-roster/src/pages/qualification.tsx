@@ -350,11 +350,21 @@ function EditModal({
           {/* Row: Name + Discord UID */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <FieldLabel>Full Name *</FieldLabel>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Full Name *</span>
+                {!isNew && entry?.rosterLinked && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+                )}
+              </div>
               <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Ricardo Lance" className="h-9 text-sm font-mono bg-secondary/30" />
             </div>
             <div>
-              <FieldLabel>Discord UID</FieldLabel>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Discord UID</span>
+                {!isNew && entry?.rosterLinked && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+                )}
+              </div>
               <Input value={form.discordUid ?? ""} onChange={(e) => set("discordUid", e.target.value)} placeholder="e.g. 442421398913155092" className="h-9 text-sm font-mono bg-secondary/30" />
             </div>
           </div>
