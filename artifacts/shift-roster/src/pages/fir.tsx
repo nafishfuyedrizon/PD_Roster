@@ -105,7 +105,6 @@ function OfficerPicker({
 }
 
 function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; onDone: () => void }) {
-  const [acceptedBy, setAcceptedBy] = useState<string | null>(fir.acceptedBy ?? null);
   const [officerName, setOfficerName] = useState<string | null>(fir.officerName ?? null);
   const [saving, setSaving] = useState(false);
 
@@ -118,6 +117,14 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
     },
     staleTime: 60000,
   });
+
+  const { data: profileData } = useQuery<{ officer: { name: string } | null }>({
+    queryKey: ["profile"],
+    queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 60_000,
+  });
+  const myName = profileData?.officer?.name ?? null;
+  const acceptedBy = fir.acceptedBy ?? myName;
 
   async function confirm() {
     if (!acceptedBy || !officerName) return;
@@ -149,30 +156,30 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <OfficerPicker
-            label="Accepted By"
-            color="green"
-            placeholder="Search accepting officer..."
-            value={acceptedBy}
-            onChange={setAcceptedBy}
-            officers={officers}
-          />
-          <OfficerPicker
-            label="Officer (FIR against)"
-            color="teal"
-            placeholder="Search officer name..."
-            value={officerName}
-            onChange={setOfficerName}
-            officers={officers}
-          />
+        <div className="space-y-1.5">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-green-400">Accepted By</div>
+          <div className="flex items-center gap-2 h-8 px-3 rounded-md border border-green-600/30 bg-green-600/10 text-green-200 text-xs font-semibold">
+            {acceptedBy
+              ? <><span className="text-green-400">✓</span> {acceptedBy}</>
+              : <span className="text-muted-foreground italic font-normal">Loading your profile…</span>
+            }
+          </div>
         </div>
 
-        {(acceptedBy || officerName) && (
+        <OfficerPicker
+          label="Officer (FIR against)"
+          color="teal"
+          placeholder="Search officer name..."
+          value={officerName}
+          onChange={setOfficerName}
+          officers={officers}
+        />
+
+        {officerName && (
           <div className="text-[11px] text-muted-foreground bg-secondary/20 rounded-md px-3 py-2 border border-border/30 font-mono">
             ✓ Accepted by <span className="text-green-400 font-semibold">{acceptedBy ?? "—"}</span>
             {" · "}
-            🛡 Officer: <span className="text-teal-400 font-semibold">{officerName ?? "—"}</span>
+            🛡 Officer: <span className="text-teal-400 font-semibold">{officerName}</span>
           </div>
         )}
 
