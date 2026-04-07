@@ -67,6 +67,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
+          {/* MDT External Link */}
+          <a
+            href="https://mdt.legacyrpbd.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-md transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground group"
+          >
+            <span className="flex items-center gap-2">
+              <ExternalLink className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span className="text-base font-black tracking-widest text-cyan-400 font-mono uppercase">MDT</span>
+            </span>
+            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity text-cyan-400" />
+          </a>
+
           {/* PD Duty Hour */}
           <Link href="/pd-duty-hour" data-testid="nav-pd-duty-hour">
             <div
@@ -209,20 +223,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               FTO Documents
             </div>
           </Link>
-
-          {/* MDT External Link */}
-          <a
-            href="https://mdt.legacyrpbd.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-md transition-colors text-muted-foreground hover:bg-secondary/50 hover:text-foreground group"
-          >
-            <span className="flex items-center gap-2">
-              <ExternalLink className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span className="text-base font-black tracking-widest text-cyan-400 font-mono uppercase">MDT</span>
-            </span>
-            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity text-cyan-400" />
-          </a>
 
           {/* PD Citations */}
           <Link href="/citations" data-testid="nav-citations">
