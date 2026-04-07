@@ -403,20 +403,14 @@ router.get("/citations/officer-breakdown", async (req, res) => {
   const since = (req.query.since as string | undefined)?.trim();
   if (!name) { res.status(400).json({ error: "name required" }); return; }
 
-  let sinceDate: Date | null = null;
-  if (since) {
-    const parts = since.split("/");
-    if (parts.length === 3) {
-      const [mm, dd, yyyy] = parts.map(Number);
-      if (!isNaN(mm) && !isNaN(dd) && !isNaN(yyyy)) {
-        sinceDate = new Date(yyyy, mm - 1, dd);
-      }
-    }
-  }
+  // Look up citizen_id from officers table so we can match by [cid] even if name spelling differs
+  const officerRow = await db.execute(
+    sql`SELECT citizen_id FROM officers WHERE name ILIKE ${name} LIMIT 1`
+  );
+  const citizenId: string | null = (officerRow.rows[0] as any)?.citizen_id ?? null;
 
-  // Strip trailing " [number]" callsign from stored officer_name before comparing
-  // NOTE: We show ALL citations for the officer (no since-date filter) so the popup
-  // is always useful even when the qual-chart count includes a manual adjustment.
+  // Match by name (stripped of [cid]) OR by citizen_id embedded in officer_name as [cid]
+  // This handles cases where the officer's name is spelled differently in pd_citations
   const rows = await db
     .select({
       id: pdCitationsTable.id,
@@ -432,7 +426,17 @@ router.get("/citations/officer-breakdown", async (req, res) => {
       postedAt: pdCitationsTable.postedAt,
     })
     .from(pdCitationsTable)
-    .where(sql`REGEXP_REPLACE(${pdCitationsTable.officerName}, '\\s*\\[\\d+\\]$', '') ILIKE ${name}`)
+    .where(
+      citizenId
+        ? sql`(
+            REGEXP_REPLACE(${pdCitationsTable.officerName}, '\\s*\\[\\d+\\]$', '') ILIKE ${name}
+            OR (
+              ${pdCitationsTable.officerName} ~ '\\[\\d+\\]'
+              AND REGEXP_REPLACE(${pdCitationsTable.officerName}, '^.*\\[(\\d+)\\].*$', '\\1') = ${citizenId}
+            )
+          )`
+        : sql`REGEXP_REPLACE(${pdCitationsTable.officerName}, '\\s*\\[\\d+\\]$', '') ILIKE ${name}`
+    )
     .orderBy(desc(pdCitationsTable.postedAt));
 
   res.json(rows);
