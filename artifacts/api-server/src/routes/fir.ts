@@ -60,20 +60,29 @@ router.get("/fir", async (req, res): Promise<void> => {
   const firs = await query.limit(limit);
 
   const discordIds = new Set<string>();
+  const displayNames = new Set<string>();
   for (const fir of firs) {
     for (const reply of (fir.threadReplies ?? []) as FirThreadMessage[]) {
       if (reply.authorId) discordIds.add(reply.authorId);
+      else if (reply.author) displayNames.add(reply.author);
     }
   }
 
-  const nameMap = new Map<string, string>();
-  if (discordIds.size > 0) {
-    const officers = await db
-      .select({ discordId: officersTable.discordId, name: officersTable.name })
-      .from(officersTable)
-      .where(inArray(officersTable.discordId, [...discordIds]));
-    for (const o of officers) {
-      if (o.discordId && o.name) nameMap.set(o.discordId, o.name);
+  const idToName = new Map<string, string>();
+  const displayToName = new Map<string, string>();
+
+  const allOfficers = await db
+    .select({ discordId: officersTable.discordId, name: officersTable.name })
+    .from(officersTable);
+
+  for (const o of allOfficers) {
+    if (o.discordId && o.name) {
+      if (discordIds.has(o.discordId)) idToName.set(o.discordId, o.name);
+      for (const dn of displayNames) {
+        if (o.name.toLowerCase().includes(dn.toLowerCase()) || dn.toLowerCase().includes(o.name.split(" ")[0].toLowerCase())) {
+          displayToName.set(dn, o.name);
+        }
+      }
     }
   }
 
@@ -82,7 +91,9 @@ router.get("/fir", async (req, res): Promise<void> => {
     threadReplies: fir.threadReplies
       ? (fir.threadReplies as FirThreadMessage[]).map(reply => ({
           ...reply,
-          author: (reply.authorId && nameMap.get(reply.authorId)) || reply.author,
+          author: (reply.authorId && idToName.get(reply.authorId))
+            || (reply.author && displayToName.get(reply.author))
+            || reply.author,
         }))
       : null,
   }));
