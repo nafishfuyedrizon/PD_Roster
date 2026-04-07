@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutGrid, LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Settings, Hash, CalendarDays, Award, LogOut, User, ScrollText, Users, FileText, FileSearch } from "lucide-react";
+import { LayoutGrid, LayoutDashboard, UsersRound, Shield, ChevronDown, ChevronRight, Clock, Settings, Hash, CalendarDays, Award, LogOut, User, ScrollText, Users, FileText, FileSearch, GraduationCap } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -186,6 +186,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <FileSearch className="w-4 h-4 text-amber-400" />
               PD FIR
+            </div>
+          </Link>
+
+          {/* Student Progressions */}
+          <Link href="/student-progressions" data-testid="nav-student-progressions">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/student-progressions"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              }`}
+            >
+              <GraduationCap className="w-4 h-4 text-green-400" />
+              Student Progressions
             </div>
           </Link>
 

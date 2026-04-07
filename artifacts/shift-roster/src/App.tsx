@@ -22,6 +22,7 @@ import QualificationPage from "@/pages/qualification";
 import ProfilePage from "@/pages/profile";
 import CitationsPage from "@/pages/citations";
 import FirPage from "@/pages/fir";
+import StudentProgressionsPage from "@/pages/student-progressions";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/citations">{() => <ProtectedRoute component={CitationsPage} />}</Route>
       <Route path="/fir">{() => <ProtectedRoute component={FirPage} />}</Route>
       <Route path="/profile">{() => <ProtectedRoute component={ProfilePage} />}</Route>
+      <Route path="/student-progressions">{() => <ProtectedRoute component={StudentProgressionsPage} />}</Route>
 
       <Route component={NotFound} />
     </Switch>

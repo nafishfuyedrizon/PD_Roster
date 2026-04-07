@@ -11,6 +11,7 @@ import authRouter from "./auth";
 import profileRouter from "./profile";
 import citationsRouter, { startSheetAutoSync } from "./citations";
 import firRouter from "./fir";
+import studentProgressionsRouter from "./student-progressions";
 
 // Start Google Sheet auto-sync on boot
 startSheetAutoSync();
@@ -29,5 +30,6 @@ router.use(settingsRouter);
 router.use(qualificationRouter);
 router.use(citationsRouter);
 router.use(firRouter);
+router.use(studentProgressionsRouter);
 
 export default router;
