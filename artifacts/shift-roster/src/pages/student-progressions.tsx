@@ -39,6 +39,7 @@ type Cadet = {
   eligibleTrooperDate?: string;
   clearedTrooper: boolean;
   progressPct: number;
+  autoObsCount?: number;
   // Onboarding
   discordInterview: boolean;
   inCityInterview: boolean;
@@ -424,9 +425,54 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
               </div>
             </div>
             <div className="border border-border rounded-md px-3 py-2 bg-card/50">
-              <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2">Phase 1</div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Phase 1</div>
+                {(cadet.autoObsCount ?? 0) > 0 && (
+                  <span className="text-[9px] text-blue-300/70 font-mono bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">
+                    ⚡ {cadet.autoObsCount}/7 duty sessions
+                  </span>
+                )}
+              </div>
               <div className="flex gap-4">
-                {renderGroup(PHASE1)}
+                {/* Basic Training — manual */}
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="text-[10px] text-muted-foreground font-semibold text-center">Basic Training</div>
+                  <div className="flex gap-1 justify-center">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-[9px] text-muted-foreground"> </span>
+                      <CheckboxCell value={cadet.basicTraining} locked={locked} onClick={locked ? () => {} : () => onToggle("basicTraining", !cadet.basicTraining)} />
+                    </div>
+                  </div>
+                </div>
+                {/* Obs Hours — auto-check from duty log */}
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="text-[10px] text-muted-foreground font-semibold text-center">Obs Hours</div>
+                  <div className="flex gap-1 justify-center flex-wrap">
+                    {(["obsH2","obsH4","obsH6","obsH8","obsH10","obsH12","obsH14"] as const).map((f, idx) => {
+                      const isAutoChecked = idx < (cadet.autoObsCount ?? 0);
+                      const isManual = cadet[f] as boolean;
+                      return (
+                        <div key={f} className="flex flex-col items-center gap-0.5">
+                          <span className="text-[9px] text-muted-foreground">{FIELD_LABELS[f]}</span>
+                          <button
+                            onClick={locked ? undefined : () => onToggle(f, !cadet[f])}
+                            disabled={locked}
+                            title={isAutoChecked ? `Auto-checked: ${cadet.autoObsCount} duty sessions ≥2h logged` : undefined}
+                            className={`flex items-center justify-center w-full h-full py-1 ${locked ? "pointer-events-none select-none" : "cursor-pointer"}`}
+                          >
+                            {isManual ? (
+                              <CheckCircle2 className={`w-4 h-4 ${locked ? "text-green-500/60" : "text-green-400 hover:text-green-300"}`} />
+                            ) : isAutoChecked ? (
+                              <CheckCircle2 className={`w-4 h-4 ${locked ? "text-blue-400/60" : "text-blue-400 hover:text-blue-300"}`} />
+                            ) : (
+                              <Circle className={`w-4 h-4 ${locked ? "text-gray-700/50" : "text-gray-600 hover:text-gray-400"}`} />
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="border border-border rounded-md px-3 py-2 bg-card/50">
