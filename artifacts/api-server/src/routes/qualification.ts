@@ -233,6 +233,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     WITH officer_dates AS (
       SELECT
         o.name,
+        o.citizen_id,
         COALESCE(
           NULLIF(o.last_promotion, ''),
           NULLIF(q.last_promotion, ''),
@@ -247,6 +248,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     FROM officer_dates od
     LEFT JOIN pd_citations c
       ON TRIM(REGEXP_REPLACE(c.officer_name, '\s*\[\d+\]\s*$', '')) = od.name
+      AND (od.citizen_id IS NULL OR REGEXP_REPLACE(c.officer_name, '^.*\[(\d+)\].*$', '\1') = od.citizen_id)
       AND (
         od.since_date IS NULL
         OR c.posted_at >= MAKE_DATE(
