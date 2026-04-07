@@ -232,15 +232,8 @@ function StatusBadge({ status }: { status: string | null }) {
 }
 
 function InlineStatusSelect({ entryId, currentStatus }: { entryId: number; currentStatus: string | null }) {
-  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const qc = useQueryClient();
-  const selectRef = useRef<HTMLSelectElement>(null);
-
-  const handleClick = () => {
-    setOpen(true);
-    setTimeout(() => selectRef.current?.focus(), 0);
-  };
 
   const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value || null;
@@ -254,35 +247,23 @@ function InlineStatusSelect({ entryId, currentStatus }: { entryId: number; curre
       await qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
     } finally {
       setSaving(false);
-      setOpen(false);
     }
   };
 
-  if (open) {
-    return (
+  return (
+    <div className="relative inline-flex items-center justify-center" title="Click to change status">
+      <StatusBadge status={currentStatus} />
       <select
-        ref={selectRef}
-        defaultValue={currentStatus ?? ""}
+        value={currentStatus ?? ""}
         onChange={handleChange}
-        onBlur={() => setOpen(false)}
         disabled={saving}
-        className="text-[11px] font-mono bg-secondary border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
       >
         {STATUS_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
-    );
-  }
-
-  return (
-    <button
-      onClick={handleClick}
-      title="Click to change status"
-      className="cursor-pointer hover:opacity-80 transition-opacity"
-    >
-      <StatusBadge status={currentStatus} />
-    </button>
+    </div>
   );
 }
 
