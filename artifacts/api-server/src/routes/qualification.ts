@@ -250,12 +250,12 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       ON (
         (
           od.citizen_id IS NOT NULL
-          AND c.officer_name ~ '\[\d+\]'
-          AND REGEXP_REPLACE(c.officer_name, '^.*\[(\d+)\].*$', '\1') = od.citizen_id
+          AND c.officer_name ~ '\\[\\d+\\]'
+          AND REGEXP_REPLACE(c.officer_name, '^.*\\[(\\d+)\\].*$', '\\1') = od.citizen_id
         )
         OR (
-          NOT (od.citizen_id IS NOT NULL AND c.officer_name ~ '\[\d+\]')
-          AND TRIM(REGEXP_REPLACE(c.officer_name, '\s*\[\d+\]\s*$', '')) = od.name
+          NOT (od.citizen_id IS NOT NULL AND c.officer_name ~ '\\[\\d+\\]')
+          AND TRIM(REGEXP_REPLACE(c.officer_name, '\\s*\\[\\d+\\]\\s*$', '')) = od.name
         )
       )
       AND (
