@@ -306,8 +306,8 @@ export default function DashboardPage() {
                 <WifiOff className="w-8 h-8 text-red-400/30 mx-auto mb-2" />
                 <p className="text-xs text-muted-foreground font-mono">Server offline or unreachable</p>
               </div>
-            ) : fivemData.players.length === 0 ? (
-              <div className="px-4 py-8 text-center text-xs text-muted-foreground font-mono">No players online</div>
+            ) : fivemData.players.filter(p => p.officer).length === 0 ? (
+              <div className="px-4 py-8 text-center text-xs text-muted-foreground font-mono">No PD officers online</div>
             ) : (
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-secondary/40">
@@ -319,34 +319,24 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {fivemData.players.map((p) => (
-                    <tr key={p.serverId} className={p.officer ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-secondary/20"}>
+                  {fivemData.players.filter(p => p.officer).map((p) => (
+                    <tr key={p.serverId} className="hover:bg-secondary/20">
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-muted-foreground text-[10px]">[{p.serverId}]</span>
-                          <span className={p.officer ? "text-foreground font-medium" : "text-muted-foreground"}>{p.fivemName}</span>
-                        </div>
+                        <span className="text-muted-foreground">{p.fivemName}</span>
                       </td>
                       <td className="px-3 py-2">
-                        {p.officer ? (
-                          <div>
-                            <div className="flex items-center gap-1">
-                              <span className="font-mono text-primary font-bold text-[10px]">{p.officer.callSign}</span>
-                              <span className="text-foreground text-[11px]">{p.officer.name}</span>
-                            </div>
-                            <div className="text-[10px] text-muted-foreground">{p.officer.rank}</div>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground/40 font-mono text-[10px]">—</span>
-                        )}
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-primary font-bold text-[10px]">{p.officer!.callSign}</span>
+                          <span className="text-foreground text-[11px]">{p.officer!.name}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{p.officer!.rank}</div>
                       </td>
                       <td className="px-3 py-2 text-center font-mono text-muted-foreground">{p.ping}ms</td>
                       <td className="px-3 py-2 text-center">
-                        {p.officer ? (
-                          p.onDuty
-                            ? <CheckCircle2 className="w-4 h-4 text-green-400 mx-auto" title="On Duty" />
-                            : <XCircle className="w-4 h-4 text-red-400/70 mx-auto" title="Not on Duty" />
-                        ) : <span className="text-muted-foreground/20">—</span>}
+                        {p.onDuty
+                          ? <CheckCircle2 className="w-4 h-4 text-green-400 mx-auto" title="On Duty" />
+                          : <XCircle className="w-4 h-4 text-red-400/70 mx-auto" title="Not on Duty" />
+                        }
                       </td>
                     </tr>
                   ))}
