@@ -42,6 +42,7 @@ type QualEntry = {
   daysInRank: number | null;
   hoursInRank: number | null;
   citationCount: number;
+  citationAutoCount: number;
   firCount: number;
   lastPromotion: string | null;
   joiningDate: string | null;
@@ -100,6 +101,7 @@ const EMPTY_FORM: FormData = {
   daysInRank: null,
   hoursInRank: null,
   citationCount: 0,
+  citationAutoCount: 0,
   firCount: 0,
   lastPromotion: "",
   strikesMajor: "0/4",
@@ -274,7 +276,8 @@ function EditModal({
           department: entry.department ?? "",
           daysInRank: entry.daysInRank,
           hoursInRank: entry.hoursInRank,
-          citationCount: entry.citationCount,
+          citationCount: entry.citationCount - (entry.citationAutoCount ?? 0),
+          citationAutoCount: entry.citationAutoCount ?? 0,
           firCount: entry.firCount,
           lastPromotion: entry.lastPromotion ?? "",
           strikesMajor: entry.strikesMajor ?? "0/4",
@@ -421,13 +424,19 @@ function EditModal({
               />
             </div>
             <div>
-              <FieldLabel>Citations <span className="text-[10px] text-muted-foreground font-normal">(auto, since promotion)</span></FieldLabel>
-              <Input
-                type="number" min={0}
-                value={form.citationCount}
-                readOnly
-                className="h-9 text-sm font-mono bg-secondary/50 opacity-60 cursor-not-allowed"
-              />
+              <FieldLabel>Citations <span className="text-[10px] text-muted-foreground font-normal">(manual adj. + auto)</span></FieldLabel>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={form.citationCount}
+                  onChange={(e) => set("citationCount", Number(e.target.value))}
+                  className="h-9 text-sm font-mono bg-secondary/30 w-24"
+                  title="Manual adjustment added to auto count"
+                />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  + auto <span className="text-blue-400 font-mono">{form.citationAutoCount}</span> = <span className="text-green-400 font-mono">{(form.citationCount ?? 0) + (form.citationAutoCount ?? 0)}</span>
+                </span>
+              </div>
             </div>
             <div>
               <FieldLabel>FIR Count</FieldLabel>

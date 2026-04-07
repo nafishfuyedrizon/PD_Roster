@@ -274,13 +274,15 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
   }
 
   // Merge computed hoursInRank and citationCount into rows
-  const enrichedRows = rows.map((r) => ({
-    ...r,
-    hoursInRank: hoursMap[r.name ?? ""] != null
-      ? Number(hoursMap[r.name ?? ""].toFixed(2))
-      : r.hoursInRank,
-    citationCount: citationMap.get(r.name ?? "") ?? 0,
-  }));
+  const enrichedRows = rows.map((r) => {
+    const autoCount = citationMap.get(r.name ?? "") ?? 0;
+    const adjustment = r.citationCount ?? 0;
+    return {
+      ...r,
+      citationAutoCount: autoCount,
+      citationCount: autoCount + adjustment,
+    };
+  });
 
   res.json(enrichedRows);
 });
