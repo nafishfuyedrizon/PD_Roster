@@ -535,14 +535,6 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
             </FormItem>
           )} />
 
-          <FormField control={form.control} name="fivemName" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs">FiveM Character Name</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="e.g. John Smith" className="font-mono text-xs" />
-              </FormControl>
-            </FormItem>
-          )} />
         </div>
 
         <div className="flex justify-end gap-2 pt-2 sticky bottom-0 bg-background pb-1">
