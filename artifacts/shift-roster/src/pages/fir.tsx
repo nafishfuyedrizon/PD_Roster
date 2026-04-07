@@ -58,18 +58,18 @@ function FirCard({ fir }: { fir: Fir }) {
   const hasMore = !!(fir.eventDescription || fir.suspectDetails || evidenceLinks.length > 0 || (fir.threadReplies && fir.threadReplies.length > 0));
   const threadCount = fir.threadReplies?.length ?? 0;
 
-  async function goToOfficerProfile() {
-    if (!fir.officerName) return;
+  async function navigateToOfficer(name: string | null | undefined) {
+    if (!name) return;
     try {
       const res = await fetch(`/api/roster/officer-lookup`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: fir.officerName }),
+        body: JSON.stringify({ name }),
       });
       if (!res.ok) return;
       const data = await res.json() as { id: number; name: string | null };
-      setLocation(`/profile?officerId=${data.id}&name=${encodeURIComponent(data.name ?? fir.officerName ?? "")}`);
+      setLocation(`/profile?officerId=${data.id}&name=${encodeURIComponent(data.name ?? name)}`);
     } catch (e) {
       console.error("[fir officer-lookup] error:", e);
     }
@@ -112,7 +112,7 @@ function FirCard({ fir }: { fir: Fir }) {
               <div className="flex items-center gap-1 mt-1.5">
                 <Shield className="w-3 h-3 text-teal-400" />
                 <button
-                  onClick={goToOfficerProfile}
+                  onClick={() => navigateToOfficer(fir.officerName)}
                   className="text-[11px] text-teal-300 hover:text-teal-100 hover:underline transition-colors cursor-pointer"
                 >
                   Officer: {fir.officerName}
@@ -212,7 +212,12 @@ function FirCard({ fir }: { fir: Fir }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-[11px] font-semibold text-blue-300">{reply.author}</span>
+                          <button
+                            onClick={() => navigateToOfficer(reply.author)}
+                            className="text-[11px] font-semibold text-blue-300 hover:text-blue-100 hover:underline transition-colors cursor-pointer"
+                          >
+                            {reply.author}
+                          </button>
                           <span className="text-[10px] text-muted-foreground font-mono">{replyDate} {replyTime}</span>
                         </div>
                         {reply.content && (
