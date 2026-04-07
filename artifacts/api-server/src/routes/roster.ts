@@ -452,7 +452,7 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
       division: officer.department ?? null,
       rank: officer.rank ?? null,
       discordUsername: officer.discordUsername ?? null,
-      discordUid: officer.discordId ?? null,
+      discordUid: officer.discordUid ?? officer.discordId ?? null,
       rockstarLicenseId: officer.rockstarLicenseId ?? null,
       status: officer.status,
       dateOfJoining: officer.dateOfJoining ?? null,

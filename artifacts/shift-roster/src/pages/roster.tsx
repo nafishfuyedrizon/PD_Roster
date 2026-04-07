@@ -32,6 +32,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectSeparator,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -302,10 +305,24 @@ export default function RosterPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All Statuses</SelectItem>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="LOA">LOA</SelectItem>
-              <SelectItem value="Inactive">Inactive</SelectItem>
-              <SelectItem value="Suspended">Suspended</SelectItem>
+              <SelectGroup>
+                <SelectLabel className="text-xs text-muted-foreground">Active</SelectLabel>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Semi-Active">Semi-Active</SelectItem>
+                <SelectItem value="LOA">LOA</SelectItem>
+                <SelectItem value="Inactive">Inactive</SelectItem>
+                <SelectItem value="Suspended">Suspended</SelectItem>
+                <SelectItem value="Vacant">Vacant</SelectItem>
+              </SelectGroup>
+              <SelectSeparator />
+              <SelectGroup>
+                <SelectLabel className="text-xs text-red-400">Exit</SelectLabel>
+                <SelectItem value="DISCHARGED">DISCHARGED</SelectItem>
+                <SelectItem value="FIRED">FIRED</SelectItem>
+                <SelectItem value="REMOVED">REMOVED</SelectItem>
+                <SelectItem value="TERMINATED">TERMINATED</SelectItem>
+                <SelectItem value="RESIGNED">RESIGNED</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>

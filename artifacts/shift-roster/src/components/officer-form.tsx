@@ -20,6 +20,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectSeparator,
+  SelectLabel,
+  SelectGroup,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -388,7 +391,15 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl><SelectTrigger data-testid="select-status"><SelectValue /></SelectTrigger></FormControl>
                 <SelectContent>
-                  {["Active","Semi-Active","Inactive","Suspended","LOA","Vacant","DISCHARGED","FIRED","REMOVED","TERMINATED","RESIGNED"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-muted-foreground">Active Statuses</SelectLabel>
+                    {["Active","Semi-Active","Inactive","Suspended","LOA","Vacant"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectGroup>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel className="text-xs text-red-400">Exit Statuses (Auto → Ex-PD)</SelectLabel>
+                    {["DISCHARGED","FIRED","REMOVED","TERMINATED","RESIGNED"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
               <FormMessage />
