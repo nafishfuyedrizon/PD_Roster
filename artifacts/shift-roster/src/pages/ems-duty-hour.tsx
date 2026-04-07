@@ -136,10 +136,14 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
           body: JSON.stringify(payload),
         });
       } else if (editing) {
+        // Include newKey if the key was changed
+        const body = form.key && form.key !== editing.key
+          ? { ...payload, newKey: form.key }
+          : payload;
         await fetch(`/api/ems/shift-configs/${editing.key}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(body),
         });
       }
       qc.invalidateQueries({ queryKey: ["shift-configs"] });
@@ -199,10 +203,9 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1">
-                <Label className="text-xs">Key (ID) {editing && <span className="text-muted-foreground">— cannot change</span>}</Label>
+                <Label className="text-xs">Key (ID)</Label>
                 <Input
-                  value={adding ? (form.key ?? "") : editing!.key}
-                  disabled={!!editing}
+                  value={form.key ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, key: e.target.value.toUpperCase().replace(/\s+/g, "_") }))}
                   className="font-mono text-sm"
                   placeholder="e.g. MORNING"

@@ -429,9 +429,35 @@ router.post("/ems/shift-configs", async (req, res): Promise<void> => {
 
 router.put("/ems/shift-configs/:key", async (req, res): Promise<void> => {
   const { key } = req.params;
-  const { label, sub, icon, startHour, endHour, sortOrder } = req.body as {
-    label?: string; sub?: string; icon?: string; startHour?: number; endHour?: number; sortOrder?: number;
+  const { newKey, label, sub, icon, startHour, endHour, sortOrder } = req.body as {
+    newKey?: string; label?: string; sub?: string; icon?: string; startHour?: number; endHour?: number; sortOrder?: number;
   };
+
+  // Fetch current row first
+  const existing = await db.select().from(shiftConfigsTable).where(eq(shiftConfigsTable.key, key));
+  if (!existing[0]) { res.status(404).json({ error: "Shift not found" }); return; }
+
+  const base = existing[0];
+  const finalLabel     = label     ?? base.label;
+  const finalSub       = sub       ?? base.sub;
+  const finalIcon      = icon      ?? base.icon;
+  const finalStartHour = startHour ?? base.startHour;
+  const finalEndHour   = endHour   ?? base.endHour;
+  const finalSortOrder = sortOrder ?? base.sortOrder;
+
+  // Key rename: delete old, insert new
+  if (newKey && newKey !== key) {
+    const cleanKey = newKey.toUpperCase().replace(/\s+/g, "_");
+    await db.delete(shiftConfigsTable).where(eq(shiftConfigsTable.key, key));
+    const [row] = await db.insert(shiftConfigsTable).values({
+      key: cleanKey, label: finalLabel, sub: finalSub, icon: finalIcon,
+      startHour: finalStartHour, endHour: finalEndHour, sortOrder: finalSortOrder,
+    }).returning();
+    res.json(row);
+    return;
+  }
+
+  // Normal update (key unchanged)
   const updates: Partial<typeof shiftConfigsTable.$inferInsert> = {};
   if (label     != null) updates.label     = label;
   if (sub       != null) updates.sub       = sub;
@@ -440,7 +466,6 @@ router.put("/ems/shift-configs/:key", async (req, res): Promise<void> => {
   if (endHour   != null) updates.endHour   = endHour;
   if (sortOrder != null) updates.sortOrder = sortOrder;
   const [row] = await db.update(shiftConfigsTable).set(updates).where(eq(shiftConfigsTable.key, key)).returning();
-  if (!row) { res.status(404).json({ error: "Shift not found" }); return; }
   res.json(row);
 });
 
