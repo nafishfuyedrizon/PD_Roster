@@ -215,14 +215,16 @@ export default function AdminStaffRolesPage() {
             Player role management · panel login access
           </span>
         </div>
-        <Button
-          size="sm"
-          onClick={() => setShowAdd((v) => !v)}
-          className="gap-2 text-xs bg-teal-600 hover:bg-teal-500 text-white border-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Add Player
-        </Button>
+        {myLevel >= 3 && (
+          <Button
+            size="sm"
+            onClick={() => setShowAdd((v) => !v)}
+            className="gap-2 text-xs bg-teal-600 hover:bg-teal-500 text-white border-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Player
+          </Button>
+        )}
       </div>
 
       {showAdd && (
