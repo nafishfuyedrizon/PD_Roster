@@ -955,7 +955,7 @@ function FirDetailPopup({
                   </div>
                 </div>
                 {f.eventDescription && (
-                  <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-3">{f.eventDescription}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap">{f.eventDescription}</p>
                 )}
                 {f.suspectDetails && (
                   <p className="text-[11px] text-orange-300">

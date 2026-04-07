@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
 
 export interface FirThreadMessage {
   author: string;
@@ -27,6 +27,7 @@ export const pdFirTable = pgTable("pd_fir", {
   rejectedBy: text("rejected_by"),
   postedAt: timestamp("posted_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  bookmarked: boolean("bookmarked").default(false).notNull(),
 });
 
 export type PdFir = typeof pdFirTable.$inferSelect;

@@ -9,7 +9,7 @@ import {
   FileSearch, Search, Phone, Hash,
   RefreshCw, ChevronDown, ChevronUp, ExternalLink,
   AlertTriangle, Shield, Clock, MessageSquare, ImageIcon,
-  CheckCircle, XCircle, X, UserSearch,
+  CheckCircle, XCircle, X, UserSearch, Bookmark, BookmarkCheck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -38,6 +38,7 @@ interface Fir {
   rejectedBy: string | null;
   postedAt: string;
   createdAt: string;
+  bookmarked: boolean;
 }
 
 interface FirStats {
@@ -206,6 +207,7 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
   const [expanded, setExpanded] = useState(false);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [bookmarking, setBookmarking] = useState(false);
   const [, setLocation] = useLocation();
   const { date, time } = formatDate(fir.postedAt);
   const evidenceLinks = (fir.evidence ?? "").match(/https?:\/\/[^\s]+/g) ?? [];
@@ -220,6 +222,19 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
     staleTime: 60_000,
   });
   const myName = profileData?.officer?.name ?? null;
+
+  async function handleBookmark() {
+    setBookmarking(true);
+    try {
+      await fetch(`/api/fir/${fir.id}/bookmark`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      onStatusChange();
+    } finally {
+      setBookmarking(false);
+    }
+  }
 
   async function handleReject() {
     setActionLoading(true);
@@ -372,15 +387,29 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
               </button>
             </div>
           )}
-          {hasMore && (
+          <div className="flex items-center gap-1.5 mt-1">
             <button
-              onClick={() => setExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors mt-1"
+              onClick={handleBookmark}
+              disabled={bookmarking}
+              title={fir.bookmarked ? "Remove bookmark" : "Bookmark this FIR"}
+              className={`flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-semibold border transition-colors disabled:opacity-50 ${
+                fir.bookmarked
+                  ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30"
+                  : "bg-transparent text-muted-foreground border-border/30 hover:bg-secondary/50 hover:text-yellow-300"
+              }`}
             >
-              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {expanded ? "Less" : "Details"}
+              {fir.bookmarked ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
             </button>
-          )}
+            {hasMore && (
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {expanded ? "Less" : "Details"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -773,6 +802,26 @@ export default function FirPage() {
             </button>
           )}
         </div>
+
+        {/* Bookmarks section */}
+        {(() => {
+          const bookmarked = rawFirs.filter(f => f.bookmarked);
+          if (bookmarked.length === 0) return null;
+          return (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2 border-b border-yellow-500/20 bg-yellow-500/10">
+                <BookmarkCheck className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-xs font-semibold text-yellow-300 uppercase tracking-wider">Bookmarks</span>
+                <span className="ml-auto text-[10px] font-mono text-yellow-400/60">{bookmarked.length} saved</span>
+              </div>
+              <div className="divide-y divide-yellow-500/10">
+                {bookmarked.map((fir) => (
+                  <FirCard key={fir.id} fir={fir} onStatusChange={() => qc.invalidateQueries({ queryKey: ["/api/fir"] })} />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* FIR list */}
         {isLoading ? (

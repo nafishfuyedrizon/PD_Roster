@@ -101,6 +101,16 @@ router.get("/fir", async (req, res): Promise<void> => {
   res.json(result);
 });
 
+// ── Toggle bookmark ───────────────────────────────────────────────────────────
+router.patch("/fir/:id/bookmark", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const [current] = await db.select({ bookmarked: pdFirTable.bookmarked }).from(pdFirTable).where(eq(pdFirTable.id, id));
+  if (!current) { res.status(404).json({ error: "FIR not found" }); return; }
+  const [row] = await db.update(pdFirTable).set({ bookmarked: !current.bookmarked }).where(eq(pdFirTable.id, id)).returning();
+  broadcastFirEvent("thread_update");
+  res.json({ bookmarked: row.bookmarked });
+});
+
 router.patch("/fir/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const { status, acceptedBy, officerName, rejectedBy } = req.body as { status: "accepted" | "rejected" | "pending"; acceptedBy?: string; officerName?: string; rejectedBy?: string };
