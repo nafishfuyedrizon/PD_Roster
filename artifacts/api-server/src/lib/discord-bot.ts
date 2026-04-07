@@ -543,6 +543,9 @@ async function processFirMessage(msg: Message) {
 
   const parsed = parseFir(combined);
 
+  const hasData = !!(parsed.complainantName || parsed.complainantCid || parsed.eventDescription || parsed.suspectDetails);
+  if (!hasData) return;
+
   const threadReplies = await fetchFirThreadReplies(msg);
   const threadId = msg.thread?.id ?? null;
 
