@@ -284,6 +284,19 @@ function weekEndMonth(wp: string): string {
   return MONTH_NAMES[mNum - 1] ?? "";
 }
 
+function calendarMonthRange(monthName: string): string {
+  const mNum = MONTH_INDEX[monthName];
+  if (!mNum) return "—";
+  const today = new Date();
+  const curMon = today.getMonth() + 1;
+  const curYear = today.getFullYear();
+  const year = mNum <= curMon ? curYear : curYear - 1;
+  const start = new Date(year, mNum - 1, 1);
+  const end = (mNum === curMon && year === curYear) ? today : new Date(year, mNum, 0);
+  const fmt = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+  return `${monthName} — ${fmt(start)} / ${fmt(end)}`;
+}
+
 function hmsToSecs(hms: string | null | undefined): number {
   if (!hms) return 0;
   const [h, m, s] = hms.split(":").map(Number);
@@ -727,9 +740,7 @@ export default function PdDutyHourPage() {
                 Top Performers — {monthLabel}
               </div>
               <div className="text-[10px] text-muted-foreground mt-0.5 font-mono">
-                {selectedMonth
-                  ? `${selectedMonth} — ${(monthWeeks[selectedMonth] ?? []).slice(-1)[0]?.split("-")[0] ?? ""} / ${(monthWeeks[selectedMonth] ?? []).slice(0)[0]?.split("-")[1] ?? ""}`
-                  : "—"}
+                {selectedMonth ? calendarMonthRange(selectedMonth) : "—"}
               </div>
             </div>
             <div className="flex gap-1 flex-shrink-0">
