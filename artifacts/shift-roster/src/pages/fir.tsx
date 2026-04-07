@@ -593,7 +593,7 @@ export default function FirPage() {
     return () => clearInterval(t);
   }, []);
 
-  const { data: firs = [], isLoading, refetch, isFetching } = useQuery<Fir[]>({
+  const { data: rawFirs = [], isLoading, refetch, isFetching } = useQuery<Fir[]>({
     queryKey: ["/api/fir", debouncedSearch],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -604,6 +604,14 @@ export default function FirPage() {
     },
     staleTime: 30000,
     refetchInterval: 120000,
+  });
+
+  const firs = [...rawFirs].sort((a, b) => {
+    const priority = (s: string) => (s === "pending" ? 0 : 1);
+    const pa = priority(a.status ?? "pending");
+    const pb = priority(b.status ?? "pending");
+    if (pa !== pb) return pa - pb;
+    return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
   });
 
   const { data: stats, refetch: refetchStats } = useQuery<FirStats>({
