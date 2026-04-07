@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, Plus, Trash2, ChevronDown, ChevronUp, Pencil, CheckCircle2, Circle, Lock, Unlock, RefreshCw } from "lucide-react";
+import { GraduationCap, Trash2, ChevronDown, ChevronUp, Pencil, CheckCircle2, Circle, Lock, Unlock, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const TOTAL = 43;
@@ -506,22 +506,12 @@ export default function StudentProgressionsPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
-  const [showAdd, setShowAdd] = useState(false);
+
   const [editCadet, setEditCadet] = useState<Cadet | null>(null);
 
   const { data: cadets = [], isLoading } = useQuery<Cadet[]>({
     queryKey: ["/api/student-progressions"],
     queryFn: () => fetch("/api/student-progressions", { credentials: "include" }).then((r) => r.json()),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (body: Partial<Cadet>) =>
-      fetch("/api/student-progressions", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json()),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/student-progressions"] });
-      setShowAdd(false);
-      toast({ title: "Cadet added" });
-    },
   });
 
   const updateMutation = useMutation({
@@ -599,21 +589,16 @@ export default function StudentProgressionsPage() {
                 <p className="text-xs text-muted-foreground">Cadet training tracker — Phase 1 &amp; Phase 2</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => syncRosterMutation.mutate()}
-                disabled={syncRosterMutation.isPending}
-                title="Sync PTA officers from roster into Student Progressions"
-              >
-                <RefreshCw className={`w-4 h-4 mr-1 ${syncRosterMutation.isPending ? "animate-spin" : ""}`} />
-                Sync from Roster
-              </Button>
-              <Button size="sm" onClick={() => setShowAdd(true)}>
-                <Plus className="w-4 h-4 mr-1" /> Add Cadet
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => syncRosterMutation.mutate()}
+              disabled={syncRosterMutation.isPending}
+              title="Sync PTA officers from roster into Student Progressions"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${syncRosterMutation.isPending ? "animate-spin" : ""}`} />
+              Sync from Roster
+            </Button>
           </div>
 
           {/* Stats */}
@@ -684,9 +669,7 @@ export default function StudentProgressionsPage() {
               <GraduationCap className="w-8 h-8 opacity-30" />
               <span className="text-sm">No cadets found</span>
               {cadets.length === 0 && (
-                <Button size="sm" variant="outline" onClick={() => setShowAdd(true)}>
-                  <Plus className="w-4 h-4 mr-1" /> Add first cadet
-                </Button>
+                <span className="text-xs opacity-60">Cadets are auto-synced from the PTA roster</span>
               )}
             </div>
           ) : (
@@ -702,19 +685,6 @@ export default function StudentProgressionsPage() {
           )}
         </div>
       </div>
-
-      {/* Add Dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add New Cadet</DialogTitle>
-          </DialogHeader>
-          <EmptyForm
-            onSubmit={(data) => createMutation.mutate(data)}
-            onCancel={() => setShowAdd(false)}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editCadet} onOpenChange={(v) => !v && setEditCadet(null)}>
