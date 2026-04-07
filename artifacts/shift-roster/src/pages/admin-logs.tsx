@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
+import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { ScrollText, UserCog, Plus, Trash2, Edit3, RefreshCw, LogIn, Wifi, Vote, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -129,8 +130,9 @@ function ChangesDiff({ changes, actionType }: { changes: Record<string, unknown>
 }
 
 export default function AdminLogsPage() {
+  const { user } = useAuth();
+  const myLevel = user?.isOwner ? 5 : user?.isSuperAdmin ? 4 : user?.isSeniorStaff ? 3 : user?.isStaff ? 2 : user?.isTrusted ? 1 : 0;
   const [, setLocation] = useLocation();
-
   const { data: logs = [], isLoading, refetch, isFetching, dataUpdatedAt } = useQuery<AdminLog[]>({
     queryKey: ["/api/admin/logs"],
     queryFn: () => fetch("/api/admin/logs?limit=200", { credentials: "include" }).then((r) => r.json()),
@@ -142,6 +144,17 @@ export default function AdminLogsPage() {
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })
     : null;
+
+  if (myLevel < 2) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
+          <ScrollText className="w-8 h-8 opacity-30" />
+          <p className="text-sm">You don't have permission to view Panel Logs.</p>
+        </div>
+      </Layout>
+    );
+  }
 
   function goToProfile(log: AdminLog) {
     const name = encodeURIComponent(log.entityName ?? "");

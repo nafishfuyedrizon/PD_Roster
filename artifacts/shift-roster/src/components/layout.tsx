@@ -13,6 +13,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { data: settings } = useSettings();
   const { logout, user } = useAuth();
 
+  const myLevel = user?.isOwner ? 5
+    : user?.isSuperAdmin ? 4
+    : user?.isSeniorStaff ? 3
+    : user?.isStaff ? 2
+    : user?.isTrusted ? 1
+    : 0;
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
@@ -265,42 +272,48 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     Duty Add/Remove
                   </div>
                 </Link>
-                <Link href="/admin/duty-logs" data-testid="nav-admin-duty-logs">
-                  <div
-                    className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
-                      location === "/admin/duty-logs"
-                        ? "bg-secondary text-secondary-foreground font-medium"
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                    }`}
-                  >
-                    <CalendarDays className="w-3.5 h-3.5 shrink-0 text-teal-400" />
-                    Duty Logs
-                  </div>
-                </Link>
-                <Link href="/admin/settings" data-testid="nav-admin-settings">
-                  <div
-                    className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
-                      location === "/admin/settings"
-                        ? "bg-secondary text-secondary-foreground font-medium"
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                    }`}
-                  >
-                    <Settings className="w-3.5 h-3.5 shrink-0 text-teal-400" />
-                    Site Settings
-                  </div>
-                </Link>
-                <Link href="/admin/logs" data-testid="nav-admin-logs">
-                  <div
-                    className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
-                      location === "/admin/logs"
-                        ? "bg-secondary text-secondary-foreground font-medium"
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                    }`}
-                  >
-                    <ScrollText className="w-3.5 h-3.5 shrink-0 text-teal-400" />
-                    Panel Logs
-                  </div>
-                </Link>
+                {myLevel >= 2 && (
+                  <Link href="/admin/duty-logs" data-testid="nav-admin-duty-logs">
+                    <div
+                      className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+                        location === "/admin/duty-logs"
+                          ? "bg-secondary text-secondary-foreground font-medium"
+                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      }`}
+                    >
+                      <CalendarDays className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                      Duty Logs
+                    </div>
+                  </Link>
+                )}
+                {myLevel >= 2 && (
+                  <Link href="/admin/settings" data-testid="nav-admin-settings">
+                    <div
+                      className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+                        location === "/admin/settings"
+                          ? "bg-secondary text-secondary-foreground font-medium"
+                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      }`}
+                    >
+                      <Settings className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                      Site Settings
+                    </div>
+                  </Link>
+                )}
+                {myLevel >= 2 && (
+                  <Link href="/admin/logs" data-testid="nav-admin-logs">
+                    <div
+                      className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${
+                        location === "/admin/logs"
+                          ? "bg-secondary text-secondary-foreground font-medium"
+                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      }`}
+                    >
+                      <ScrollText className="w-3.5 h-3.5 shrink-0 text-teal-400" />
+                      Panel Logs
+                    </div>
+                  </Link>
+                )}
                 <Link href="/admin/staff-roles" data-testid="nav-staff-roles">
                   <div
                     className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors cursor-pointer ${

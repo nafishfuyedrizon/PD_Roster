@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/layout";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,10 +97,11 @@ function ListEditor({
 }
 
 export default function AdminSettingsPage() {
+  const { user } = useAuth();
+  const myLevel = user?.isOwner ? 5 : user?.isSuperAdmin ? 4 : user?.isSeniorStaff ? 3 : user?.isStaff ? 2 : user?.isTrusted ? 1 : 0;
   const { data: settings, isLoading } = useSettings();
   const update = useUpdateSetting();
   const { toast } = useToast();
-
   const [orgName, setOrgName] = useState("");
   const [orgAcronym, setOrgAcronym] = useState("");
   const [orgSubtitle, setOrgSubtitle] = useState("");
@@ -112,6 +114,17 @@ export default function AdminSettingsPage() {
     setOrgSubtitle(settings.org_subtitle ?? "");
     setOrgDirty(false);
   }, [settings]);
+
+  if (myLevel < 2) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
+          <Settings className="w-8 h-8 opacity-30" />
+          <p className="text-sm">You don't have permission to view Site Settings.</p>
+        </div>
+      </Layout>
+    );
+  }
 
   async function saveOrg() {
     await Promise.all([

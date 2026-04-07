@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,9 +71,10 @@ function weeksAgoIso(n: number) {
 const EMPTY_FORM = { logDate: todayIso(), startTime: "", endTime: "", csNumber: "", officerName: "", rank: "", shiftType: "Full", duration: "00:00:00", notes: "" };
 
 export default function AdminDutyLogsPage() {
+  const { user } = useAuth();
+  const myLevel = user?.isOwner ? 5 : user?.isSuperAdmin ? 4 : user?.isSeniorStaff ? 3 : user?.isStaff ? 2 : user?.isTrusted ? 1 : 0;
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState(weeksAgoIso(1));
   const [dateTo, setDateTo] = useState(todayIso());
@@ -177,6 +179,17 @@ export default function AdminDutyLogsPage() {
   });
 
   const canSave = form.logDate && form.csNumber.trim() && form.officerName.trim() && form.duration.trim();
+
+  if (myLevel < 2) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
+          <CalendarDays className="w-8 h-8 opacity-30" />
+          <p className="text-sm">You don't have permission to view Duty Logs.</p>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
