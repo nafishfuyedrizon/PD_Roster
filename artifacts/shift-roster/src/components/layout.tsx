@@ -347,7 +347,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ) : user?.isSeniorStaff ? (
                   <div className="text-[10px] text-orange-400 font-mono">HIGH COMMAND</div>
                 ) : user?.isStaff ? (
-                  <div className="text-[10px] text-blue-400 font-mono">STAFF</div>
+                  <div className="text-[10px] text-blue-400 font-mono">FTP SUPERVISOR</div>
                 ) : user?.isTrusted ? (
                   <div className="text-[10px] text-green-400 font-mono">TRUSTED</div>
                 ) : null}
