@@ -3,21 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { GraduationCap, Trash2, ChevronDown, ChevronUp, Pencil, CheckCircle2, Circle, Lock, Unlock, RefreshCw } from "lucide-react";
+import { GraduationCap, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Lock, Unlock, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const TOTAL = 43;
@@ -160,101 +146,10 @@ function CheckboxCell({
   );
 }
 
-function EmptyForm({
-  onSubmit, onCancel, initial,
-}: {
-  onSubmit: (data: Partial<Cadet>) => void;
-  onCancel: () => void;
-  initial?: Partial<Cadet>;
-}) {
-  const [form, setForm] = useState<Partial<Cadet>>(initial ?? {});
-  const set = (k: keyof Cadet, v: string) => setForm((p) => ({ ...p, [k]: v }));
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Badge #</label>
-          <Input value={form.badgeNumber ?? ""} onChange={(e) => set("badgeNumber", e.target.value)} placeholder="TA-710" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Name *</label>
-          <Input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="Full Name" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Discord Name</label>
-          <Input value={form.discordName ?? ""} onChange={(e) => set("discordName", e.target.value)} placeholder="user#0000" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Discord ID</label>
-          <Input value={form.discordId ?? ""} onChange={(e) => set("discordId", e.target.value)} placeholder="856792691299844117" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Timezone</label>
-          <Input value={form.timezone ?? ""} onChange={(e) => set("timezone", e.target.value)} placeholder="BD / NA / EU" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Current Phase</label>
-          <Select value={form.currentPhase ?? ""} onValueChange={(v) => set("currentPhase", v)}>
-            <SelectTrigger><SelectValue placeholder="Select phase" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Onboarding">Onboarding</SelectItem>
-              <SelectItem value="Phase 1">Phase 1</SelectItem>
-              <SelectItem value="Phase 2">Phase 2</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Status</label>
-          <Select value={form.status ?? ""} onValueChange={(v) => set("status", v)}>
-            <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Vacant">Vacant</SelectItem>
-              <SelectItem value="LOA">LOA</SelectItem>
-              <SelectItem value="Terminated">Terminated</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Strikes</label>
-          <Input value={form.strikes ?? "0/4"} onChange={(e) => set("strikes", e.target.value)} placeholder="0/4" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Hire Date</label>
-          <Input value={form.hireDate ?? ""} onChange={(e) => set("hireDate", e.target.value)} placeholder="MM/DD/YYYY" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">LOA End Date</label>
-          <Input value={form.loaEndDate ?? ""} onChange={(e) => set("loaEndDate", e.target.value)} placeholder="MM/DD/YYYY" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Solo Start Date</label>
-          <Input value={form.soloStartDate ?? ""} onChange={(e) => set("soloStartDate", e.target.value)} placeholder="MM/DD/YYYY" />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Eligible Trooper Date</label>
-          <Input value={form.eligibleTrooperDate ?? ""} onChange={(e) => set("eligibleTrooperDate", e.target.value)} placeholder="MM/DD/YYYY" />
-        </div>
-      </div>
-      <div className="flex gap-2 justify-end pt-2">
-        <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button
-          onClick={() => { if (form.name?.trim()) onSubmit(form); }}
-          disabled={!form.name?.trim()}
-        >
-          Save
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
+function CadetRow({ cadet, onToggle, onDelete }: {
   cadet: Cadet;
   onToggle: (field: string, value: boolean) => void;
   onDelete: () => void;
-  onEdit: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [locked, setLocked] = useState(true);
@@ -362,9 +257,6 @@ function CadetRow({ cadet, onToggle, onDelete, onEdit }: {
 
         {/* Actions */}
         <div className="flex items-center gap-1 shrink-0">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onEdit}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
           {confirmDelete ? (
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive hover:text-destructive" onClick={onDelete}>Yes</Button>
@@ -507,21 +399,10 @@ export default function StudentProgressionsPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
 
-  const [editCadet, setEditCadet] = useState<Cadet | null>(null);
 
   const { data: cadets = [], isLoading } = useQuery<Cadet[]>({
     queryKey: ["/api/student-progressions"],
     queryFn: () => fetch("/api/student-progressions", { credentials: "include" }).then((r) => r.json()),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: Partial<Cadet> }) =>
-      fetch(`/api/student-progressions/${id}`, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json()),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/student-progressions"] });
-      setEditCadet(null);
-      toast({ title: "Cadet updated" });
-    },
   });
 
   const toggleMutation = useMutation({
@@ -679,28 +560,12 @@ export default function StudentProgressionsPage() {
                 cadet={cadet}
                 onToggle={(field, value) => toggleMutation.mutate({ id: cadet.id, field, value })}
                 onDelete={() => { if (confirm(`Remove ${cadet.name}?`)) deleteMutation.mutate(cadet.id); }}
-                onEdit={() => setEditCadet(cadet)}
               />
             ))
           )}
         </div>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={!!editCadet} onOpenChange={(v) => !v && setEditCadet(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Cadet — {editCadet?.name}</DialogTitle>
-          </DialogHeader>
-          {editCadet && (
-            <EmptyForm
-              initial={editCadet}
-              onSubmit={(data) => updateMutation.mutate({ id: editCadet.id, body: data })}
-              onCancel={() => setEditCadet(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
 }
