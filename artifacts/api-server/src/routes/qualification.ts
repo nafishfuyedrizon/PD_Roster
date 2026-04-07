@@ -473,6 +473,20 @@ router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> =
   }
 });
 
+// PATCH /api/qualification-chart/:id/notes — update only notes inline
+router.patch("/qualification-chart/:id/notes", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const { notes } = req.body;
+  const [before] = await db.select().from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
+  if (!before) { res.status(404).json({ error: "Not found" }); return; }
+  const [row] = await db.update(qualificationChartTable)
+    .set({ notes: notes ?? null, updatedAt: new Date() })
+    .where(eq(qualificationChartTable.id, id))
+    .returning();
+  await auditLog(req, "UPDATE", "qual-entry", id, before.name ?? null, { notes: { old: before.notes, new: notes ?? null } });
+  res.json(row);
+});
+
 // PATCH /api/qualification-chart/:id/status — update only qualStatus inline
 router.patch("/qualification-chart/:id/status", async (req, res): Promise<void> => {
   const id = Number(req.params.id);

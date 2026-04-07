@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Search, Award, CheckCircle2, XCircle, AlertTriangle,
-  FileText, Clock, Calendar, Pencil, Trash2, X, Save, UserPlus,
+  FileText, Clock, Calendar, Trash2, X, Save, UserPlus,
   MapPin, ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -273,6 +273,59 @@ function StatusSelect({ entryId, currentStatus }: { entryId: number; currentStat
         <option key={opt.value} value={opt.value} style={{ color: "#0f172a", backgroundColor: "#f8fafc" }}>{opt.label}</option>
       ))}
     </select>
+  );
+}
+
+function NoteModal({ entry, onClose }: { entry: QualEntry; onClose: () => void }) {
+  const [note, setNote] = useState(entry.notes ?? "");
+  const [saving, setSaving] = useState(false);
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/qualification-chart/${entry.id}/notes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ notes: note || null }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      await qc.invalidateQueries({ queryKey: ["qual-chart"] });
+      toast({ title: "Note saved" });
+      onClose();
+    } catch {
+      toast({ title: "Failed to save note", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-background border border-border rounded-xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
+          <span className="font-mono font-bold text-sm text-foreground">{entry.name} — Note</span>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-5">
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Any additional notes..."
+            rows={5}
+            className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        <div className="flex justify-end gap-2 px-5 pb-4">
+          <button onClick={onClose} className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-secondary/50 text-muted-foreground">Cancel</button>
+          <button onClick={save} disabled={saving} className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 font-mono font-bold">
+            {saving ? "Saving..." : "Save Note"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1118,6 +1171,7 @@ export default function QualificationPage() {
   const [deptFilter, setDeptFilter] = useState<string>("ALL");
   const [editEntry, setEditEntry] = useState<QualEntry | null | "NEW">(undefined as unknown as null);
   const [deleteEntry, setDeleteEntry] = useState<QualEntry | null>(null);
+  const [noteEntry, setNoteEntry] = useState<QualEntry | null>(null);
   const [citationDetail, setCitationDetail] = useState<{ name: string; since: string | null } | null>(null);
   const [firDetail, setFirDetail] = useState<string | null>(null);
 
@@ -1161,6 +1215,9 @@ export default function QualificationPage() {
       )}
       {deleteEntry && (
         <DeleteConfirm entry={deleteEntry} onClose={() => setDeleteEntry(null)} />
+      )}
+      {noteEntry && (
+        <NoteModal entry={noteEntry} onClose={() => setNoteEntry(null)} />
       )}
 
       {/* Header */}
@@ -1448,11 +1505,11 @@ export default function QualificationPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
-                            onClick={() => setEditEntry(e)}
-                            className="p-1.5 rounded bg-secondary/60 hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors border border-border"
-                            title="Edit"
+                            onClick={(ev) => { ev.stopPropagation(); setNoteEntry(e); }}
+                            className="p-1.5 rounded bg-secondary/60 hover:bg-yellow-500/20 text-muted-foreground hover:text-yellow-400 transition-colors border border-border"
+                            title="Edit Note"
                           >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <FileText className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setDeleteEntry(e)}
