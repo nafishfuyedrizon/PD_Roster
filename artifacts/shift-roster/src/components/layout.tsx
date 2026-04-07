@@ -196,20 +196,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          {/* FTO Pairs */}
-          <Link href="/fto-pairs" data-testid="nav-fto-pairs">
-            <div
-              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
-                location === "/fto-pairs"
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-            >
-              <UsersRound className="w-4 h-4" />
-              FTO Pairs
-            </div>
-          </Link>
-
           {/* FTO Documents */}
           <Link href="/fto-documents" data-testid="nav-fto-documents">
             <div
