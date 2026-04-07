@@ -107,8 +107,11 @@ function OfficerPicker({
 }
 
 function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; onDone: () => void }) {
+  const { user } = useAuth();
   const [officerName, setOfficerName] = useState<string | null>(fir.officerName ?? null);
-  const [acceptedByName, setAcceptedByName] = useState<string | null>(fir.acceptedBy ?? null);
+  const [acceptedByName, setAcceptedByName] = useState<string | null>(
+    fir.acceptedBy ?? user?.displayName ?? null
+  );
   const [saving, setSaving] = useState(false);
 
   const { data: officers = [] } = useQuery<OfficerItem[]>({
@@ -121,17 +124,10 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
     staleTime: 60000,
   });
 
-  const { data: profileData } = useQuery<{ officer: { name: string } | null }>({
-    queryKey: ["profile"],
-    queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
-    staleTime: 60_000,
-  });
-  const myName = profileData?.officer?.name ?? null;
-
-  // Auto-fill acceptedBy from logged-in user once loaded
+  // If user loads after initial render, fill acceptedBy with display name
   useEffect(() => {
-    if (!acceptedByName && myName) setAcceptedByName(myName);
-  }, [myName]);
+    if (!acceptedByName && user?.displayName) setAcceptedByName(user.displayName);
+  }, [user?.displayName]);
 
   async function confirm() {
     if (!acceptedByName || !officerName) return;
