@@ -454,7 +454,12 @@ function EditModal({
           {/* Row: Last Promo + Major strikes + Minor strikes */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <FieldLabel>Last Promotion</FieldLabel>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Last Promotion</span>
+                {!isNew && entry?.rosterLinked && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+                )}
+              </div>
               <Input
                 value={form.lastPromotion ?? ""}
                 onChange={(e) => set("lastPromotion", e.target.value)}
@@ -463,13 +468,23 @@ function EditModal({
               />
             </div>
             <div>
-              <FieldLabel>Major Strikes (x/4)</FieldLabel>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Major Strikes (x/4)</span>
+                {!isNew && entry?.rosterLinked && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+                )}
+              </div>
               <StyledSelect value={form.strikesMajor ?? "0/4"} onChange={(e) => set("strikesMajor", e.target.value)}>
                 {["0/4","1/4","2/4","3/4","4/4"].map((v) => <option key={v} value={v}>{v}</option>)}
               </StyledSelect>
             </div>
             <div>
-              <FieldLabel>Minor Strikes (x/2)</FieldLabel>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Minor Strikes (x/2)</span>
+                {!isNew && entry?.rosterLinked && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">ROSTER SYNC</span>
+                )}
+              </div>
               <StyledSelect value={form.strikesMinor ?? "0/2"} onChange={(e) => set("strikesMinor", e.target.value)}>
                 {["0/2","1/2","2/2"].map((v) => <option key={v} value={v}>{v}</option>)}
               </StyledSelect>
