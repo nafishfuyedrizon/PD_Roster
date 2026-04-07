@@ -40,6 +40,19 @@ async function getObsSessionCounts(names: string[]): Promise<Map<string, number>
   return map;
 }
 
+// GET /public/student-progressions — public read-only (no auth required)
+router.get("/public/student-progressions", async (_req, res): Promise<void> => {
+  res.set("Cache-Control", "no-store");
+  const rows = await db.select().from(studentProgressionsTable).orderBy(studentProgressionsTable.id);
+  const names = rows.map((r) => r.name).filter(Boolean);
+  const obsCountMap = await getObsSessionCounts(names);
+  const enriched = rows.map((r) => {
+    const autoObsCount = Math.min(7, obsCountMap.get(r.name) ?? 0);
+    return { ...r, progressPct: calcProgress(r as Record<string, unknown>, autoObsCount), autoObsCount };
+  });
+  res.json(enriched);
+});
+
 // GET /student-progressions — list all
 router.get("/student-progressions", async (_req, res): Promise<void> => {
   const rows = await db.select().from(studentProgressionsTable).orderBy(studentProgressionsTable.id);

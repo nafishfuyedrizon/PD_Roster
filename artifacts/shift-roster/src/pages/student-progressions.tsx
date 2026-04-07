@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GraduationCap, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Lock, Unlock } from "lucide-react";
+import { GraduationCap, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Lock, Unlock, Link } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const TOTAL = 43;
@@ -537,6 +537,20 @@ export default function StudentProgressionsPage() {
             <div>
               <h1 className="text-lg font-bold">Student Progressions</h1>
               <p className="text-xs text-muted-foreground">Cadet training tracker — Phase 1 &amp; Phase 2</p>
+            </div>
+            <div className="ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300"
+                onClick={() => {
+                  const url = `${window.location.origin}/shift-roster/public/progressions`;
+                  navigator.clipboard.writeText(url).then(() => toast({ title: "Public link copied!", description: url }));
+                }}
+              >
+                <Link className="w-3 h-3" />
+                Copy Public Link
+              </Button>
             </div>
           </div>
 
