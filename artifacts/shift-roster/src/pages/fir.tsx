@@ -347,8 +347,8 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
               </span>
               <span className="text-muted-foreground/40 text-[11px] shrink-0">·</span>
               <span className="text-[11px] flex items-center gap-1">
-                <FileSearch className="w-3 h-3 text-amber-400 shrink-0" />
-                <span className="text-amber-400/80 shrink-0">FIR:</span>
+                <Shield className="w-3 h-3 text-teal-400 shrink-0" />
+                <span className="text-teal-400/80 shrink-0">Officer:</span>
                 <span className="text-foreground font-semibold truncate">
                   {fir.complainantName ?? "—"}
                 </span>
