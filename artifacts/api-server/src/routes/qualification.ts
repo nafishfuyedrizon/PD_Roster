@@ -247,8 +247,17 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       COUNT(c.id)::int AS citation_count
     FROM officer_dates od
     LEFT JOIN pd_citations c
-      ON TRIM(REGEXP_REPLACE(c.officer_name, '\s*\[\d+\]\s*$', '')) = od.name
-      AND (od.citizen_id IS NULL OR REGEXP_REPLACE(c.officer_name, '^.*\[(\d+)\].*$', '\1') = od.citizen_id)
+      ON (
+        (
+          od.citizen_id IS NOT NULL
+          AND c.officer_name ~ '\[\d+\]'
+          AND REGEXP_REPLACE(c.officer_name, '^.*\[(\d+)\].*$', '\1') = od.citizen_id
+        )
+        OR (
+          NOT (od.citizen_id IS NOT NULL AND c.officer_name ~ '\[\d+\]')
+          AND TRIM(REGEXP_REPLACE(c.officer_name, '\s*\[\d+\]\s*$', '')) = od.name
+        )
+      )
       AND (
         od.since_date IS NULL
         OR c.posted_at >= MAKE_DATE(
