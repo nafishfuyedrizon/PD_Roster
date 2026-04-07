@@ -469,6 +469,15 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
       }
     }
 
+    // Build notes: PTA phase note takes priority; otherwise build from FTP/FTO flags
+    let notesValue: string | null = ftpNotes;
+    if (!notesValue) {
+      const noteParts: string[] = [];
+      if (officer.ftp) noteParts.push("FTP Certified");
+      if (officer.appointedFto) noteParts.push(`FTO: ${officer.appointedFto}`);
+      notesValue = noteParts.length > 0 ? noteParts.join(" | ") : null;
+    }
+
     // 1) Insert into ex_pd_officers if name is available
     if (officer.name) {
       await db.insert(exPdOfficersTable).values({
@@ -485,9 +494,9 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
         exitDate: exitDate ?? null,
         dateOfJoining: officer.dateOfJoining ?? null,
         lastPromotion: officer.lastPromotion ?? null,
-        air1: false,
-        speed: false,
-        notes: ftpNotes,
+        air1: officer.pilot ?? false,
+        speed: officer.seu ?? false,
+        notes: notesValue,
       });
     }
 
