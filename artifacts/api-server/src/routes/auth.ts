@@ -205,6 +205,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       }
     }
 
+    const staffRole = staffRows[0] ?? null;
     (req.session as any).user = {
       id: discordUser.id,
       username: discordUser.username,
@@ -213,6 +214,10 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       roles,
       guildId: DISCORD_GUILD_ID,
       isOwner,
+      isSuperAdmin: isOwner || (staffRole?.isSuperAdmin ?? false),
+      isSeniorStaff: isOwner || (staffRole?.isSuperAdmin ?? false) || (staffRole?.isSeniorStaff ?? false),
+      isStaff: isOwner || (staffRole?.isSuperAdmin ?? false) || (staffRole?.isSeniorStaff ?? false) || (staffRole?.isStaff ?? false),
+      isTrusted: isOwner || (staffRole?.isSuperAdmin ?? false) || (staffRole?.isSeniorStaff ?? false) || (staffRole?.isStaff ?? false) || (staffRole?.isTrusted ?? false),
     };
 
     try {
@@ -234,13 +239,36 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/auth/me", (req: Request, res: Response) => {
+router.get("/auth/me", async (req: Request, res: Response) => {
   const user = (req.session as any)?.user;
   if (!user) {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
-  res.json({ user });
+  // Refresh staff roles from DB so role changes take effect without re-login
+  try {
+    const freshStaff = await db
+      .select()
+      .from(staffRolesTable)
+      .where(eq(staffRolesTable.discordUid, user.id))
+      .limit(1);
+    const sr = freshStaff[0] ?? null;
+    const isSuperAdmin = user.isOwner || (sr?.isSuperAdmin ?? false);
+    const isSeniorStaff = isSuperAdmin || (sr?.isSeniorStaff ?? false);
+    const isStaff = isSeniorStaff || (sr?.isStaff ?? false);
+    const isTrusted = isStaff || (sr?.isTrusted ?? false);
+    res.json({
+      user: {
+        ...user,
+        isSuperAdmin,
+        isSeniorStaff,
+        isStaff,
+        isTrusted,
+      },
+    });
+  } catch {
+    res.json({ user });
+  }
 });
 
 router.post("/auth/logout", (req: Request, res: Response) => {

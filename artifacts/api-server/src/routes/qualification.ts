@@ -429,8 +429,8 @@ router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> =
   // voteType: "ftb" | "hc", voterName: string, value: "✓" | "✗" | "N/A" | ""
   if (!voteType || !voterName) { res.status(400).json({ error: "voteType and voterName required" }); return; }
 
-  // Owners can vote on behalf of anyone; others can only submit their own vote
-  if (!sessionUser.isOwner) {
+  // Owners and Full Power admins can vote on behalf of anyone; others can only submit their own vote
+  if (!sessionUser.isOwner && !sessionUser.isSuperAdmin) {
     const officers = await db
       .select({ name: officersTable.name })
       .from(officersTable)

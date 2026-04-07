@@ -191,7 +191,7 @@ router.patch("/profile/dates", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
-  if (!sessionUser.isOwner) {
+  if (!sessionUser.isOwner && !sessionUser.isSuperAdmin) {
     res.status(403).json({ error: "Admin only" });
     return;
   }

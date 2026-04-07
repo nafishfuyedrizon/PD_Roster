@@ -8,6 +8,10 @@ export interface AuthUser {
   roles: string[];
   guildId: string;
   isOwner: boolean;
+  isSuperAdmin: boolean;
+  isSeniorStaff: boolean;
+  isStaff: boolean;
+  isTrusted: boolean;
 }
 
 export function useAuth() {
