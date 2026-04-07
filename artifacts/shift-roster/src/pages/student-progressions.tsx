@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GraduationCap, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Lock, Unlock, RefreshCw } from "lucide-react";
+import { GraduationCap, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Lock, Unlock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const TOTAL = 43;
@@ -428,20 +428,17 @@ export default function StudentProgressionsPage() {
     },
   });
 
-  const syncRosterMutation = useMutation({
-    mutationFn: () =>
-      fetch("/api/student-progressions/sync-roster", { method: "POST", credentials: "include" }).then((r) => r.json()),
-    onSuccess: (data: { ok: boolean; added: string[]; terminated: string[] }) => {
-      qc.invalidateQueries({ queryKey: ["/api/student-progressions"] });
-      const parts: string[] = [];
-      if (data.added?.length) parts.push(`Added: ${data.added.join(", ")}`);
-      if (data.terminated?.length) parts.push(`Terminated: ${data.terminated.join(", ")}`);
-      toast({
-        title: parts.length ? `Roster sync complete` : "Already in sync",
-        description: parts.join(" | ") || "No changes needed.",
-      });
-    },
-  });
+  // Auto-sync with roster on page load
+  useEffect(() => {
+    fetch("/api/student-progressions/sync-roster", { method: "POST", credentials: "include" })
+      .then((r) => r.json())
+      .then((data: { ok: boolean; added: string[]; terminated: string[] }) => {
+        if (data.added?.length || data.terminated?.length) {
+          qc.invalidateQueries({ queryKey: ["/api/student-progressions"] });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const filtered = cadets.filter((c) => {
     const matchSearch =
@@ -462,24 +459,12 @@ export default function StudentProgressionsPage() {
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <GraduationCap className="w-5 h-5 text-green-400" />
-              <div>
-                <h1 className="text-lg font-bold">Student Progressions</h1>
-                <p className="text-xs text-muted-foreground">Cadet training tracker — Phase 1 &amp; Phase 2</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <GraduationCap className="w-5 h-5 text-green-400" />
+            <div>
+              <h1 className="text-lg font-bold">Student Progressions</h1>
+              <p className="text-xs text-muted-foreground">Cadet training tracker — Phase 1 &amp; Phase 2</p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => syncRosterMutation.mutate()}
-              disabled={syncRosterMutation.isPending}
-              title="Sync PTA officers from roster into Student Progressions"
-            >
-              <RefreshCw className={`w-4 h-4 mr-1 ${syncRosterMutation.isPending ? "animate-spin" : ""}`} />
-              Sync from Roster
-            </Button>
           </div>
 
           {/* Stats */}
