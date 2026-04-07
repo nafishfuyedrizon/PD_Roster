@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and, desc, sql } from "drizzle-orm";
-import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable, exPdOfficersTable } from "@workspace/db";
+import { eq, and, desc, sql, or } from "drizzle-orm";
+import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificationChartTable, exPdOfficersTable, studentProgressionsTable } from "@workspace/db";
 import { syncVotersToQualChart } from "./qualification.js";
 import { syncStudentProgressionsWithRoster } from "./student-progressions.js";
 import { auditLog } from "../lib/audit.js";
@@ -449,6 +449,26 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
   const isExitStatus = !!(officer.status && EXIT_STATUSES.includes(officer.status));
 
   if (statusChanged && isExitStatus) {
+    // 0) Fetch student_progressions record (for FTP phase note)
+    let ftpNotes: string | null = null;
+    let studentRow: { id: number; currentPhase: string | null } | null = null;
+    if (officer.name) {
+      const spConditions = [];
+      if (officer.callSign) spConditions.push(eq(studentProgressionsTable.badgeNumber, officer.callSign));
+      spConditions.push(eq(studentProgressionsTable.name, officer.name));
+      const [spRow] = await db
+        .select({ id: studentProgressionsTable.id, currentPhase: studentProgressionsTable.currentPhase })
+        .from(studentProgressionsTable)
+        .where(or(...spConditions))
+        .limit(1);
+      if (spRow) {
+        studentRow = spRow;
+        const phase = spRow.currentPhase?.trim() || "Phase 1";
+        const rank = officer.rank ?? "CADET";
+        ftpNotes = `FTP: ${rank} (${phase})`;
+      }
+    }
+
     // 1) Insert into ex_pd_officers if name is available
     if (officer.name) {
       await db.insert(exPdOfficersTable).values({
@@ -467,7 +487,7 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
         lastPromotion: officer.lastPromotion ?? null,
         air1: false,
         speed: false,
-        notes: null,
+        notes: ftpNotes,
       });
     }
 
@@ -477,7 +497,13 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
         .where(eq(qualificationChartTable.name, officer.name));
     }
 
-    // 3) Remove from Roster
+    // 3) Remove from Student Progressions (PTA cadets) by callSign or name
+    if (studentRow) {
+      await db.delete(studentProgressionsTable)
+        .where(eq(studentProgressionsTable.id, studentRow.id));
+    }
+
+    // 4) Remove from Roster
     await db.delete(officersTable)
       .where(eq(officersTable.id, officer.id));
 
