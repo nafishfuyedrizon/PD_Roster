@@ -50,8 +50,14 @@ export default function ManagementPage() {
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
-  const members = officers
-    .sort((a, b) => getRankOrder(a.rank) - getRankOrder(b.rank));
+  const MGMT_ROLE_ORDER: Record<string, number> = { "COMMAND": 1, "MEMBER": 2 };
+
+  const members = [...officers].sort((a, b) => {
+    const ra = MGMT_ROLE_ORDER[getManagementRole(a.rank).toUpperCase()] ?? 3;
+    const rb = MGMT_ROLE_ORDER[getManagementRole(b.rank).toUpperCase()] ?? 3;
+    if (ra !== rb) return ra - rb;
+    return (a.callSign ?? "").localeCompare(b.callSign ?? "");
+  });
 
   function handleRemove(id: number) {
     setRemovingId(id);

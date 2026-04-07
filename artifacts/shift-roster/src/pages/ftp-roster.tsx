@@ -78,7 +78,9 @@ export default function FtpRosterPage() {
   const members = [...officers].sort((a, b) => {
     const roleDiff = getFtpRoleOrder(a.rank) - getFtpRoleOrder(b.rank);
     if (roleDiff !== 0) return roleDiff;
-    return getRankOrder(a.rank) - getRankOrder(b.rank);
+    const rankDiff = getRankOrder(a.rank) - getRankOrder(b.rank);
+    if (rankDiff !== 0) return rankDiff;
+    return (a.callSign ?? "").localeCompare(b.callSign ?? "");
   });
 
   function handleRemove(id: number) {
