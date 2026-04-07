@@ -21,8 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
   SelectSeparator,
-  SelectLabel,
-  SelectGroup,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -391,15 +389,18 @@ export function OfficerForm({ defaultValues, onSubmit, isSubmitting }: OfficerFo
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl><SelectTrigger data-testid="select-status"><SelectValue /></SelectTrigger></FormControl>
                 <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel className="text-xs text-muted-foreground">Active Statuses</SelectLabel>
-                    {["Active","Semi-Active","Inactive","Suspended","LOA","Vacant"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectGroup>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Semi-Active">Semi-Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="Suspended">Suspended</SelectItem>
+                  <SelectItem value="LOA">LOA</SelectItem>
+                  <SelectItem value="Vacant">Vacant</SelectItem>
                   <SelectSeparator />
-                  <SelectGroup>
-                    <SelectLabel className="text-xs text-red-400">Exit Statuses (Auto → Ex-PD)</SelectLabel>
-                    {["DISCHARGED","FIRED","REMOVED","TERMINATED","RESIGNED"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectGroup>
+                  <SelectItem value="DISCHARGED">⚫ DISCHARGED</SelectItem>
+                  <SelectItem value="FIRED">🔴 FIRED</SelectItem>
+                  <SelectItem value="REMOVED">🟡 REMOVED</SelectItem>
+                  <SelectItem value="TERMINATED">🟠 TERMINATED</SelectItem>
+                  <SelectItem value="RESIGNED">🟣 RESIGNED</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
