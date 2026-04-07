@@ -469,15 +469,13 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
       }
     }
 
-    // Build auto notes: always include rank + FTP status; PTA cadets also get phase
-    const rankPart = officer.rank ? `Rank: ${officer.rank}` : null;
+    // Build auto notes: FTP status + FTO assignment; PTA cadets also get phase
     const ftpPart = officer.ftp ? "FTP: Yes" : "FTP: No";
     const ftoPart = officer.appointedFto ? `FTO: ${officer.appointedFto}` : null;
-    const baseParts = [rankPart, ftpPart, ftoPart].filter(Boolean) as string[];
+    const baseParts = [ftpPart, ftoPart].filter(Boolean) as string[];
 
     let notesValue: string | null;
     if (ftpNotes) {
-      // PTA cadet: prepend rank line then add phase info
       notesValue = [...baseParts, ftpNotes].join(" | ");
     } else {
       notesValue = baseParts.join(" | ");
