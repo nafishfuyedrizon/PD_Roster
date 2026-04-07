@@ -371,8 +371,14 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
   const nameChanged = existing.name !== officer.name && !!officer.name;
   const promotionDateChanged = !rankChanged && existing.lastPromotion !== officer.lastPromotion && officer.lastPromotion !== undefined;
   const deptChanged = existing.department !== officer.department && !!officer.department;
+  const strikesMajorChanged = existing.strikesMajor !== officer.strikesMajor && officer.strikesMajor !== undefined;
+  const strikesMinorChanged = existing.strikesMinor !== officer.strikesMinor && officer.strikesMinor !== undefined;
+  const discordUidChanged = existing.discordUid !== officer.discordUid && officer.discordUid !== undefined;
 
-  if (officer.name && (rankChanged || nameChanged || promotionDateChanged || deptChanged)) {
+  const needsQualSync = rankChanged || nameChanged || promotionDateChanged || deptChanged
+    || strikesMajorChanged || strikesMinorChanged || discordUidChanged;
+
+  if (officer.name && needsQualSync) {
     const searchName = nameChanged ? existing.name : officer.name;
     if (searchName) {
       const qualRows = await db
@@ -384,6 +390,9 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
       const qualUpdate: Record<string, any> = { updatedAt: new Date() };
       if (nameChanged) qualUpdate.name = officer.name!;
       if (deptChanged) qualUpdate.department = officer.department!;
+      if (strikesMajorChanged) qualUpdate.strikesMajor = officer.strikesMajor;
+      if (strikesMinorChanged) qualUpdate.strikesMinor = officer.strikesMinor;
+      if (discordUidChanged) qualUpdate.discordUid = officer.discordUid;
       if (rankChanged) {
         qualUpdate.rank = officer.rank!;
         qualUpdate.lastPromotion = todayMDY();
@@ -413,8 +422,9 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
           citationCount: 0,
           firCount: 0,
           lastPromotion: rankChanged ? todayMDY() : (officer.lastPromotion ?? null),
-          strikesMajor: "0/4",
-          strikesMinor: "0/2",
+          strikesMajor: officer.strikesMajor ?? "0/4",
+          strikesMinor: officer.strikesMinor ?? "0/2",
+          discordUid: officer.discordUid ?? null,
           qualStatus: null,
         });
       }
