@@ -354,4 +354,43 @@ router.post("/citations/ingest", async (req, res): Promise<void> => {
   res.json({ ok: true, id: inserted.id });
 });
 
+// ── Officer citation breakdown (for Qual Chart drill-down) ───────────────────
+// GET /api/citations/officer-breakdown?name=...&since=M/D/YYYY
+router.get("/officer-breakdown", async (req, res) => {
+  const name = (req.query.name as string | undefined)?.trim();
+  const since = (req.query.since as string | undefined)?.trim();
+  if (!name) { res.status(400).json({ error: "name required" }); return; }
+
+  let sinceDate: Date | null = null;
+  if (since) {
+    const parts = since.split("/");
+    if (parts.length === 3) {
+      const [mm, dd, yyyy] = parts.map(Number);
+      if (!isNaN(mm) && !isNaN(dd) && !isNaN(yyyy)) {
+        sinceDate = new Date(yyyy, mm - 1, dd);
+      }
+    }
+  }
+
+  const rows = await db
+    .select({
+      id: pdCitationsTable.id,
+      incident: pdCitationsTable.incident,
+      location: pdCitationsTable.location,
+      suspectName: pdCitationsTable.suspectName,
+      charges: pdCitationsTable.charges,
+      evidence: pdCitationsTable.evidence,
+      postedAt: pdCitationsTable.postedAt,
+    })
+    .from(pdCitationsTable)
+    .where(
+      sinceDate
+        ? sql`${pdCitationsTable.officerName} ILIKE ${name} AND ${pdCitationsTable.postedAt} >= ${sinceDate}`
+        : sql`${pdCitationsTable.officerName} ILIKE ${name}`
+    )
+    .orderBy(desc(pdCitationsTable.postedAt));
+
+  res.json(rows);
+});
+
 export default router;
