@@ -472,10 +472,15 @@ export default function FtoDocumentsPage() {
   const [editMode, setEditMode] = useState(false);
   const [editingItem, setEditingItem] = useState<FtoItem | null>(null);
 
-  const { data: allItems = [], isLoading } = useQuery<FtoItem[]>({
+  const { data: allItems = [], isLoading, isError } = useQuery<FtoItem[]>({
     queryKey: ["fto-docs"],
-    queryFn: () => fetch("/api/fto-docs", { credentials: "include" }).then((r) => r.json()),
-    staleTime: 30_000,
+    queryFn: async () => {
+      const r = await fetch("/api/fto-docs", { credentials: "include", cache: "no-cache" });
+      if (!r.ok) throw new Error("Failed to load");
+      return r.json() as Promise<FtoItem[]>;
+    },
+    staleTime: 0,
+    retry: 2,
   });
 
   const addMutation = useMutation({
@@ -641,6 +646,10 @@ export default function FtoDocumentsPage() {
                 {isLoading ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
                     Loading...
+                  </div>
+                ) : isError ? (
+                  <div className="flex items-center justify-center h-32 text-red-400 text-sm">
+                    Failed to load content. Please refresh the page.
                   </div>
                 ) : (
                   sections.map((section) => (

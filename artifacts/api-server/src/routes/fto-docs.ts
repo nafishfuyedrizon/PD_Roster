@@ -18,6 +18,7 @@ function callerLevel(req: any): number {
 
 // GET /api/fto-docs — all items ordered by sort_order
 router.get("/fto-docs", async (req, res): Promise<void> => {
+  res.set("Cache-Control", "no-store");
   const items = await db
     .select()
     .from(ftoDocItemsTable)
