@@ -74,7 +74,9 @@ router.put("/student-progressions/:id", async (req, res): Promise<void> => {
   const body = req.body;
   const [row] = await db.update(studentProgressionsTable).set({ ...body, updatedAt: new Date() }).where(eq(studentProgressionsTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "not found" }); return; }
-  res.json({ ...row, progressPct: calcProgress(row as Record<string, unknown>, 0), autoObsCount: 0 });
+  const obsMap = await getObsSessionCounts([row.name]);
+  const autoObsCount = Math.min(7, obsMap.get(row.name) ?? 0);
+  res.json({ ...row, progressPct: calcProgress(row as Record<string, unknown>, autoObsCount), autoObsCount });
 });
 
 // PATCH /student-progressions/:id/checkbox — toggle a single boolean checkpoint
@@ -89,7 +91,10 @@ router.patch("/student-progressions/:id/checkbox", async (req, res): Promise<voi
     .where(eq(studentProgressionsTable.id, id))
     .returning();
   if (!row) { res.status(404).json({ error: "not found" }); return; }
-  res.json({ ...row, progressPct: calcProgress(row as Record<string, unknown>, 0), autoObsCount: 0 });
+  // Compute real obs session count so progressPct reflects actual obs hours
+  const obsMap = await getObsSessionCounts([row.name]);
+  const autoObsCount = Math.min(7, obsMap.get(row.name) ?? 0);
+  res.json({ ...row, progressPct: calcProgress(row as Record<string, unknown>, autoObsCount), autoObsCount });
 });
 
 // DELETE /student-progressions/:id

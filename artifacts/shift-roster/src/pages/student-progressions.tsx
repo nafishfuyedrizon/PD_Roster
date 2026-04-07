@@ -457,9 +457,7 @@ export default function StudentProgressionsPage() {
       }).then((r) => r.json()),
     onSuccess: (updated: Cadet) => {
       qc.setQueryData(["/api/student-progressions"], (old: Cadet[] | undefined) =>
-        old?.map((c) => (c.id === updated.id
-          ? { ...updated, autoObsCount: c.autoObsCount }
-          : c)) ?? [],
+        old?.map((c) => (c.id === updated.id ? updated : c)) ?? [],
       );
     },
   });
