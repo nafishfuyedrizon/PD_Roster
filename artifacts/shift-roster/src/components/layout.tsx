@@ -60,17 +60,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          {/* Qualification Chart */}
-          <Link href="/qualification-chart" data-testid="nav-qualification-chart">
+          {/* PD Duty Hour */}
+          <Link href="/pd-duty-hour" data-testid="nav-pd-duty-hour">
             <div
               className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
-                location === "/qualification-chart"
+                location === "/pd-duty-hour"
                   ? "bg-secondary text-secondary-foreground"
                   : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
               }`}
             >
-              <Award className="w-4 h-4 text-yellow-400" />
-              Qual Chart
+              <Clock className="w-4 h-4 text-blue-400" />
+              PD Duty Hour
             </div>
           </Link>
 
@@ -133,6 +133,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </div>
 
+          {/* Qualification Chart */}
+          <Link href="/qualification-chart" data-testid="nav-qualification-chart">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/qualification-chart"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              }`}
+            >
+              <Award className="w-4 h-4 text-yellow-400" />
+              Qual Chart
+            </div>
+          </Link>
+
+          {/* Student Progressions */}
+          <Link href="/student-progressions" data-testid="nav-student-progressions">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+                location === "/student-progressions"
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              }`}
+            >
+              <GraduationCap className="w-4 h-4 text-green-400" />
+              Student Progressions
+            </div>
+          </Link>
+
           {/* Statistics */}
           <Link href="/stats" data-testid="nav-statistics">
             <div
@@ -161,20 +189,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          {/* PD Duty Hour */}
-          <Link href="/pd-duty-hour" data-testid="nav-pd-duty-hour">
-            <div
-              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
-                location === "/pd-duty-hour"
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-            >
-              <Clock className="w-4 h-4 text-blue-400" />
-              PD Duty Hour
-            </div>
-          </Link>
-
           {/* PD Citations */}
           <Link href="/citations" data-testid="nav-citations">
             <div
@@ -200,20 +214,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <FileSearch className="w-4 h-4 text-amber-400" />
               PD FIR
-            </div>
-          </Link>
-
-          {/* Student Progressions */}
-          <Link href="/student-progressions" data-testid="nav-student-progressions">
-            <div
-              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
-                location === "/student-progressions"
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-            >
-              <GraduationCap className="w-4 h-4 text-green-400" />
-              Student Progressions
             </div>
           </Link>
 
