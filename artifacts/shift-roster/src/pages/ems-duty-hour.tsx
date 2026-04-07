@@ -502,7 +502,7 @@ export default function PdDutyHourPage() {
   const { data: shiftConfigs = [] } = useShiftConfigs();
   const SHIFT_TYPES = [ALL_SHIFTS_TAB, ...shiftConfigs.map((s) => ({ value: s.key, label: s.label, sub: s.sub, icon: s.icon, startHour: s.startHour, endHour: s.endHour, sortOrder: s.sortOrder }))];
 
-  const multiShiftParam = selectedShifts.has("ALL") ? undefined : [...selectedShifts].join(",");
+  const multiShiftParam = selectedShifts.has("ALL") ? undefined : [...selectedShifts].sort().join(",");
   const statsParams = { shiftType: multiShiftParam };
   const breakdownParams = { shiftType: multiShiftParam };
   const shiftLabel = selectedShifts.has("ALL")
@@ -651,6 +651,8 @@ export default function PdDutyHourPage() {
           const isAll = s.value === "ALL";
           const isActive = isAll ? selectedShifts.has("ALL") : selectedShifts.has(s.value);
           const handleClick = () => {
+            setWeekNav(0);
+            setMonthNav(0);
             if (isAll) {
               setSelectedShifts(new Set(["ALL"]));
             } else {
