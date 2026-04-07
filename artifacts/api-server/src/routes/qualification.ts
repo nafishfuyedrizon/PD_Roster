@@ -473,4 +473,18 @@ router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> =
   }
 });
 
+// PATCH /api/qualification-chart/:id/status — update only qualStatus inline
+router.patch("/qualification-chart/:id/status", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  const { qualStatus } = req.body;
+  const [before] = await db.select().from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
+  if (!before) { res.status(404).json({ error: "Not found" }); return; }
+  const [row] = await db.update(qualificationChartTable)
+    .set({ qualStatus: qualStatus ?? null, updatedAt: new Date() })
+    .where(eq(qualificationChartTable.id, id))
+    .returning();
+  await auditLog(req, "UPDATE", "qual-entry", id, before.name ?? null, { qualStatus: { old: before.qualStatus, new: qualStatus ?? null } });
+  res.json(row);
+});
+
 export default router;

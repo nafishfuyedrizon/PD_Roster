@@ -231,6 +231,61 @@ function StatusBadge({ status }: { status: string | null }) {
   );
 }
 
+function InlineStatusSelect({ entryId, currentStatus }: { entryId: number; currentStatus: string | null }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const qc = useQueryClient();
+  const selectRef = useRef<HTMLSelectElement>(null);
+
+  const handleClick = () => {
+    setOpen(true);
+    setTimeout(() => selectRef.current?.focus(), 0);
+  };
+
+  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value || null;
+    setSaving(true);
+    try {
+      await fetch(`/api/qualification-chart/${entryId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qualStatus: newStatus }),
+      });
+      await qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
+    } finally {
+      setSaving(false);
+      setOpen(false);
+    }
+  };
+
+  if (open) {
+    return (
+      <select
+        ref={selectRef}
+        defaultValue={currentStatus ?? ""}
+        onChange={handleChange}
+        onBlur={() => setOpen(false)}
+        disabled={saving}
+        className="text-[11px] font-mono bg-secondary border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+      >
+        {STATUS_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      title="Click to change status"
+      className="cursor-pointer hover:opacity-80 transition-opacity"
+    >
+      <StatusBadge status={currentStatus} />
+    </button>
+  );
+}
+
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="block text-[11px] font-mono uppercase text-muted-foreground mb-1">{children}</label>;
 }
@@ -1379,7 +1434,7 @@ export default function QualificationPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <StatusBadge status={e.qualStatus} />
+                        <InlineStatusSelect entryId={e.id} currentStatus={e.qualStatus} />
                       </td>
                       {/* FTO Vote cells */}
                       {ftoList.length > 0 && (
