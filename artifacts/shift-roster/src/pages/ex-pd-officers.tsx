@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Pencil, Trash2, X, Check } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, X, Check, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 interface ExPdOfficer {
   id: number;
@@ -193,6 +193,7 @@ export default function ExPdOfficersPage() {
   const [search, setSearch] = useState("");
   const [divFilter, setDivFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [sortBy, setSortBy] = useState<"default" | "promo_newest" | "promo_oldest">("default");
   const [modal, setModal] = useState<{ open: boolean; officer: Partial<ExPdOfficer> | null }>({ open: false, officer: null });
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
@@ -229,21 +230,34 @@ export default function ExPdOfficersPage() {
     }
   };
 
-  const filtered = officers.filter((o) => {
-    if (divFilter !== "ALL" && o.division !== divFilter) return false;
-    if (statusFilter !== "ALL" && o.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        (o.name ?? "").toLowerCase().includes(q) ||
-        (o.callSign ?? "").toLowerCase().includes(q) ||
-        (o.characterId ?? "").toLowerCase().includes(q) ||
-        (o.discordUsername ?? "").toLowerCase().includes(q) ||
-        (o.rank ?? "").toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  function parsePromoDate(d: string | null): number {
+    if (!d) return 0;
+    const [dd, mm, yyyy] = d.split("-");
+    if (!dd || !mm || !yyyy) return 0;
+    return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+  }
+
+  const filtered = officers
+    .filter((o) => {
+      if (divFilter !== "ALL" && o.division !== divFilter) return false;
+      if (statusFilter !== "ALL" && o.status !== statusFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return (
+          (o.name ?? "").toLowerCase().includes(q) ||
+          (o.callSign ?? "").toLowerCase().includes(q) ||
+          (o.characterId ?? "").toLowerCase().includes(q) ||
+          (o.discordUsername ?? "").toLowerCase().includes(q) ||
+          (o.rank ?? "").toLowerCase().includes(q)
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "promo_newest") return parsePromoDate(b.lastPromotion) - parsePromoDate(a.lastPromotion);
+      if (sortBy === "promo_oldest") return parsePromoDate(a.lastPromotion) - parsePromoDate(b.lastPromotion);
+      return 0;
+    });
 
   return (
     <Layout>
@@ -298,6 +312,30 @@ export default function ExPdOfficersPage() {
                 {s}
               </button>
             ))}
+          </div>
+
+          <div className="flex items-center gap-1 ml-auto border border-border rounded-md overflow-hidden">
+            <button
+              onClick={() => setSortBy("default")}
+              className={`px-2.5 py-1 text-xs flex items-center gap-1 transition-colors ${sortBy === "default" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              title="Default order"
+            >
+              <ArrowUpDown className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => setSortBy(sortBy === "promo_newest" ? "default" : "promo_newest")}
+              className={`px-2.5 py-1 text-xs flex items-center gap-1 transition-colors border-l border-border ${sortBy === "promo_newest" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              title="Latest promotion first"
+            >
+              <ArrowDown className="w-3 h-3" /> Promo Date
+            </button>
+            <button
+              onClick={() => setSortBy(sortBy === "promo_oldest" ? "default" : "promo_oldest")}
+              className={`px-2.5 py-1 text-xs flex items-center gap-1 transition-colors border-l border-border ${sortBy === "promo_oldest" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              title="Oldest promotion first"
+            >
+              <ArrowUp className="w-3 h-3" /> Promo Date
+            </button>
           </div>
         </div>
 
