@@ -336,6 +336,7 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
       name: o.name ?? cs,
       rank: o.rank,
       status: o.status,
+      lastPromotion: o.lastPromotion ?? null,
       baseSecs: base,
       adjustSecs: adj,
       totalSecs: total,

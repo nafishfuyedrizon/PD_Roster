@@ -17,6 +17,7 @@ interface AdjOfficer {
   baseTotal: string;
   adjustTotal: string;
   grandTotal: string;
+  lastPromotion: string | null;
 }
 
 interface AdjEntry {
@@ -317,6 +318,7 @@ export default function AdminPage() {
                   <th className="px-4 py-2.5 text-left text-[11px] font-mono uppercase text-muted-foreground">CS</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-mono uppercase text-muted-foreground">Name</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-mono uppercase text-muted-foreground hidden md:table-cell">Rank</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-mono uppercase text-muted-foreground hidden lg:table-cell">Promo Date</th>
                   <th className="px-4 py-2.5 text-right text-[11px] font-mono uppercase text-muted-foreground">Base</th>
                   <th className="px-4 py-2.5 text-right text-[11px] font-mono uppercase text-muted-foreground">Adj</th>
                   <th className="px-4 py-2.5 text-right text-[11px] font-mono uppercase text-muted-foreground">Total</th>
@@ -328,13 +330,16 @@ export default function AdminPage() {
               <tbody className="divide-y divide-border">
                 {filteredOfficers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">No officers found</td>
+                    <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">No officers found</td>
                   </tr>
                 ) : filteredOfficers.map((o) => (
                   <tr key={o.cs} className="hover:bg-secondary/20 transition-colors">
                     <td className="px-4 py-2.5 font-mono text-xs text-teal-400 font-semibold">{o.cs}</td>
                     <td className="px-4 py-2.5 font-medium text-sm">{o.name}</td>
                     <td className="px-4 py-2.5 text-xs text-muted-foreground hidden md:table-cell">{o.rank}</td>
+                    <td className="px-4 py-2.5 text-xs font-mono text-muted-foreground hidden lg:table-cell">
+                      {o.lastPromotion || <span className="opacity-40">—</span>}
+                    </td>
                     <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">{o.baseTotal}</td>
                     <td className={`px-4 py-2.5 text-right font-mono text-xs font-semibold ${o.adjustSecs > 0 ? "text-green-400" : o.adjustSecs < 0 ? "text-red-400" : "text-muted-foreground"}`}>
                       {o.adjustSecs === 0 ? "—" : o.adjustTotal}
