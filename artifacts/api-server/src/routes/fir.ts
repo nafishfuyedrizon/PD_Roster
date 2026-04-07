@@ -103,7 +103,7 @@ router.get("/fir", async (req, res): Promise<void> => {
 
 router.patch("/fir/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
-  const { status, acceptedBy, officerName } = req.body as { status: "accepted" | "rejected" | "pending"; acceptedBy?: string; officerName?: string };
+  const { status, acceptedBy, officerName, rejectedBy } = req.body as { status: "accepted" | "rejected" | "pending"; acceptedBy?: string; officerName?: string; rejectedBy?: string };
   if (!["accepted", "rejected", "pending"].includes(status)) {
     res.status(400).json({ error: "Invalid status" }); return;
   }
@@ -111,6 +111,7 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
     status,
     acceptedBy: status === "accepted" ? (acceptedBy ?? null) : null,
     acceptedAt: status === "accepted" ? new Date() : null,
+    rejectedBy: status === "rejected" ? (rejectedBy ?? null) : null,
     ...(status === "accepted" && officerName != null ? { officerName } : {}),
   }).where(eq(pdFirTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "FIR not found" }); return; }

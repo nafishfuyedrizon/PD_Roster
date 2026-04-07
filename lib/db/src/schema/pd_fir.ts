@@ -24,6 +24,7 @@ export const pdFirTable = pgTable("pd_fir", {
   status: text("status").default("pending").notNull(),
   acceptedBy: text("accepted_by"),
   acceptedAt: timestamp("accepted_at"),
+  rejectedBy: text("rejected_by"),
   postedAt: timestamp("posted_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

@@ -35,6 +35,7 @@ interface Fir {
   status: string;
   acceptedBy: string | null;
   acceptedAt: string | null;
+  rejectedBy: string | null;
   postedAt: string;
   createdAt: string;
 }
@@ -213,6 +214,13 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
 
   const status = fir.status ?? "pending";
 
+  const { data: profileData } = useQuery<{ officer: { name: string } | null }>({
+    queryKey: ["profile"],
+    queryFn: () => fetch("/api/profile", { credentials: "include" }).then((r) => r.json()),
+    staleTime: 60_000,
+  });
+  const myName = profileData?.officer?.name ?? null;
+
   async function handleReject() {
     setActionLoading(true);
     try {
@@ -220,7 +228,7 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "rejected" }),
+        body: JSON.stringify({ status: "rejected", rejectedBy: myName }),
       });
       onStatusChange();
     } finally {
@@ -420,7 +428,19 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
         {status === "rejected" && (
           <>
             <span className="text-[11px] text-red-400 font-semibold flex items-center gap-1">
-              <XCircle className="w-3 h-3" /> Rejected
+              <XCircle className="w-3 h-3" />
+              <span>Rejected</span>
+              {fir.rejectedBy && (
+                <>
+                  <span className="text-red-400/60 font-normal">by</span>
+                  <button
+                    onClick={() => navigateToOfficer(fir.rejectedBy)}
+                    className="text-red-300 hover:text-red-100 hover:underline transition-colors"
+                  >
+                    {fir.rejectedBy}
+                  </button>
+                </>
+              )}
             </span>
             <button
               disabled={actionLoading}
