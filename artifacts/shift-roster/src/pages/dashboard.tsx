@@ -314,6 +314,7 @@ export default function DashboardPage() {
                   <tr>
                     <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">FiveM Name</th>
                     <th className="px-3 py-2 text-left font-mono uppercase text-[10px] text-muted-foreground">PD Officer</th>
+                    <th className="px-3 py-2 text-center font-mono uppercase text-[10px] text-muted-foreground">Server Time</th>
                     <th className="px-3 py-2 text-center font-mono uppercase text-[10px] text-muted-foreground">Ping</th>
                     <th className="px-3 py-2 text-center font-mono uppercase text-[10px] text-muted-foreground">Duty</th>
                   </tr>
@@ -330,6 +331,9 @@ export default function DashboardPage() {
                           <span className="text-foreground text-[11px]">{p.officer!.name}</span>
                         </div>
                         <div className="text-[10px] text-muted-foreground">{p.officer!.rank}</div>
+                      </td>
+                      <td className="px-3 py-2 text-center font-mono text-muted-foreground/70 text-[11px]">
+                        {p.timeOnServer ?? "—"}
                       </td>
                       <td className="px-3 py-2 text-center font-mono text-muted-foreground">{p.ping}ms</td>
                       <td className="px-3 py-2 text-center">

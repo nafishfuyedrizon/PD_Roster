@@ -4,9 +4,22 @@ import { eq, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-// GET /api/fivem/players — fetch live players from FiveM server and match to officers
+// In-memory tracking: serverId -> first seen timestamp
+const playerFirstSeen = new Map<number, Date>();
+let lastKnownIds = new Set<number>();
+
+function formatElapsed(since: Date): string {
+  const secs = Math.floor((Date.now() - since.getTime()) / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+}
+
+// GET /api/fivem/players
 router.get("/fivem/players", async (req, res): Promise<void> => {
-  // Get configured server URL
   const [setting] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "fivem_server_url")).limit(1);
   const serverUrl = setting?.value?.trim();
 
@@ -15,7 +28,6 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
     return;
   }
 
-  // Fetch players from FiveM server
   let fivemPlayers: any[] = [];
   let online = false;
   try {
@@ -32,31 +44,36 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
     online = false;
   }
 
+  // Update first-seen tracking
+  const currentIds = new Set<number>(fivemPlayers.map((p: any) => p.id as number));
+  const now = new Date();
+  for (const id of currentIds) {
+    if (!playerFirstSeen.has(id)) playerFirstSeen.set(id, now);
+  }
+  // Clean up players who left
+  for (const id of lastKnownIds) {
+    if (!currentIds.has(id)) playerFirstSeen.delete(id);
+  }
+  lastKnownIds = currentIds;
+
   // Get all officers
   const officers = await db.select().from(officersTable);
 
-  // Map 1: license → officer (from rockstarLicenseId in officers table)
   const licenseMap = new Map<string, typeof officers[0]>();
+  const fivemNameMap = new Map<string, typeof officers[0]>();
   for (const o of officers) {
     if (o.rockstarLicenseId) {
       const rawId = (o.rockstarLicenseId as string).replace(/^license:/i, "").toLowerCase();
       licenseMap.set(rawId, o);
     }
-  }
-
-  // Map 2: fivemName → officer (manually set in roster)
-  const fivemNameMap = new Map<string, typeof officers[0]>();
-  for (const o of officers) {
     if (o.fivemName) {
       fivemNameMap.set((o.fivemName as string).toLowerCase().trim(), o);
     }
   }
 
-  // Get all duty events — sorted newest first
   const dutyEvents = await db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt));
 
-  // Map 3: FiveM character name → officer (from discord_duty_events officer_name + license_id)
-  // discord_duty_events stores the FiveM display name in officer_name and the license in license_id
+  // Map: FiveM character name → officer (via duty log license → officers table)
   const dutyNameMap = new Map<string, typeof officers[0]>();
   for (const ev of dutyEvents) {
     const evName = (ev.officerName ?? "").toLowerCase().trim();
@@ -66,21 +83,20 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
     if (officer) dutyNameMap.set(evName, officer);
   }
 
-  // Latest duty event per license for on-duty check
+  // Latest duty event per license
   const latestByLicense = new Map<string, typeof dutyEvents[0]>();
   for (const ev of dutyEvents) {
     const rawId = (ev.licenseId ?? "").replace(/^license:/i, "").toLowerCase();
     if (rawId && !latestByLicense.has(rawId)) latestByLicense.set(rawId, ev);
   }
 
-  // Latest duty event per FiveM display name (for players whose license isn't exposed)
+  // Latest duty event per FiveM display name
   const latestByFivemName = new Map<string, typeof dutyEvents[0]>();
   for (const ev of dutyEvents) {
     const evName = (ev.officerName ?? "").toLowerCase().trim();
     if (evName && !latestByFivemName.has(evName)) latestByFivemName.set(evName, ev);
   }
 
-  // Match players — priority: license → manual fivemName → duty log name
   const players = fivemPlayers.map((p: any) => {
     const rawLicense = (p.identifiers ?? [])
       .find((id: string) => id.startsWith("license:"))
@@ -95,20 +111,22 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
       dutyNameMap.get(playerFivemName) ??
       null;
 
-    // Duty status: check by license first, then by FiveM display name
     const latestDuty =
       (rawLicense ? latestByLicense.get(rawLicense) : null) ??
       latestByFivemName.get(playerFivemName) ??
       null;
 
-    // event_type in discord_duty_events is "on" or "off"
     const onDuty = latestDuty?.eventType === "on" || latestDuty?.eventType === "on_duty";
+
+    const firstSeen = playerFirstSeen.get(p.id as number);
+    const timeOnServer = firstSeen ? formatElapsed(firstSeen) : null;
 
     return {
       serverId: p.id,
       fivemName: p.name ?? "Unknown",
       ping: p.ping ?? 0,
       license: rawLicense,
+      timeOnServer,
       officer: officer
         ? { name: officer.name, rank: officer.rank, callSign: officer.callSign, department: officer.department }
         : null,
@@ -119,7 +137,7 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
   res.json({ configured: true, online, serverUrl, players });
 });
 
-// PUT /api/fivem/server-url — save FiveM server URL
+// PUT /api/fivem/server-url
 router.put("/fivem/server-url", async (req, res): Promise<void> => {
   const { url } = req.body;
   if (typeof url !== "string") { res.status(400).json({ error: "url required" }); return; }
