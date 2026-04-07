@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Search, Award, CheckCircle2, XCircle, AlertTriangle,
   FileText, Clock, Calendar, X, Save, UserPlus,
-  MapPin, ExternalLink, MessageSquare,
+  MapPin, ExternalLink, MessageSquare, Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/hooks/useSettings";
