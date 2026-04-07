@@ -44,6 +44,7 @@ type QualEntry = {
   citationCount: number;
   citationAutoCount: number;
   firCount: number;
+  acceptedFirCount: number;
   lastPromotion: string | null;
   joiningDate: string | null;
   strikesMajor: string | null;
@@ -820,6 +821,9 @@ export default function QualificationPage() {
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">
                     <span className="flex items-center gap-1 justify-center"><FileText className="w-3 h-3" />Citations</span>
                   </th>
+                  <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-amber-400/80 hidden md:table-cell">
+                    <span className="flex items-center gap-1 justify-center"><FileText className="w-3 h-3 text-amber-400" />FIR Accepted</span>
+                  </th>
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground hidden lg:table-cell">Last Promo</th>
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground hidden lg:table-cell">Strikes</th>
                   <th className="px-4 py-3 text-center text-[11px] font-mono uppercase text-muted-foreground">Status</th>
@@ -887,6 +891,15 @@ export default function QualificationPage() {
                             <span className="text-blue-400">{e.citationCount}</span>
                           ) : (
                             <span className="text-muted-foreground/50">0</span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center hidden md:table-cell">
+                        <span className="font-mono font-semibold">
+                          {(e.acceptedFirCount ?? 0) > 0 ? (
+                            <span className="text-amber-400">{e.acceptedFirCount}</span>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
                           )}
                         </span>
                       </td>

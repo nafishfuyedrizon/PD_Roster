@@ -273,6 +273,18 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     citationMap.set(r.officer_name, Number(r.citation_count));
   }
 
+  // Count FIRs accepted by each officer (accepted_by = officer name, status = 'accepted')
+  const acceptedFirResult = await db.execute(sql`
+    SELECT accepted_by AS officer_name, COUNT(*)::int AS accepted_count
+    FROM pd_fir
+    WHERE status = 'accepted' AND accepted_by IS NOT NULL AND accepted_by <> ''
+    GROUP BY accepted_by
+  `);
+  const acceptedFirMap = new Map<string, number>();
+  for (const r of acceptedFirResult.rows as any[]) {
+    acceptedFirMap.set(r.officer_name, Number(r.accepted_count));
+  }
+
   // Merge computed hoursInRank and citationCount into rows
   const enrichedRows = rows.map((r) => {
     const autoCount = citationMap.get(r.name ?? "") ?? 0;
@@ -281,6 +293,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       ...r,
       citationAutoCount: autoCount,
       citationCount: autoCount + adjustment,
+      acceptedFirCount: acceptedFirMap.get(r.name ?? "") ?? 0,
     };
   });
 
