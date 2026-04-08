@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
+import { createHmac, randomBytes } from "crypto";
 import { db, adminLogsTable, staffRolesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
@@ -39,6 +40,29 @@ function getRedirectUri(req: Request) {
   return `${proto}://${host}/api/auth/discord/callback`;
 }
 
+const STATE_SECRET = process.env.SESSION_SECRET || "fallback-dev-secret-change-in-prod";
+const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function createState(): string {
+  const timestamp = Date.now().toString(36);
+  const nonce = randomBytes(8).toString("hex");
+  const payload = `${timestamp}.${nonce}`;
+  const sig = createHmac("sha256", STATE_SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+function verifyState(state: string): boolean {
+  const parts = state.split(".");
+  if (parts.length !== 3) return false;
+  const [timestamp, nonce, sig] = parts;
+  const payload = `${timestamp}.${nonce}`;
+  const expected = createHmac("sha256", STATE_SECRET).update(payload).digest("hex");
+  if (sig !== expected) return false;
+  const ts = parseInt(timestamp, 36);
+  if (isNaN(ts) || Date.now() - ts > STATE_TTL_MS) return false;
+  return true;
+}
+
 router.get("/auth/discord", (req: Request, res: Response) => {
   if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
     res.status(503).json({ error: "Discord OAuth not configured." });
@@ -46,7 +70,7 @@ router.get("/auth/discord", (req: Request, res: Response) => {
   }
 
   const redirectUri = getRedirectUri(req);
-  const state = Math.random().toString(36).slice(2);
+  const state = createState();
 
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
@@ -54,15 +78,6 @@ router.get("/auth/discord", (req: Request, res: Response) => {
     response_type: "code",
     scope: "identify guilds guilds.members.read",
     state,
-  });
-
-  // Store state in a short-lived cookie (more reliable than session in production)
-  const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
-  res.cookie("discord_oauth_state", state, {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: "lax",
-    maxAge: 5 * 60 * 1000, // 5 minutes
   });
 
   res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
@@ -76,15 +91,11 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     return;
   }
 
-  const storedState = (req.cookies as any)?.discord_oauth_state;
-  if (!state || state !== storedState) {
-    console.warn("[auth] State mismatch. received:", state, "stored:", storedState);
+  if (!state || !verifyState(String(state))) {
+    console.warn("[auth] HMAC state verification failed. state:", state);
     res.redirect("/shift-roster/?auth_error=invalid_state");
     return;
   }
-
-  // Clear the state cookie
-  res.clearCookie("discord_oauth_state");
 
   if (!code) {
     res.redirect("/shift-roster/?auth_error=no_code");
