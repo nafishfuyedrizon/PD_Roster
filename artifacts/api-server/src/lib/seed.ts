@@ -115,6 +115,18 @@ async function syncStudentProgressions(client: DbClient, seedFile: string): Prom
   const updateSet = sampleCols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(", ");
 
   const n = await upsertRows(client, "student_progressions", rows, '"id"', updateSet);
+
+  // Remove duplicate badge_numbers — for duplicates, keep the row that has current_phase set
+  // (i.e. the seeded row with full data), remove the empty legacy rows
+  await client.query(`
+    DELETE FROM student_progressions sp
+    WHERE badge_number IN (
+      SELECT badge_number FROM student_progressions
+      GROUP BY badge_number HAVING COUNT(*) > 1
+    )
+    AND (current_phase IS NULL OR current_phase = '')
+  `);
+
   await resetSeq(client, "student_progressions");
   logger.info({ upserted: n, total: rows.length }, "Synced student_progressions from seed");
 }
