@@ -31,6 +31,40 @@ function extractName(raw: string | null | undefined): string {
   return raw.replace(/\s*\[.*?\]\s*$/, "").trim().toLowerCase();
 }
 
+// Word-level edit distance (handles "Rahaman" vs "Rahman")
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (__, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i]![j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1]![j - 1]!
+        : 1 + Math.min(dp[i - 1]![j]!, dp[i]![j - 1]!, dp[i - 1]![j - 1]!);
+  return dp[m]![n]!;
+}
+
+// Returns true if all words in `query` fuzzy-match corresponding words in `officer` (threshold 1 per word)
+function fuzzyNameMatch(query: string, officer: string): boolean {
+  const qa = query.split(/\s+/);
+  const oa = officer.split(/\s+/);
+  if (qa.length !== oa.length) return false;
+  return qa.every((qw, i) => editDistance(qw, oa[i]!) <= 1);
+}
+
+// Build a reverse-lookup: given extracted citation name → officer dept using fuzzy match
+function buildFuzzyLookup(nameToDept: Record<string, string>): (name: string) => string | undefined {
+  const officerKeys = Object.keys(nameToDept);
+  return (name: string) => {
+    // 1. Exact match
+    if (nameToDept[name]) return nameToDept[name];
+    // 2. Fuzzy match (word-level edit distance ≤ 1)
+    const match = officerKeys.find((k) => fuzzyNameMatch(name, k));
+    return match ? nameToDept[match] : undefined;
+  };
+}
+
 // GET /api/dept-stats?month=2026-04
 router.get("/dept-stats", async (req, res): Promise<void> => {
   const month = (req.query.month as string) || getCurrentMonth();
@@ -62,6 +96,9 @@ router.get("/dept-stats", async (req, res): Promise<void> => {
     if (o.name) nameToDept[o.name.toLowerCase()] = dept;
   }
 
+  // Fuzzy lookup — handles single-letter typos/spelling variants like "Rahaman" vs "Rahman"
+  const lookupDeptByName = buildFuzzyLookup(nameToDept);
+
   // ── Citations ─────────────────────────────────────────────────────────────
   const citationRows = await db.select({
     officerName: pdCitationsTable.officerName,
@@ -75,7 +112,7 @@ router.get("/dept-stats", async (req, res): Promise<void> => {
 
   for (const c of citationRows) {
     const key = extractName(c.officerName);
-    const dept = nameToDept[key];
+    const dept = lookupDeptByName(key);
     if (!dept) continue;
     deptCitations[dept] = (deptCitations[dept] ?? 0) + c.cnt;
     if (!deptCitationTopOfficers[dept]) deptCitationTopOfficers[dept] = [];
@@ -102,7 +139,7 @@ router.get("/dept-stats", async (req, res): Promise<void> => {
 
   for (const f of firRows) {
     const key = extractName(f.officerName);
-    const dept = nameToDept[key];
+    const dept = lookupDeptByName(key);
     if (!dept) continue;
     deptFir[dept] = (deptFir[dept] ?? 0) + f.cnt;
     if (!deptFirTopOfficers[dept]) deptFirTopOfficers[dept] = [];
