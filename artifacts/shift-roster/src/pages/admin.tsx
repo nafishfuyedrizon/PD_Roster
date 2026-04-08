@@ -126,8 +126,8 @@ export default function AdminPage() {
 
   const adjMonth = MONTH_NAMES[adjMonthIdx]!;
 
-  // Pass all selected shifts as comma-separated so backend can use inArray()
-  const adjShift = [...selectedShifts].join(",");
+  // Sorted comma-separated key so RS_1,RS_2 is always consistent regardless of selection order
+  const adjShift = [...selectedShifts].sort().join(",");
 
   function toggleShift(key: string) {
     setSelectedShifts((prev) => {
@@ -193,31 +193,25 @@ export default function AdminPage() {
       const raw = adjInputs[officer.cs] ?? "";
       const secs = parseInputToSeconds(raw);
       if (secs <= 0) throw new Error("Enter a valid time (e.g. 1h 30m or 1:30:00)");
-      // Fire one POST per selected shift
-      const shiftsToApply = [...selectedShifts];
-      const results = await Promise.all(
-        shiftsToApply.map(async (shiftKey) => {
-          const res = await fetch(`/api/admin/duty-adjustments`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              officerCs: officer.cs,
-              officerName: officer.name,
-              dutyMonth: adjMonth,
-              dutyYear: String(adjYear),
-              shiftType: shiftKey,
-              adjustmentSeconds: sign * secs,
-              note: adjNotes[officer.cs]?.trim() || null,
-            }),
-          });
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error((err as { error?: string }).error ?? `Failed for shift ${shiftKey}`);
-          }
-          return res.json();
-        })
-      );
-      return results;
+      // Fire ONE POST with the combined shift key (e.g. "RS_1,RS_2")
+      const res = await fetch(`/api/admin/duty-adjustments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          officerCs: officer.cs,
+          officerName: officer.name,
+          dutyMonth: adjMonth,
+          dutyYear: String(adjYear),
+          shiftType: adjShift || "ALL",
+          adjustmentSeconds: sign * secs,
+          note: adjNotes[officer.cs]?.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to save adjustment");
+      }
+      return res.json();
     },
     onSuccess: (_data, { officer, sign }) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });

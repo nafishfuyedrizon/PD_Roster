@@ -287,19 +287,22 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
   if (monthNum < 1) { res.status(400).json({ error: "Invalid month" }); return; }
 
   // Support comma-separated multi-shift (e.g. "RS_1,RS_2")
+  // Sort to ensure consistent key regardless of selection order
   const shiftKeys = shiftType
-    ? shiftType.split(",").map((s) => s.trim()).filter(Boolean)
+    ? shiftType.split(",").map((s) => s.trim()).filter(Boolean).sort()
     : ["ALL"];
   const resolvedShifts = shiftKeys.length === 0 ? ["ALL"] : shiftKeys;
   const useSingle = resolvedShifts.length === 1;
+  // Combined key for adjustments stored as "RS_1,RS_2" (sorted)
+  const combinedShiftKey = resolvedShifts.join(",");
 
+  // Base hours: use inArray to sum across all selected shifts
   const logShiftCond = useSingle
     ? eq(emsDutyLogsTable.shiftType, resolvedShifts[0]!)
     : inArray(emsDutyLogsTable.shiftType, resolvedShifts);
 
-  const adjShiftCond = useSingle
-    ? eq(dutyAdjustmentsTable.shiftType, resolvedShifts[0]!)
-    : inArray(dutyAdjustmentsTable.shiftType, resolvedShifts);
+  // Adjustments: match the EXACT combined key to avoid double-counting
+  const adjShiftCond = eq(dutyAdjustmentsTable.shiftType, combinedShiftKey);
 
   const logConds = [eq(emsDutyLogsTable.dutyYear, year), logShiftCond];
   const adjConds = [
