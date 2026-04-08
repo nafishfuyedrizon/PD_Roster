@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startDiscordBot } from "./lib/discord-bot";
+import { seedDatabase } from "./lib/seed";
 
 const rawPort = process.env["PORT"];
 
@@ -16,15 +17,19 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+seedDatabase()
+  .catch((err) => logger.error({ err }, "Seed failed — continuing anyway"))
+  .finally(() => {
+    app.listen(port, (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        process.exit(1);
+      }
 
-  logger.info({ port }, "Server listening");
+      logger.info({ port }, "Server listening");
 
-  startDiscordBot().catch((err) => {
-    logger.error({ err }, "Discord bot failed to start");
+      startDiscordBot().catch((err) => {
+        logger.error({ err }, "Discord bot failed to start");
+      });
+    });
   });
-});
