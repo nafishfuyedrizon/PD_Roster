@@ -1,0 +1,57 @@
+[
+  {
+    "id": 4,
+    "discord_uid": 401071603527581700,
+    "display_name": "Rox Rosario",
+    "is_super_admin": false,
+    "is_senior_staff": false,
+    "is_staff": false,
+    "is_trusted": true,
+    "added_by": "𝓢𝓱𝓪𝓭𝓸𝔀  𝓢𝓱𝓪𝓶𝓪𝓷",
+    "created_at": "2026-04-07 11:48:18.664586"
+  },
+  {
+    "id": 2,
+    "discord_uid": 463587754471718900,
+    "display_name": "Icarus Daedlus",
+    "is_super_admin": true,
+    "is_senior_staff": true,
+    "is_staff": false,
+    "is_trusted": false,
+    "added_by": "𝓢𝓱𝓪𝓭𝓸𝔀  𝓢𝓱𝓪𝓶𝓪𝓷",
+    "created_at": "2026-04-06 16:41:21.742142"
+  },
+  {
+    "id": 3,
+    "discord_uid": 665163856145809400,
+    "display_name": "Aaron Ronnie",
+    "is_super_admin": false,
+    "is_senior_staff": false,
+    "is_staff": false,
+    "is_trusted": true,
+    "added_by": "ZEKE",
+    "created_at": "2026-04-07 11:46:02.37153"
+  },
+  {
+    "id": 6,
+    "discord_uid": 812733898899062800,
+    "display_name": "Kibria Salvatore",
+    "is_super_admin": false,
+    "is_senior_staff": false,
+    "is_staff": false,
+    "is_trusted": true,
+    "added_by": "ZEKE",
+    "created_at": "2026-04-07 15:21:22.041415"
+  },
+  {
+    "id": 5,
+    "discord_uid": 827491250994282500,
+    "display_name": "Markel Reeves",
+    "is_super_admin": false,
+    "is_senior_staff": false,
+    "is_staff": false,
+    "is_trusted": true,
+    "added_by": "ZEKE",
+    "created_at": "2026-04-07 12:27:57.781304"
+  }
+]

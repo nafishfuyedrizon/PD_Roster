@@ -74,23 +74,32 @@ async function resetSeq(client: DbClient, table: string): Promise<void> {
   }
 }
 
-async function seedFtoDocsIfEmpty(client: DbClient, baseDir: string): Promise<void> {
-  const ftoCount = await tableCount(client, "fto_doc_items");
-  if (ftoCount > 0) {
-    logger.info({ ftoCount }, "fto_doc_items already has data — skipping FTO seed");
+async function seedTableIfEmpty(
+  client: DbClient,
+  table: string,
+  seedFile: string,
+  type: "insert" | "upsert" = "insert",
+  conflictCol?: string,
+  updateSet?: string
+): Promise<void> {
+  const count = await tableCount(client, table);
+  if (count > 0) {
+    logger.info({ count }, `${table} already has data — skipping seed`);
     return;
   }
-
-  const ftoFile = path.resolve(baseDir, "../fto-seed.json");
-  if (!existsSync(ftoFile)) {
-    logger.info("No fto-seed.json found — skipping FTO seed");
+  if (!existsSync(seedFile)) {
+    logger.info(`No seed file found for ${table} — skipping`);
     return;
   }
-
-  const rows = JSON.parse(readFileSync(ftoFile, "utf-8")) as Record<string, unknown>[];
-  const n = await insertRows(client, "fto_doc_items", rows);
-  await resetSeq(client, "fto_doc_items");
-  logger.info({ inserted: n, total: rows.length }, "Seeded fto_doc_items");
+  const rows = JSON.parse(readFileSync(seedFile, "utf-8")) as Record<string, unknown>[];
+  let n: number;
+  if (type === "upsert" && conflictCol) {
+    n = await upsertRows(client, table, rows, conflictCol, updateSet);
+  } else {
+    n = await insertRows(client, table, rows);
+  }
+  await resetSeq(client, table);
+  logger.info({ inserted: n, total: rows.length }, `Seeded ${table}`);
 }
 
 export async function seedDatabase(): Promise<void> {
@@ -101,12 +110,16 @@ export async function seedDatabase(): Promise<void> {
   // esbuild bundles everything into dist/index.mjs, so __dirname resolves to dist/
   // One level up from dist/ lands at artifacts/api-server/
   const seedFile = path.resolve(__dirname, "../seed-data.json");
+  const base = path.resolve(__dirname, "..");
 
   const client = await pool.connect();
 
   try {
-    // Always seed FTO docs independently — they can be empty even on live servers
-    await seedFtoDocsIfEmpty(client, __dirname);
+    // Seed each table independently if empty — runs even when main seed is skipped
+    await seedTableIfEmpty(client, "fto_doc_items", path.join(base, "fto-seed.json"));
+    await seedTableIfEmpty(client, "ex_pd_officers", path.join(base, "ex-pd-seed.json"));
+    await seedTableIfEmpty(client, "duty_adjustments", path.join(base, "duty-adjustments-seed.json"));
+    await seedTableIfEmpty(client, "staff_roles", path.join(base, "staff-roles-seed.json"), "upsert", '"discord_uid"');
 
     if (!existsSync(seedFile)) {
       logger.info("No seed-data.json found — skipping main seed");
