@@ -149,14 +149,8 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
     }
   }
 
-  // Incorporate duty adjustments into monthly totals (aggregate across selected shifts)
-  const adjCond = resolvedShifts.length === 1
-    ? eq(dutyAdjustmentsTable.shiftType, resolvedShifts[0]!)
-    : inArray(dutyAdjustmentsTable.shiftType, resolvedShifts);
-  const allAdjustments = await db
-    .select()
-    .from(dutyAdjustmentsTable)
-    .where(adjCond);
+  // Incorporate ALL duty adjustments into monthly totals (no shift filter — adjustments apply to total hours)
+  const allAdjustments = await db.select().from(dutyAdjustmentsTable);
   for (const adj of allAdjustments) {
     if (pdMap[adj.officerCs]) {
       pdLogSecs[adj.officerCs] = (pdLogSecs[adj.officerCs] ?? 0) + adj.adjustmentSeconds;
@@ -245,14 +239,8 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     }
   }
 
-  // Fetch duty adjustments and build per-officer, per-month maps
-  const adjCond = resolvedShifts.length === 1
-    ? eq(dutyAdjustmentsTable.shiftType, resolvedShifts[0]!)
-    : inArray(dutyAdjustmentsTable.shiftType, resolvedShifts);
-  const allAdjustments = await db
-    .select()
-    .from(dutyAdjustmentsTable)
-    .where(adjCond);
+  // Fetch ALL duty adjustments — no shift filter, adjustments apply to officer total hours
+  const allAdjustments = await db.select().from(dutyAdjustmentsTable);
 
   // adjMonthMap[csNumber][MONTH] = total adjustment seconds for that month
   const adjMonthMap: Record<string, Record<string, number>> = {};
