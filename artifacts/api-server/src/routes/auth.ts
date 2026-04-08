@@ -241,8 +241,8 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     }
 
     const staffRole = staffRows[0] ?? null;
-    // High Command (isSeniorStaff) = owner OR explicitly granted in staff roles table
-    // All other staff get panel access (isStaff/isTrusted) but not elevated edit rights
+    const isHC  = isStaffRole && (staffRole?.isSeniorStaff ?? false); // High Command
+    const isFTP = isStaffRole && (staffRole?.isStaff ?? false);       // FTP Supervisor
     (req.session as any).user = {
       id: discordUser.id,
       username: discordUser.username,
@@ -252,8 +252,8 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       guildId: DISCORD_GUILD_ID,
       isOwner,
       isSuperAdmin: isOwner,
-      isSeniorStaff: isOwner || (isStaffRole && (staffRole?.isSeniorStaff ?? false)),
-      isStaff: isOwner || isStaffRole,
+      isSeniorStaff: isOwner || isHC,
+      isStaff: isOwner || isHC || isFTP,
       isTrusted: isOwner || isStaffRole,
     };
 

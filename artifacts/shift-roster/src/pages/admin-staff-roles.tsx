@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, Plus, Trash2, X, Search, Loader2, Shield } from "lucide-react";
+import { Users, Plus, Trash2, X, Search, Loader2, Shield, Star } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 interface OfficerResult {
@@ -20,6 +20,7 @@ interface StaffRole {
   discordUid: string;
   displayName: string | null;
   isSeniorStaff: boolean;
+  isStaff: boolean;
   addedBy: string | null;
   createdAt: string;
 }
@@ -48,6 +49,7 @@ export default function AdminStaffRolesPage() {
   const qc = useQueryClient();
 
   const isHighCommand = user?.isOwner || user?.isSeniorStaff;
+  const isCanEdit = user?.isOwner || user?.isSeniorStaff || user?.isStaff;
 
   const [newUid, setNewUid] = useState("");
   const [newName, setNewName] = useState("");
@@ -187,7 +189,7 @@ export default function AdminStaffRolesPage() {
             Player management · panel login access
           </span>
         </div>
-        {isHighCommand && (
+        {isCanEdit && (
           <Button
             size="sm"
             onClick={() => setShowAdd((v) => !v)}
@@ -199,7 +201,7 @@ export default function AdminStaffRolesPage() {
         )}
       </div>
 
-      {showAdd && isHighCommand && (
+      {showAdd && isCanEdit && (
         <div className="mb-4 p-4 bg-secondary/40 border border-border/60 rounded-md space-y-3">
           <div ref={dropdownRef} className="relative">
             <label className="text-[11px] font-mono text-muted-foreground mb-1 block">
@@ -315,13 +317,19 @@ export default function AdminStaffRolesPage() {
                     <span className="text-orange-400">High Command</span>
                   </div>
                 </th>
+                <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <div className="flex items-center justify-center gap-1">
+                    <Star className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-blue-400">FTP Supervisor</span>
+                  </div>
+                </th>
                 <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Remove</th>
               </tr>
             </thead>
             <tbody>
               {staff.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-12 text-muted-foreground text-sm font-mono">
+                  <td colSpan={5} className="text-center py-12 text-muted-foreground text-sm font-mono">
                     No staff configured. Add a player above.
                   </td>
                 </tr>
@@ -347,7 +355,16 @@ export default function AdminStaffRolesPage() {
                       </div>
                     </td>
                     <td className="text-center px-3 py-3">
-                      {isHighCommand ? (
+                      <div className="flex justify-center">
+                        <Toggle
+                          active={!!s.isStaff}
+                          disabled={!isCanEdit}
+                          onChange={(v) => updateMutation.mutate({ id: s.id, field: "isStaff", value: v })}
+                        />
+                      </div>
+                    </td>
+                    <td className="text-center px-3 py-3">
+                      {isCanEdit ? (
                         <button
                           onClick={() => deleteMutation.mutate(s.id)}
                           className="text-muted-foreground hover:text-red-400 transition-colors"
@@ -368,7 +385,7 @@ export default function AdminStaffRolesPage() {
       )}
 
       <p className="text-[11px] text-muted-foreground/60 mt-3 font-mono">
-        Players listed here can log in to the panel via Discord OAuth. High Command members have full edit access.
+        Players listed here can log in to the panel via Discord OAuth. FTP Supervisor and High Command members have full edit access.
       </p>
     </Layout>
   );

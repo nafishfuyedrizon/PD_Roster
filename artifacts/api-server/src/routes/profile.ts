@@ -198,8 +198,8 @@ router.patch("/profile/dates", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Not authenticated" });
     return;
   }
-  if (!sessionUser.isOwner && !sessionUser.isSeniorStaff) {
-    res.status(403).json({ error: "High Command or above required" });
+  if (!sessionUser.isOwner && !sessionUser.isSeniorStaff && !sessionUser.isStaff) {
+    res.status(403).json({ error: "FTP Supervisor or above required" });
     return;
   }
 

@@ -39,10 +39,10 @@ function leetNorm(s: string) {
 
 const router = Router();
 
-function requireHighCommand(req: any, res: any): boolean {
+function requireCanEdit(req: any, res: any): boolean {
   const u = (req.session as any)?.user;
   if (!u) { res.status(401).json({ error: "Not authenticated" }); return true; }
-  if (!u.isOwner && !u.isSeniorStaff) { res.status(403).json({ error: "High Command or above required" }); return true; }
+  if (!u.isOwner && !u.isSeniorStaff && !u.isStaff) { res.status(403).json({ error: "FTP Supervisor or above required" }); return true; }
   return false;
 }
 
@@ -54,7 +54,7 @@ router.get("/admin/channels", async (_req, res): Promise<void> => {
 });
 
 router.post("/admin/channels", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const { channelId, channelName } = req.body as { channelId?: string; channelName?: string };
   if (!channelId?.trim() || !channelName?.trim()) {
     res.status(400).json({ error: "channelId and channelName are required" });
@@ -70,7 +70,7 @@ router.post("/admin/channels", async (req, res): Promise<void> => {
 });
 
 router.patch("/admin/channels/:id", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
   const { isActive } = req.body as { isActive?: boolean };
   if (typeof isActive !== "boolean") { res.status(400).json({ error: "isActive boolean required" }); return; }
@@ -81,7 +81,7 @@ router.patch("/admin/channels/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/channels/:id", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
   const [ch] = await db.select().from(discordChannelsTable).where(eq(discordChannelsTable.id, id)).limit(1);
   await db.delete(discordChannelsTable).where(eq(discordChannelsTable.id, id));
@@ -130,7 +130,7 @@ router.get("/admin/duty-logs", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/duty-logs", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const { logDate, csNumber, officerName, rank, shiftType, duration, notes } =
     req.body as Partial<{ logDate: string; csNumber: string; officerName: string; rank: string; shiftType: string; duration: string; notes: string }>;
 
@@ -151,7 +151,7 @@ router.post("/admin/duty-logs", async (req, res): Promise<void> => {
 });
 
 router.put("/admin/duty-logs/:id", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
   const { logDate, csNumber, officerName, rank, shiftType, duration, notes } =
     req.body as Partial<{ logDate: string; csNumber: string; officerName: string; rank: string; shiftType: string; duration: string; notes: string }>;
@@ -174,7 +174,7 @@ router.put("/admin/duty-logs/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/duty-logs/:id", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
   await db.delete(pdDutyLogsTable).where(eq(pdDutyLogsTable.id, id));
   res.status(204).end();
@@ -388,7 +388,7 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const { officerCs, officerName, dutyMonth, dutyYear, shiftType, adjustmentSeconds, note } = req.body as {
     officerCs?: string; officerName?: string; dutyMonth?: string; dutyYear?: string;
     shiftType?: string; adjustmentSeconds?: number; note?: string;
@@ -410,7 +410,7 @@ router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/duty-adjustments/:id", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
   const [adj] = await db.select().from(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id)).limit(1);
   await db.delete(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id));
@@ -446,7 +446,7 @@ router.get("/admin/staff-roles", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/staff-roles", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const sessionUser = (req.session as any)?.user;
   const { discordUid, displayName } = req.body;
   if (!discordUid?.trim()) { res.status(400).json({ error: "discordUid required" }); return; }
@@ -465,9 +465,9 @@ router.post("/admin/staff-roles", async (req, res): Promise<void> => {
 });
 
 router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
-  const allowed = ["displayName", "isSeniorStaff"];
+  const allowed = ["displayName", "isSeniorStaff", "isStaff"];
   const updates: Record<string, unknown> = {};
   for (const k of allowed) {
     if (k in req.body) updates[k] = req.body[k];
@@ -479,7 +479,7 @@ router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/staff-roles/:id", async (req, res): Promise<void> => {
-  if (requireHighCommand(req, res)) return;
+  if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
   const [sr] = await db.select().from(staffRolesTable).where(eq(staffRolesTable.id, id)).limit(1);
   if (!sr) { res.status(404).json({ error: "Not found" }); return; }
