@@ -43,9 +43,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-full md:w-60 border-b md:border-r border-border bg-card flex flex-col shrink-0">
         <div className="p-4 border-b border-border flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm tracking-tighter">
-            {orgAcronym}
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}pd-logo.png`}
+            alt="PD Logo"
+            className="w-9 h-9 object-contain shrink-0 drop-shadow-md"
+          />
           <div className="flex flex-col">
             <span className="font-bold text-sm tracking-tight leading-none">{orgName.toUpperCase()}</span>
             <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-mono">{orgSubtitle}</span>
