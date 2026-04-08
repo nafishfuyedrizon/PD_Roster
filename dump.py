@@ -1,5 +1,6 @@
 import os
 import psycopg2
+from psycopg2 import sql
 import json
 
 # আপনার ডাটাবেস URL
@@ -19,7 +20,7 @@ def backup_db():
 
         for table in tables:
             table_name = table[0]
-            cur.execute(f"SELECT * FROM {table_name}")
+            cur.execute(sql.SQL("SELECT * FROM {}").format(sql.Identifier(table_name)))
             rows = cur.fetchall()
             # কলামের নাম পাওয়া
             colnames = [desc[0] for desc in cur.description]
