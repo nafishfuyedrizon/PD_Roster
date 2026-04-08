@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Building2, FileText, FileSearch, Clock, Users, ChevronDown, ChevronRight, TrendingUp } from "lucide-react";
+import { Building2, FileText, FileSearch, Clock, Users, ChevronDown, ChevronRight, TrendingUp, Radio } from "lucide-react";
 
 const MONTH_NAMES = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -157,7 +157,7 @@ function DeptCard({ dept, entry, weekPeriods }: { dept: string; entry: DeptEntry
 export default function DeptStatsPage() {
   const [month, setMonth] = useState<string>("");
 
-  const { data, isLoading } = useQuery<DeptStatsResponse>({
+  const { data, isLoading, dataUpdatedAt } = useQuery<DeptStatsResponse>({
     queryKey: ["/api/dept-stats", month],
     queryFn: () => {
       const params = month ? `?month=${month}` : "";
@@ -165,6 +165,7 @@ export default function DeptStatsPage() {
     },
     staleTime: 0,
     refetchOnMount: true,
+    refetchInterval: 30000,
   });
 
   const selectedMonth = data?.month ?? month;
@@ -203,9 +204,18 @@ export default function DeptStatsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
             <Building2 className="w-8 h-8 text-teal-400" />
             Department Statistics
+            <span className="flex items-center gap-1.5 text-xs font-mono font-normal px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+              <Radio className="w-3 h-3 animate-pulse" />
+              LIVE
+            </span>
           </h1>
           <p className="text-muted-foreground mt-1 font-mono text-sm">
             Monthly breakdown — Citations, FIR & Duty Hours per department
+            {dataUpdatedAt > 0 && (
+              <span className="ml-2 text-xs text-muted-foreground/60">
+                · updated {new Date(dataUpdatedAt).toLocaleTimeString()}
+              </span>
+            )}
           </p>
         </div>
 
