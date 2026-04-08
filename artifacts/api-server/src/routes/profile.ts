@@ -2,8 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import { db } from "@workspace/db";
 import { officersTable, emsDutyLogsTable } from "@workspace/db/schema";
-import { or, eq, desc, and } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { or, eq, desc, and, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -70,11 +69,15 @@ router.get("/profile", async (req: Request, res: Response) => {
     }
 
     if (weeks.length > 0) {
+      const nonNullWeeks = weeks.filter((w): w is string => w !== null);
       const logs = await db
         .select()
         .from(emsDutyLogsTable)
         .where(
-          sql`${emsDutyLogsTable.csNumber} = ${officer.callSign} AND ${emsDutyLogsTable.weekPeriod} = ANY(${sql.raw(`ARRAY[${weeks.map((w) => `'${w.replace(/'/g, "''")}'`).join(",")}]`)})`,
+          and(
+            eq(emsDutyLogsTable.csNumber, officer.callSign),
+            inArray(emsDutyLogsTable.weekPeriod, nonNullWeeks),
+          ),
         );
 
       for (const log of logs) {
@@ -155,8 +158,12 @@ router.get("/profile/view", async (req: Request, res: Response) => {
       for (const s of SHIFT_TYPES_V) duties[week][s] = "00:00";
     }
     if (weeks.length > 0) {
+      const nonNullWeeks = weeks.filter((w): w is string => w !== null);
       const logs = await db.select().from(emsDutyLogsTable).where(
-        sql`${emsDutyLogsTable.csNumber} = ${officer.callSign} AND ${emsDutyLogsTable.weekPeriod} = ANY(${sql.raw(`ARRAY[${weeks.map((w) => `'${w.replace(/'/g, "''")}'`).join(",")}]`)})`,
+        and(
+          eq(emsDutyLogsTable.csNumber, officer.callSign),
+          inArray(emsDutyLogsTable.weekPeriod, nonNullWeeks),
+        ),
       );
       for (const log of logs) {
         if (log.weekPeriod && log.shiftType && weeks.includes(log.weekPeriod)) {
