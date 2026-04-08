@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Settings, Trash2, ChevronLeft, ChevronRight, Clock, Minus, Plus, Bot, RefreshCw } from "lucide-react";
+import { Settings, Trash2, ChevronLeft, ChevronRight, Clock, Minus, Plus, Bot, RefreshCw, CheckSquare2, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface AdjOfficer {
@@ -118,12 +118,35 @@ export default function AdminPage() {
   const now = new Date();
   const [adjMonthIdx, setAdjMonthIdx] = useState(now.getMonth());
   const [adjYear, setAdjYear] = useState(now.getFullYear());
-  const [adjShift, setAdjShift] = useState("ALL");
+  // Multi-shift selection: set of selected shift keys
+  const [selectedShifts, setSelectedShifts] = useState<Set<string>>(new Set(["ALL"]));
   const [adjInputs, setAdjInputs] = useState<Record<string, string>>({});
   const [adjNotes, setAdjNotes] = useState<Record<string, string>>({});
   const [adjSearch, setAdjSearch] = useState("");
 
   const adjMonth = MONTH_NAMES[adjMonthIdx]!;
+
+  // Determine the shift key to use for the data fetch (ALL if multiple or ALL selected)
+  const adjShift = selectedShifts.size === 1 ? [...selectedShifts][0]! : "ALL";
+
+  function toggleShift(key: string) {
+    setSelectedShifts((prev) => {
+      const next = new Set(prev);
+      if (key === "ALL") {
+        // "ALL" is exclusive
+        return new Set(["ALL"]);
+      }
+      // Remove ALL if selecting a specific shift
+      next.delete("ALL");
+      if (next.has(key)) {
+        next.delete(key);
+        if (next.size === 0) return new Set(["ALL"]); // fallback to ALL
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
 
   const monthDateRange = (() => {
     const firstDay = new Date(adjYear, adjMonthIdx, 1);
@@ -170,24 +193,31 @@ export default function AdminPage() {
       const raw = adjInputs[officer.cs] ?? "";
       const secs = parseInputToSeconds(raw);
       if (secs <= 0) throw new Error("Enter a valid time (e.g. 1h 30m or 1:30:00)");
-      const res = await fetch(`/api/admin/duty-adjustments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          officerCs: officer.cs,
-          officerName: officer.name,
-          dutyMonth: adjMonth,
-          dutyYear: String(adjYear),
-          shiftType: adjShift,
-          adjustmentSeconds: sign * secs,
-          note: adjNotes[officer.cs]?.trim() || null,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Failed to apply adjustment");
-      }
-      return res.json();
+      // Fire one POST per selected shift
+      const shiftsToApply = [...selectedShifts];
+      const results = await Promise.all(
+        shiftsToApply.map(async (shiftKey) => {
+          const res = await fetch(`/api/admin/duty-adjustments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              officerCs: officer.cs,
+              officerName: officer.name,
+              dutyMonth: adjMonth,
+              dutyYear: String(adjYear),
+              shiftType: shiftKey,
+              adjustmentSeconds: sign * secs,
+              note: adjNotes[officer.cs]?.trim() || null,
+            }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error((err as { error?: string }).error ?? `Failed for shift ${shiftKey}`);
+          }
+          return res.json();
+        })
+      );
+      return results;
     },
     onSuccess: (_data, { officer, sign }) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
@@ -199,7 +229,14 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       setAdjInputs((prev) => ({ ...prev, [officer.cs]: "" }));
       setAdjNotes((prev) => ({ ...prev, [officer.cs]: "" }));
-      toast({ title: sign === 1 ? "Hours added" : "Hours removed", description: `Updated ${officer.name}` });
+      const shiftCount = selectedShifts.size;
+      const shiftLabel = shiftCount === 1
+        ? `[${[...selectedShifts][0]}]`
+        : `[${[...selectedShifts].join(" + ")}]`;
+      toast({
+        title: sign === 1 ? "Hours added" : "Hours removed",
+        description: `Updated ${officer.name} for ${shiftLabel}`,
+      });
     },
     onError: (e: Error) => {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -276,24 +313,44 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Shift tabs */}
+        {/* Shift multi-select */}
         {shiftConfigs.length > 0 && (
-          <div className="px-4 py-2.5 border-b border-border bg-secondary/10 flex items-center gap-2 flex-wrap">
-            {[{ key: "ALL", label: "All Shifts", sub: "", icon: "◉" }, ...shiftConfigs].map((s) => (
-              <button
-                key={s.key}
-                onClick={() => setAdjShift(s.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all border ${
-                  adjShift === s.key
-                    ? "bg-teal-600/20 border-teal-500/60 text-teal-300"
-                    : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground hover:border-border/80"
-                }`}
-              >
-                <span>{s.icon}</span>
-                <span>{s.label}</span>
-                {s.sub && <span className="opacity-60 text-[10px]">{s.sub}</span>}
-              </button>
-            ))}
+          <div className="px-4 py-2.5 border-b border-border bg-secondary/10">
+            <div className="flex items-center gap-2 flex-wrap">
+              {[{ key: "ALL", label: "All Shifts", sub: "", icon: "◉" }, ...shiftConfigs].map((s) => {
+                const isSelected = selectedShifts.has(s.key);
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() => toggleShift(s.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all border select-none ${
+                      isSelected
+                        ? "bg-teal-600/20 border-teal-500/60 text-teal-300"
+                        : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                    }`}
+                  >
+                    {s.key === "ALL" ? (
+                      <span className="opacity-70">{s.icon}</span>
+                    ) : isSelected ? (
+                      <CheckSquare2 className="w-3.5 h-3.5 text-teal-400" />
+                    ) : (
+                      <Square className="w-3.5 h-3.5 opacity-40" />
+                    )}
+                    <span>{s.label}</span>
+                    {s.sub && <span className="opacity-60 text-[10px]">{s.sub}</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedShifts.size > 1 && (
+              <div className="mt-2 text-[11px] font-mono text-teal-400/80 flex items-center gap-1.5">
+                <CheckSquare2 className="w-3 h-3" />
+                {selectedShifts.size} shifts selected — adjustment will apply to each
+                <span className="text-muted-foreground/60 ml-1">
+                  ({[...selectedShifts].join(", ")})
+                </span>
+              </div>
+            )}
           </div>
         )}
 
