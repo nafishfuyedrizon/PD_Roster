@@ -119,6 +119,17 @@ async function syncStudentProgressions(client: DbClient, seedFile: string): Prom
   logger.info({ upserted: n, total: rows.length }, "Synced student_progressions from seed");
 }
 
+async function ensureDepartmentExists(client: DbClient, dept: string): Promise<void> {
+  const r = await client.query(`SELECT value FROM site_settings WHERE key = 'departments' LIMIT 1`);
+  if (r.rows.length === 0) return;
+  let depts: string[] = [];
+  try { depts = JSON.parse(r.rows[0].value as string); } catch { return; }
+  if (!Array.isArray(depts) || depts.includes(dept)) return;
+  depts.push(dept);
+  await client.query(`UPDATE site_settings SET value = $1, updated_at = NOW() WHERE key = 'departments'`, [JSON.stringify(depts)]);
+  logger.info({ dept }, `Added ${dept} to departments list`);
+}
+
 export async function seedDatabase(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
 
@@ -140,6 +151,9 @@ export async function seedDatabase(): Promise<void> {
 
     // Always upsert student progressions — syncs progress fields even if rows already exist
     await syncStudentProgressions(client, path.join(base, "student-progressions-seed.json"));
+
+    // Ensure PTA is in the departments list
+    await ensureDepartmentExists(client, "PTA");
 
     if (!existsSync(seedFile)) {
       logger.info("No seed-data.json found — skipping main seed");
