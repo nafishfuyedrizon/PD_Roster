@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pinoHttp from "pino-http";
@@ -10,6 +11,8 @@ const PgSession = connectPgSimple(session);
 
 const app: Express = express();
 
+app.set("trust proxy", 1);
+app.use(cookieParser());
 app.use(
   pinoHttp({
     logger,

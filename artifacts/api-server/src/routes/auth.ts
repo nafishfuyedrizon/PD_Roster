@@ -47,7 +47,6 @@ router.get("/auth/discord", (req: Request, res: Response) => {
 
   const redirectUri = getRedirectUri(req);
   const state = Math.random().toString(36).slice(2);
-  (req.session as any).oauthState = state;
 
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
@@ -57,15 +56,16 @@ router.get("/auth/discord", (req: Request, res: Response) => {
     state,
   });
 
-  const discordUrl = `https://discord.com/api/oauth2/authorize?${params}`;
-  req.session.save((err) => {
-    if (err) {
-      console.error("[auth] Session save error before OAuth redirect:", err);
-      res.status(500).json({ error: "Session error" });
-      return;
-    }
-    res.redirect(discordUrl);
+  // Store state in a short-lived cookie (more reliable than session in production)
+  const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
+  res.cookie("discord_oauth_state", state, {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: "lax",
+    maxAge: 5 * 60 * 1000, // 5 minutes
   });
+
+  res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
 });
 
 router.get("/auth/discord/callback", async (req: Request, res: Response) => {
@@ -76,13 +76,15 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     return;
   }
 
-  const storedState = (req.session as any).oauthState;
+  const storedState = (req.cookies as any)?.discord_oauth_state;
   if (!state || state !== storedState) {
+    console.warn("[auth] State mismatch. received:", state, "stored:", storedState);
     res.redirect("/shift-roster/?auth_error=invalid_state");
     return;
   }
 
-  delete (req.session as any).oauthState;
+  // Clear the state cookie
+  res.clearCookie("discord_oauth_state");
 
   if (!code) {
     res.redirect("/shift-roster/?auth_error=no_code");
