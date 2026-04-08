@@ -102,6 +102,23 @@ async function seedTableIfEmpty(
   logger.info({ inserted: n, total: rows.length }, `Seeded ${table}`);
 }
 
+async function syncStudentProgressions(client: DbClient, seedFile: string): Promise<void> {
+  if (!existsSync(seedFile)) {
+    logger.info("No student-progressions-seed.json found — skipping sync");
+    return;
+  }
+  const rows = JSON.parse(readFileSync(seedFile, "utf-8")) as Record<string, unknown>[];
+  if (!rows || rows.length === 0) return;
+
+  // Build the SET clause for all columns except id and created_at
+  const sampleCols = Object.keys(rows[0]).filter((c) => c !== "id" && c !== "created_at");
+  const updateSet = sampleCols.map((c) => `"${c}" = EXCLUDED."${c}"`).join(", ");
+
+  const n = await upsertRows(client, "student_progressions", rows, '"id"', updateSet);
+  await resetSeq(client, "student_progressions");
+  logger.info({ upserted: n, total: rows.length }, "Synced student_progressions from seed");
+}
+
 export async function seedDatabase(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
 
@@ -120,6 +137,9 @@ export async function seedDatabase(): Promise<void> {
     await seedTableIfEmpty(client, "ex_pd_officers", path.join(base, "ex-pd-seed.json"));
     await seedTableIfEmpty(client, "duty_adjustments", path.join(base, "duty-adjustments-seed.json"));
     await seedTableIfEmpty(client, "staff_roles", path.join(base, "staff-roles-seed.json"), "upsert", '"discord_uid"');
+
+    // Always upsert student progressions — syncs progress fields even if rows already exist
+    await syncStudentProgressions(client, path.join(base, "student-progressions-seed.json"));
 
     if (!existsSync(seedFile)) {
       logger.info("No seed-data.json found — skipping main seed");
