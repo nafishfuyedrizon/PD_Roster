@@ -484,10 +484,12 @@ export default function PdDutyHourPage() {
     const wps = monthWeeks[selectedMonth] ?? [];
     const officerLines = [...breakdown]
       .map((p) => {
-        const secs = wps.reduce((acc, wp) => {
+        const rawSecs = wps.reduce((acc, wp) => {
           const wk = p.weeks.find((w) => w.weekPeriod === wp);
           return acc + hmsToSecs(wk?.dutyHours);
         }, 0);
+        const adjSecs = (p.monthAdjustments as Record<string, number> | undefined)?.[selectedMonth] ?? 0;
+        const secs = Math.max(0, rawSecs + adjSecs);
         return { tag: fmtDiscord(p), secs };
       })
       .sort((a, b) => b.secs - a.secs)
