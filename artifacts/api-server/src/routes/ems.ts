@@ -50,6 +50,22 @@ function getCurrentWeekPeriod(): string {
   return `${fmt(mon)}-${fmt(sun)}`;
 }
 
+// Sort key for week periods that handles year boundaries correctly.
+// Week periods are "MM/DD-MM/DD". String sort is wrong when data spans year
+// boundaries (e.g. "12/30-01/05" sorts AFTER "04/06-04/12" alphabetically but
+// is actually older). Use the end-date + estimated year as a numeric key.
+function weekPeriodSortKey(wp: string): number {
+  const now = new Date();
+  const curMonth = now.getUTCMonth() + 1;
+  const curYear = now.getUTCFullYear();
+  const endMm = parseInt(wp.slice(6, 8), 10) || 0;
+  const endDd = parseInt(wp.slice(9, 11), 10) || 0;
+  // If the end-month is more than 1 month ahead of today, the week belongs to
+  // the previous calendar year (handles December data while in April, etc.)
+  const year = endMm > curMonth + 1 ? curYear - 1 : curYear;
+  return year * 10000 + endMm * 100 + endDd;
+}
+
 router.get("/ems/duty-logs", async (req, res): Promise<void> => {
   const parsed = ListEmsDutyLogsQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -109,14 +125,18 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
   const allWeeks = await db
     .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
     .from(emsDutyLogsTable)
-    .where(shiftCond)
-    .orderBy(desc(emsDutyLogsTable.weekPeriod));
+    .where(shiftCond);
 
-  const weekPeriods = allWeeks.map((w) => w.weekPeriod);
-  // Always include the current week even if no logs exist yet
   const currentWeekPeriod = getCurrentWeekPeriod();
+  // Sort chronologically (most-recent first) using year-aware sort key so that
+  // December weeks don't falsely appear "later" than April weeks.
+  const weekPeriods = allWeeks.map((w) => w.weekPeriod)
+    .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a));
+  // Always include the current week even if no logs exist yet
   if (!weekPeriods.includes(currentWeekPeriod)) weekPeriods.unshift(currentWeekPeriod);
-  const latestWeek = weekPeriod ?? weekPeriods[0] ?? "";
+  // Always default to the actual current week — never rely on weekPeriods[0]
+  // which could be an old December week due to sort order ambiguity.
+  const latestWeek = weekPeriod ?? currentWeekPeriod;
 
   // All logs (for monthly stats)
   const allLogs = await db
@@ -211,9 +231,11 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     .where(shiftCond)
     .orderBy(emsDutyLogsTable.weekPeriod);
 
-  // Get distinct week periods sorted, always including the current week
-  const allWeekPeriods = [...new Set(logs.map((l) => l.weekPeriod))].sort().reverse();
+  // Get distinct week periods sorted chronologically (most-recent first).
+  // Use year-aware sort key so December weeks don't sort after April weeks.
   const _cwp = getCurrentWeekPeriod();
+  const allWeekPeriods = [...new Set(logs.map((l) => l.weekPeriod))]
+    .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a));
   if (!allWeekPeriods.includes(_cwp)) allWeekPeriods.unshift(_cwp);
 
   // Fetch ALL PD officers as the source of truth
@@ -302,7 +324,7 @@ router.get("/ems/officer-duty/:callSign", async (req, res): Promise<void> => {
   }
 
   const weeks = Object.entries(weekMap)
-    .sort(([a], [b]) => b.localeCompare(a))
+    .sort(([a], [b]) => weekPeriodSortKey(b) - weekPeriodSortKey(a))
     .map(([weekPeriod, shifts]) => ({ weekPeriod, shifts }));
 
   res.json({
@@ -330,10 +352,12 @@ router.get("/ems/officer-duty/:callSign", async (req, res): Promise<void> => {
 router.get("/ems/week-periods", async (_req, res): Promise<void> => {
   const rows = await db
     .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
-    .from(emsDutyLogsTable)
-    .orderBy(desc(emsDutyLogsTable.weekPeriod));
+    .from(emsDutyLogsTable);
 
-  res.json(ListEmsWeekPeriodsResponse.parse(rows.map((r) => r.weekPeriod)));
+  // Use year-aware sort so December weeks sort before April weeks correctly
+  const sorted = rows.map((r) => r.weekPeriod)
+    .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a));
+  res.json(ListEmsWeekPeriodsResponse.parse(sorted));
 });
 
 router.put("/ems/duty-logs/:id", async (req, res): Promise<void> => {

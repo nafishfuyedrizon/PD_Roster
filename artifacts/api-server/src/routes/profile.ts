@@ -2,11 +2,21 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import { db } from "@workspace/db";
 import { officersTable, emsDutyLogsTable } from "@workspace/db/schema";
-import { or, eq, desc, and, inArray } from "drizzle-orm";
+import { or, eq, and, inArray } from "drizzle-orm";
 
 const router = Router();
 
 const SHIFT_TYPES = ["NORMAL", "TRAINING", "UNDERCOVER", "EXTRA", "ALL"];
+
+function weekPeriodSortKey(wp: string): number {
+  const now = new Date();
+  const curMonth = now.getUTCMonth() + 1;
+  const curYear = now.getUTCFullYear();
+  const endMm = parseInt(wp.slice(6, 8), 10) || 0;
+  const endDd = parseInt(wp.slice(9, 11), 10) || 0;
+  const year = endMm > curMonth + 1 ? curYear - 1 : curYear;
+  return year * 10000 + endMm * 100 + endDd;
+}
 
 function calcDaysSince(dateStr: string | null | undefined): number {
   if (!dateStr) return 0;
@@ -51,14 +61,16 @@ router.get("/profile", async (req: Request, res: Response) => {
       return;
     }
 
-    const recentWeeks = await db
+    const allWeekRows = await db
       .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
       .from(emsDutyLogsTable)
-      .where(eq(emsDutyLogsTable.csNumber, officer.callSign))
-      .orderBy(desc(emsDutyLogsTable.weekPeriod))
-      .limit(5);
+      .where(eq(emsDutyLogsTable.csNumber, officer.callSign));
 
-    const weeks = recentWeeks.map((r) => r.weekPeriod);
+    const weeks = allWeekRows
+      .map((r) => r.weekPeriod)
+      .filter((w): w is string => !!w)
+      .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a))
+      .slice(0, 5);
 
     const duties: Record<string, Record<string, string>> = {};
     for (const week of weeks) {
@@ -143,14 +155,16 @@ router.get("/profile/view", async (req: Request, res: Response) => {
 
     if (!officer) { res.json({ officer: null, weeks: [], duties: {} }); return; }
 
-    const recentWeeks = await db
+    const allWeekRows2 = await db
       .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
       .from(emsDutyLogsTable)
-      .where(eq(emsDutyLogsTable.csNumber, officer.callSign))
-      .orderBy(desc(emsDutyLogsTable.weekPeriod))
-      .limit(5);
+      .where(eq(emsDutyLogsTable.csNumber, officer.callSign));
 
-    const weeks = recentWeeks.map((r) => r.weekPeriod);
+    const weeks = allWeekRows2
+      .map((r) => r.weekPeriod)
+      .filter((w): w is string => !!w)
+      .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a))
+      .slice(0, 5);
     const duties: Record<string, Record<string, string>> = {};
     const SHIFT_TYPES_V = ["NORMAL", "TRAINING", "UNDERCOVER", "EXTRA", "ALL"];
     for (const week of weeks) {
