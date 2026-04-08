@@ -15,6 +15,7 @@ import studentProgressionsRouter from "./student-progressions";
 import exPdOfficersRouter from "./ex-pd-officers";
 import fivemRouter from "./fivem";
 import ftoDocsRouter from "./fto-docs";
+import deptStatsRouter from "./dept-stats";
 
 // Start Google Sheet auto-sync on boot
 startSheetAutoSync();
@@ -37,5 +38,6 @@ router.use(studentProgressionsRouter);
 router.use(exPdOfficersRouter);
 router.use(fivemRouter);
 router.use(ftoDocsRouter);
+router.use(deptStatsRouter);
 
 export default router;
