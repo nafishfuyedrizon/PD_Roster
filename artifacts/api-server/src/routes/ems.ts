@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { guard } from "../lib/auth-guard.js";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { db, emsDutyLogsTable, officersTable, shiftConfigsTable, dutyAdjustmentsTable } from "@workspace/db";
 import {
@@ -78,6 +79,7 @@ router.get("/ems/duty-logs", async (req, res): Promise<void> => {
 });
 
 router.post("/ems/duty-logs", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const parsed = CreateEmsDutyLogBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -335,6 +337,7 @@ router.get("/ems/week-periods", async (_req, res): Promise<void> => {
 });
 
 router.put("/ems/duty-logs/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const params = UpdateEmsDutyLogParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -362,6 +365,7 @@ router.put("/ems/duty-logs/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/ems/duty-logs/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 3)) return;
   const params = DeleteEmsDutyLogParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

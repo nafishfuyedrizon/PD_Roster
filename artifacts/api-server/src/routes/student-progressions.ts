@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, studentProgressionsTable, pdDutyLogsTable, officersTable, CHECKPOINT_FIELDS } from "@workspace/db";
 import { eq, sql, inArray } from "drizzle-orm";
+import { guard } from "../lib/auth-guard.js";
 
 const router = Router();
 
@@ -71,6 +72,7 @@ router.get("/student-progressions", async (_req, res): Promise<void> => {
 
 // POST /student-progressions — create
 router.post("/student-progressions", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const { name, badgeNumber, discordId, discordName, timezone, currentPhase, status, strikes, hireDate, loaEndDate, soloStartDate, eligibleTrooperDate } = req.body;
   if (!name) { res.status(400).json({ error: "name required" }); return; }
   const [row] = await db.insert(studentProgressionsTable).values({
@@ -83,6 +85,7 @@ router.post("/student-progressions", async (req, res): Promise<void> => {
 
 // PUT /student-progressions/:id — full update
 router.put("/student-progressions/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const body = req.body;
   const [row] = await db.update(studentProgressionsTable).set({ ...body, updatedAt: new Date() }).where(eq(studentProgressionsTable.id, id)).returning();
@@ -94,6 +97,7 @@ router.put("/student-progressions/:id", async (req, res): Promise<void> => {
 
 // PATCH /student-progressions/:id/checkbox — toggle a single boolean checkpoint
 router.patch("/student-progressions/:id/checkbox", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const { field, value } = req.body as { field: string; value: boolean };
   if (!CHECKPOINT_FIELDS.includes(field as typeof CHECKPOINT_FIELDS[number])) {
@@ -112,6 +116,7 @@ router.patch("/student-progressions/:id/checkbox", async (req, res): Promise<voi
 
 // DELETE /student-progressions/:id
 router.delete("/student-progressions/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   await db.delete(studentProgressionsTable).where(eq(studentProgressionsTable.id, id));
   res.json({ ok: true });

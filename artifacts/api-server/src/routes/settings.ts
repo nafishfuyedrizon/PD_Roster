@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, siteSettingsTable, DEFAULT_SETTINGS } from "@workspace/db";
 import { auditLog } from "../lib/audit.js";
+import { guard } from "../lib/auth-guard.js";
 
 const router: IRouter = Router();
 
@@ -31,6 +32,7 @@ router.get("/settings", async (req, res): Promise<void> => {
 });
 
 router.put("/admin/settings", async (req, res): Promise<void> => {
+  if (guard(req, res, 4)) return;
   const { key, value } = req.body as { key: string; value: unknown };
   if (!key) { res.status(400).json({ error: "key is required" }); return; }
   const serialized = JSON.stringify(value);

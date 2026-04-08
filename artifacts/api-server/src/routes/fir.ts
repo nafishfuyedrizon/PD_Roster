@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { db, pdFirTable, officersTable, type FirThreadMessage } from "@workspace/db";
 import { desc, ilike, or, sql, inArray, eq } from "drizzle-orm";
+import { guard } from "../lib/auth-guard.js";
 
 const router = Router();
 
@@ -103,6 +104,7 @@ router.get("/fir", async (req, res): Promise<void> => {
 
 // ── Toggle bookmark ───────────────────────────────────────────────────────────
 router.patch("/fir/:id/bookmark", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const [current] = await db.select({ bookmarked: pdFirTable.bookmarked }).from(pdFirTable).where(eq(pdFirTable.id, id));
   if (!current) { res.status(404).json({ error: "FIR not found" }); return; }
@@ -112,6 +114,7 @@ router.patch("/fir/:id/bookmark", async (req, res): Promise<void> => {
 });
 
 router.patch("/fir/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const { status, acceptedBy, officerName, rejectedBy } = req.body as { status: "accepted" | "rejected" | "pending"; acceptedBy?: string; officerName?: string; rejectedBy?: string };
   if (!["accepted", "rejected", "pending"].includes(status)) {

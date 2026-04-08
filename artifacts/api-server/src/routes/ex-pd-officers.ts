@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, exPdOfficersTable } from "@workspace/db";
 import { eq, ilike, or, sql } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
+import { guard } from "../lib/auth-guard.js";
 
 const router: IRouter = Router();
 
@@ -44,6 +45,7 @@ router.get("/ex-pd-officers/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/ex-pd-officers", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const body = req.body;
   if (!body.name) { res.status(400).json({ error: "name required" }); return; }
   const [row] = await db.insert(exPdOfficersTable).values({
@@ -72,6 +74,7 @@ router.post("/ex-pd-officers", async (req, res): Promise<void> => {
 });
 
 router.put("/ex-pd-officers/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const body = req.body;
   const [row] = await db.update(exPdOfficersTable)
@@ -84,6 +87,7 @@ router.put("/ex-pd-officers/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/ex-pd-officers/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const [row] = await db.delete(exPdOfficersTable).where(eq(exPdOfficersTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "not found" }); return; }

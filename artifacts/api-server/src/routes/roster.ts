@@ -4,6 +4,7 @@ import { db, officersTable, emsDutyLogsTable, dutyAdjustmentsTable, qualificatio
 import { syncVotersToQualChart } from "./qualification.js";
 import { syncStudentProgressionsWithRoster } from "./student-progressions.js";
 import { auditLog } from "../lib/audit.js";
+import { guard } from "../lib/auth-guard.js";
 import {
   ListOfficersQueryParams,
   ListOfficersResponse,
@@ -58,6 +59,7 @@ router.get("/roster", async (req, res): Promise<void> => {
 });
 
 router.post("/roster", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const parsed = CreateOfficerBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -320,6 +322,7 @@ router.get("/roster/:id", async (req, res): Promise<void> => {
 });
 
 router.put("/roster/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const params = UpdateOfficerParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -538,6 +541,7 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/roster/:id", async (req, res): Promise<void> => {
+  if (guard(req, res, 3)) return;
   const params = DeleteOfficerParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
