@@ -74,6 +74,25 @@ async function resetSeq(client: DbClient, table: string): Promise<void> {
   }
 }
 
+async function seedFtoDocsIfEmpty(client: DbClient, baseDir: string): Promise<void> {
+  const ftoCount = await tableCount(client, "fto_doc_items");
+  if (ftoCount > 0) {
+    logger.info({ ftoCount }, "fto_doc_items already has data — skipping FTO seed");
+    return;
+  }
+
+  const ftoFile = path.resolve(baseDir, "../fto-seed.json");
+  if (!existsSync(ftoFile)) {
+    logger.info("No fto-seed.json found — skipping FTO seed");
+    return;
+  }
+
+  const rows = JSON.parse(readFileSync(ftoFile, "utf-8")) as Record<string, unknown>[];
+  const n = await insertRows(client, "fto_doc_items", rows);
+  await resetSeq(client, "fto_doc_items");
+  logger.info({ inserted: n, total: rows.length }, "Seeded fto_doc_items");
+}
+
 export async function seedDatabase(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
 
@@ -83,17 +102,20 @@ export async function seedDatabase(): Promise<void> {
   // One level up from dist/ lands at artifacts/api-server/
   const seedFile = path.resolve(__dirname, "../seed-data.json");
 
-  if (!existsSync(seedFile)) {
-    logger.info("No seed-data.json found — skipping seed");
-    return;
-  }
-
   const client = await pool.connect();
 
   try {
+    // Always seed FTO docs independently — they can be empty even on live servers
+    await seedFtoDocsIfEmpty(client, __dirname);
+
+    if (!existsSync(seedFile)) {
+      logger.info("No seed-data.json found — skipping main seed");
+      return;
+    }
+
     const officerCount = await tableCount(client, "officers");
     if (officerCount > 0) {
-      logger.info({ officerCount }, "Database already seeded — skipping");
+      logger.info({ officerCount }, "Database already seeded — skipping main seed");
       return;
     }
 

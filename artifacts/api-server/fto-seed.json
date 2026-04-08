@@ -1,0 +1,893 @@
+[
+  {
+    "doc_id": "advanced",
+    "section_id": "subtitle",
+    "item_text": "How to Process Evidence and post them in Datadump & How to use MDT",
+    "item_type": "note",
+    "is_important": false,
+    "is_highlight": true,
+    "sort_order": 0
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "10-11",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "10-80, 10-81",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 2
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "Initiate Code 5",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 3
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "10-80, Pit",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 4
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "RS & PC and Ask Tell and Make",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 5
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "10-90 Full checklist as a Scene Command",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 6
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "Robbery Negotiations",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 7
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "Radio Communications make it more detailed",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 8
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "Confronting Criminals/Suspects",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 9
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "Searching",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 10
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "10 Codes",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 11
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "Arresting and Processing",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 12
+  },
+  {
+    "doc_id": "advanced",
+    "section_id": "main",
+    "item_text": "Use of Force",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 13
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "PD tour",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "10-14",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "oath",
+    "item_text": "I,[name], Hereby sincerely declare before God that I will faithfully discharge all the responsibilities, defend the Constitution of SAN ANDREAS and the laws and according equal respect to all people, while I continue to be a member of SASP/BCSO of LOS SANTOS, I will to the best of my skill and knowledge discharge all my duties impartially and according to law. I will follow the chain of command of the department and discharge my duties honestly and with my full capabilities.",
+    "item_type": "quote",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "Show them how to clock on/off duty",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 2
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "CPR",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 2
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "Show them how to join on-duty vc, and how to write in #sasp-cadet-logs",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 3
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "HC",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 3
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "Evidence Processing",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": true,
+    "sort_order": 4
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "SC",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 4
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "How to process a suspect",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 5
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "ESCORT",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 5
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "The PD doors should be locked at any given time.",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 6
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "JAIL",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 6
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "Teach them all the PD rules from SOP (RULES & INFO)",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 7
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "FINE",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 7
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "How to communicate with PD radios",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 8
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "TRAINING",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 8
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student1",
+    "item_text": "Dispatch calls & some important commands",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 9
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "OPERATOR",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 9
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "BREACH",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 10
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student2",
+    "item_text": "10-80 Radio callouts",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 10
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "GSR",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 11
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student2",
+    "item_text": "Show them Traffic Stop and 10-80",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 11
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "DRUGTEST",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 12
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student2",
+    "item_text": "RS & PC (Must)",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 12
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "ACTIVE_ROBBERIES",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 13
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student2",
+    "item_text": "Strike System",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 13
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "CLOSE_BANK-STORE-JEW",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 14
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student2",
+    "item_text": "Review the whole SOP",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 14
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "CP",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 15
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "student2",
+    "item_text": "Breach In (House Robbery)",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 15
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "FP",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 16
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "FRISK",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 17
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "SEARCH",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 18
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "UC",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 19
+  },
+  {
+    "doc_id": "basic",
+    "section_id": "commands",
+    "item_text": "SUS IN-OUT",
+    "item_type": "command",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 20
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "How many hours can you provide daily? How many hours in a week?",
+    "item_type": "bullet",
+    "is_important": true,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "Introduce yourself.",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Can you play on Peak Hours? Especially after 6,7 pm BDT?",
+    "item_type": "bullet",
+    "is_important": true,
+    "is_highlight": false,
+    "sort_order": 2
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "Why do you want to join PD?",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 2
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Explain about criminal character switching rules / Day off",
+    "item_type": "bullet",
+    "is_important": true,
+    "is_highlight": false,
+    "sort_order": 3
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "Give a situation of traffic stop and check how he reacts",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 3
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "You can't play as a Criminal Character in the cadet phase, Will you agree?",
+    "item_type": "bullet",
+    "is_important": true,
+    "is_highlight": false,
+    "sort_order": 4
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "Ask about \"PD TRYHARD\"",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 4
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "You can't do PD rp in any other server",
+    "item_type": "bullet",
+    "is_important": true,
+    "is_highlight": false,
+    "sort_order": 5
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "What is the meaning of Miranda Rights?",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 5
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Diff between RDM and VDM",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 6
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "Give a situation and ask if he is gonna use his Taser/Pistol inside the Pillbox.",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 6
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Powergaming with a suitable example",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 7
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "Ask him about the DOJ and COURT CASE.",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 7
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "What is in-game metagaming?",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 8
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "Give some FTO ride-along situations and check how he responds.",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 8
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Explain KOS ( kill on Sight )",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 9
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "What is the Chain of Command?",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 9
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Ask about character mixing and exploit",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 10
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "walkin",
+    "item_text": "You can give more situations to them if you think it's necessary. In last, you will say your result will be posted in the interview result.",
+    "item_type": "note",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 10
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Ask about the safe zones",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 11
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Ask if he/she will make the PD negotiator a hostage.",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 12
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "While processing, the suspect asked the officer to join support right now!!",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 13
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "What will you do if you see your favourite streamer? What will you do?",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 14
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "If you use your power to abuse someone or break any rules you can be fired or get a ban. Will you agree?",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 15
+  },
+  {
+    "doc_id": "interview",
+    "section_id": "discord",
+    "item_text": "Take as little time as possible, just ask him the question if he/she can't answer, skip, and move to the next question, you don't need to give hints.",
+    "item_type": "note",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 16
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "Mid Career Exam mandatory to pass to become Sergeant",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "All the exam modules of the trooper exam may be repeated. But remember, during the trooper exam we sometimes overlook many mistakes. But in this case, we will expect flawless performance.",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 2
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "A speed test will be added to the practical exam. There will be a live 10.80. During this, the candidate must keep an eye on the vehicle. Examiners will pay close attention to the visual ratio.",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 3
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "You need to have a total grip on the Police Handbook and fair knowledge of the penal code of Legacy ( you will find it on Discord ).",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 4
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "There will be a situational response test in the viva, where you will be asked your response in various police situations.",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 5
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "10 codes related radio calls",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 6
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "Leading any Situation as a Scene",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 7
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "10-90 (A-Z)",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 8
+  },
+  {
+    "doc_id": "sergeant",
+    "section_id": "corporal",
+    "item_text": "No blind corners",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 9
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "practical",
+    "item_text": "Normal Very Basic 10-11",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "viva",
+    "item_text": "What is your primary weapon?",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 1
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "practical",
+    "item_text": "Reckless 10-11 Then 80 Convert Chase Callouts Pitting",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 2
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "viva",
+    "item_text": "Question him from MDT PENAL CODE",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 2
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "practical",
+    "item_text": "Code 5",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 3
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "viva",
+    "item_text": "Give a situation related to RS & PC",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 3
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "practical",
+    "item_text": "Basic 10-90 (A-Z)",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 4
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "viva",
+    "item_text": "Drug sales situations",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 4
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "practical",
+    "item_text": "Give a few situations and check how he responds to dispatch ( for radio calls )",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 5
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "viva",
+    "item_text": "Ask a Few main \"10 codes\"",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 5
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "practical",
+    "item_text": "Respond to a 10-71 call and check how he takes evidence and process those",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 6
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "viva",
+    "item_text": "A few main commands",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 6
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "practical",
+    "item_text": "Respond to a 10-66 call and check how he takes evidence and process those",
+    "item_type": "bullet",
+    "is_important": false,
+    "is_highlight": false,
+    "sort_order": 7
+  },
+  {
+    "doc_id": "trooper",
+    "section_id": "viva",
+    "item_text": "Give a few situations and check his Quick Thinking",
+    "item_type": "numbered",
+    "is_important": false,
+    "is_highlight": true,
+    "sort_order": 7
+  }
+]
