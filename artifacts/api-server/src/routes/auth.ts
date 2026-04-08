@@ -8,6 +8,7 @@ const router = Router();
 
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || "1286283853186596904";
 const DISCORD_OWNER_ID = process.env.DISCORD_OWNER_ID || "1286283853186596904";
 const DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
@@ -76,7 +77,7 @@ router.get("/auth/discord", (req: Request, res: Response) => {
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "identify guilds guilds.members.read",
+    scope: "identify",
     state,
   });
 
@@ -155,23 +156,36 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     const staffRows = await db.select().from(staffRolesTable).where(eq(staffRolesTable.discordUid, discordUser.id)).limit(1);
     const isStaffRole = staffRows.length > 0;
 
-    // Check if user is the guild owner via /users/@me/guilds
+    // Use bot token to fetch guild member info — avoids needing guilds/guilds.members.read from user
+    const botAuthHeader = DISCORD_BOT_TOKEN ? `Bot ${DISCORD_BOT_TOKEN}` : null;
+    let botMemberData: { nick: string | null; roles: string[]; avatar: string | null } | null = null;
     let isOwner = discordUser.id === DISCORD_OWNER_ID;
-    if (!isOwner) {
+
+    if (botAuthHeader) {
       try {
-        const guildsRes = await fetch("https://discord.com/api/users/@me/guilds", {
-          headers: { Authorization: authHeader },
-        });
-        if (guildsRes.ok) {
-          const guilds = await guildsRes.json() as Array<{ id: string; owner: boolean }>;
-          const targetGuild = guilds.find((g) => g.id === DISCORD_GUILD_ID);
-          if (targetGuild?.owner === true) {
-            isOwner = true;
-            console.log(`[auth] Guild owner detected: ${discordUser.username} (${discordUser.id})`);
+        const memberRes = await fetch(
+          `https://discord.com/api/guilds/${DISCORD_GUILD_ID}/members/${discordUser.id}`,
+          { headers: { Authorization: botAuthHeader } }
+        );
+        if (memberRes.ok) {
+          botMemberData = await memberRes.json() as { nick: string | null; roles: string[]; avatar: string | null };
+        }
+        // Also check guild owner via bot
+        if (!isOwner) {
+          const guildRes = await fetch(
+            `https://discord.com/api/guilds/${DISCORD_GUILD_ID}`,
+            { headers: { Authorization: botAuthHeader } }
+          );
+          if (guildRes.ok) {
+            const guildData = await guildRes.json() as { owner_id: string };
+            if (guildData.owner_id === discordUser.id) {
+              isOwner = true;
+              console.log(`[auth] Guild owner detected: ${discordUser.username} (${discordUser.id})`);
+            }
           }
         }
       } catch (e) {
-        console.warn("[auth] Could not fetch user guilds for owner check:", e);
+        console.warn("[auth] Bot member fetch failed:", e);
       }
     }
 
@@ -182,39 +196,47 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       : `https://cdn.discordapp.com/embed/avatars/${parseInt(discordUser.discriminator || "0") % 5}.png`;
 
     if (isOwner) {
-      // Owner always gets in — skip guild membership check
+      // Owner always gets in
       console.log(`[auth] Owner login: ${discordUser.username} (${discordUser.id})`);
+      if (botMemberData) {
+        displayName = botMemberData.nick || discordUser.global_name || discordUser.username;
+        roles = botMemberData.roles;
+        if (botMemberData.avatar) {
+          avatarUrl = `https://cdn.discordapp.com/guilds/${DISCORD_GUILD_ID}/users/${discordUser.id}/avatars/${botMemberData.avatar}.png`;
+        }
+      }
     } else if (isTempAllowed) {
-      // Temporary access — skip guild membership check
+      // Temporary access
       const expiry = tempAccessStore.get(discordUser.id)!;
       console.log(`[auth] Temp access login: ${discordUser.username} (${discordUser.id}), expires ${new Date(expiry).toISOString()}`);
+      if (botMemberData) {
+        displayName = botMemberData.nick || discordUser.global_name || discordUser.username;
+        roles = botMemberData.roles;
+        if (botMemberData.avatar) {
+          avatarUrl = `https://cdn.discordapp.com/guilds/${DISCORD_GUILD_ID}/users/${discordUser.id}/avatars/${botMemberData.avatar}.png`;
+        }
+      }
     } else if (isStaffRole) {
       // Staff role — granted via Staff Roles panel
       console.log(`[auth] Staff role login: ${discordUser.username} (${discordUser.id})`);
+      if (botMemberData) {
+        displayName = botMemberData.nick || discordUser.global_name || discordUser.username;
+        roles = botMemberData.roles;
+        if (botMemberData.avatar) {
+          avatarUrl = `https://cdn.discordapp.com/guilds/${DISCORD_GUILD_ID}/users/${discordUser.id}/avatars/${botMemberData.avatar}.png`;
+        }
+      }
     } else {
       // Regular users must be guild members
-      const memberRes = await fetch(
-        `https://discord.com/api/users/@me/guilds/${DISCORD_GUILD_ID}/member`,
-        { headers: { Authorization: authHeader } },
-      );
-
-      if (!memberRes.ok) {
-        console.warn(`[auth] Guild check failed (${memberRes.status}) for user ${discordUser.id}`);
+      if (!botMemberData) {
+        console.warn(`[auth] Guild check failed for user ${discordUser.id} — not a member or bot unavailable`);
         res.redirect("/shift-roster/?auth_error=not_member");
         return;
       }
-
-      const memberData = await memberRes.json() as {
-        nick: string | null;
-        roles: string[];
-        avatar: string | null;
-      };
-
-      displayName = memberData.nick || discordUser.global_name || discordUser.username;
-      roles = memberData.roles;
-
-      if (memberData.avatar) {
-        avatarUrl = `https://cdn.discordapp.com/guilds/${DISCORD_GUILD_ID}/users/${discordUser.id}/avatars/${memberData.avatar}.png`;
+      displayName = botMemberData.nick || discordUser.global_name || discordUser.username;
+      roles = botMemberData.roles;
+      if (botMemberData.avatar) {
+        avatarUrl = `https://cdn.discordapp.com/guilds/${DISCORD_GUILD_ID}/users/${discordUser.id}/avatars/${botMemberData.avatar}.png`;
       }
     }
 
