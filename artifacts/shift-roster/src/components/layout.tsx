@@ -236,7 +236,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   Duty Add/Remove
                 </div>
               </Link>
-              {myLevel >= 2 && (
+              {myLevel >= 1 && (
                 <Link href="/admin/duty-logs">
                   <div className={subLinkClass(location === "/admin/duty-logs")}>
                     <CalendarDays className="w-3.5 h-3.5 shrink-0 text-teal-400" />
@@ -252,7 +252,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </div>
                 </Link>
               )}
-              {myLevel >= 2 && (
+              {myLevel >= 1 && (
                 <Link href="/admin/logs">
                   <div className={subLinkClass(location === "/admin/logs")}>
                     <ScrollText className="w-3.5 h-3.5 shrink-0 text-teal-400" />
