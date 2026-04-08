@@ -240,8 +240,9 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       }
     }
 
-    // Any staff role member gets full power (same as owner) across all features
-    const hasFullAccess = isOwner || isStaffRole;
+    const staffRole = staffRows[0] ?? null;
+    // High Command (isSeniorStaff) = owner OR explicitly granted in staff roles table
+    // All other staff get panel access (isStaff/isTrusted) but not elevated edit rights
     (req.session as any).user = {
       id: discordUser.id,
       username: discordUser.username,
@@ -250,10 +251,10 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       roles,
       guildId: DISCORD_GUILD_ID,
       isOwner,
-      isSuperAdmin: hasFullAccess,
-      isSeniorStaff: hasFullAccess,
-      isStaff: hasFullAccess,
-      isTrusted: hasFullAccess,
+      isSuperAdmin: isOwner,
+      isSeniorStaff: isOwner || (isStaffRole && (staffRole?.isSeniorStaff ?? false)),
+      isStaff: isOwner || isStaffRole,
+      isTrusted: isOwner || isStaffRole,
     };
 
     try {
