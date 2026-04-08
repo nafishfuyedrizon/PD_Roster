@@ -240,7 +240,8 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       }
     }
 
-    const staffRole = staffRows[0] ?? null;
+    // Any staff role member gets full power (same as owner) across all features
+    const hasFullAccess = isOwner || isStaffRole;
     (req.session as any).user = {
       id: discordUser.id,
       username: discordUser.username,
@@ -249,10 +250,10 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       roles,
       guildId: DISCORD_GUILD_ID,
       isOwner,
-      isSuperAdmin: isOwner || (staffRole?.isSuperAdmin ?? false),
-      isSeniorStaff: isOwner || (staffRole?.isSuperAdmin ?? false) || (staffRole?.isSeniorStaff ?? false),
-      isStaff: isOwner || (staffRole?.isSuperAdmin ?? false) || (staffRole?.isSeniorStaff ?? false) || (staffRole?.isStaff ?? false),
-      isTrusted: isOwner || (staffRole?.isSuperAdmin ?? false) || (staffRole?.isSeniorStaff ?? false) || (staffRole?.isStaff ?? false) || (staffRole?.isTrusted ?? false),
+      isSuperAdmin: hasFullAccess,
+      isSeniorStaff: hasFullAccess,
+      isStaff: hasFullAccess,
+      isTrusted: hasFullAccess,
     };
 
     try {
