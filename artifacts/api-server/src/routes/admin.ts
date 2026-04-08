@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable, emsDutyLogsTable, dutyAdjustmentsTable, adminLogsTable, staffRolesTable } from "@workspace/db";
-import { eq, and, gte, lte, ilike, or, desc, asc } from "drizzle-orm";
+import { eq, and, gte, lte, ilike, or, desc, asc, inArray } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
 
 const MONTH_NAMES = ["","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
@@ -286,17 +286,26 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
   const monthNum = MONTH_NAMES.indexOf(month.toUpperCase());
   if (monthNum < 1) { res.status(400).json({ error: "Invalid month" }); return; }
 
-  const resolvedShift = shiftType && shiftType !== "ALL" ? shiftType : "ALL";
+  // Support comma-separated multi-shift (e.g. "RS_1,RS_2")
+  const shiftKeys = shiftType
+    ? shiftType.split(",").map((s) => s.trim()).filter(Boolean)
+    : ["ALL"];
+  const resolvedShifts = shiftKeys.length === 0 ? ["ALL"] : shiftKeys;
+  const useSingle = resolvedShifts.length === 1;
 
-  const logConds = [
-    eq(emsDutyLogsTable.dutyYear, year),
-    eq(emsDutyLogsTable.shiftType, resolvedShift),
-  ];
+  const logShiftCond = useSingle
+    ? eq(emsDutyLogsTable.shiftType, resolvedShifts[0]!)
+    : inArray(emsDutyLogsTable.shiftType, resolvedShifts);
 
+  const adjShiftCond = useSingle
+    ? eq(dutyAdjustmentsTable.shiftType, resolvedShifts[0]!)
+    : inArray(dutyAdjustmentsTable.shiftType, resolvedShifts);
+
+  const logConds = [eq(emsDutyLogsTable.dutyYear, year), logShiftCond];
   const adjConds = [
     eq(dutyAdjustmentsTable.dutyMonth, month.toUpperCase()),
     eq(dutyAdjustmentsTable.dutyYear, year),
-    eq(dutyAdjustmentsTable.shiftType, resolvedShift),
+    adjShiftCond,
   ];
 
   const [allOfficers, allLogs, adjustments] = await Promise.all([

@@ -126,8 +126,8 @@ export default function AdminPage() {
 
   const adjMonth = MONTH_NAMES[adjMonthIdx]!;
 
-  // Determine the shift key to use for the data fetch (ALL if multiple or ALL selected)
-  const adjShift = selectedShifts.size === 1 ? [...selectedShifts][0]! : "ALL";
+  // Pass all selected shifts as comma-separated so backend can use inArray()
+  const adjShift = [...selectedShifts].join(",");
 
   function toggleShift(key: string) {
     setSelectedShifts((prev) => {
