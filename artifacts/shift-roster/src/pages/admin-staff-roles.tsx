@@ -3,8 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, Plus, Trash2, ShieldCheck, Shield, Star, CheckCircle, X, Search, Loader2 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { Users, Plus, Trash2, X, Search, Loader2 } from "lucide-react";
 
 interface OfficerResult {
   id: number;
@@ -19,63 +18,13 @@ interface StaffRole {
   id: number;
   discordUid: string;
   displayName: string | null;
-  isSuperAdmin: boolean;
-  isSeniorStaff: boolean;
-  isStaff: boolean;
-  isTrusted: boolean;
   addedBy: string | null;
   createdAt: string;
 }
 
-const ROLES = [
-  { key: "isSuperAdmin",  label: "Full Power",    level: 4, icon: <ShieldCheck className="w-3.5 h-3.5 text-red-400" />,    color: "text-red-400" },
-  { key: "isSeniorStaff", label: "High Command",  level: 3, icon: <Shield className="w-3.5 h-3.5 text-orange-400" />,      color: "text-orange-400" },
-  { key: "isStaff",       label: "FTP Supervisor", level: 2, icon: <Star className="w-3.5 h-3.5 text-blue-400" />,         color: "text-blue-400" },
-  { key: "isTrusted",     label: "FTO",            level: 1, icon: <CheckCircle className="w-3.5 h-3.5 text-green-400" />, color: "text-green-400" },
-] as const;
-
-function Toggle({ active, onChange, disabled }: { active: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
-  return (
-    <button
-      onClick={() => !disabled && onChange(!active)}
-      disabled={disabled}
-      title={disabled ? "Insufficient level to manage this role" : undefined}
-      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-        disabled ? "opacity-30 cursor-not-allowed" : "cursor-pointer"
-      } ${active ? "bg-green-500" : "bg-red-500/60"}`}
-    >
-      <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-          active ? "translate-x-5" : "translate-x-1"
-        }`}
-      />
-    </button>
-  );
-}
-
 export default function AdminStaffRolesPage() {
-  const { user } = useAuth();
   const qc = useQueryClient();
 
-  // Compute caller's level: owner=5, superAdmin=4, seniorStaff=3, staff=2, trusted=1
-  const myLevel = user?.isOwner ? 5
-    : user?.isSuperAdmin ? 4
-    : user?.isSeniorStaff ? 3
-    : user?.isStaff ? 2
-    : user?.isTrusted ? 1
-    : 0;
-
-  // A user can toggle a role only if their level is strictly higher than that role's level
-  function canManageRole(roleLevel: number) { return myLevel > roleLevel; }
-  // A user can delete/manage a row only if they outrank the target's highest role
-  function targetLevel(s: StaffRole): number {
-    if (s.isSuperAdmin) return 4;
-    if (s.isSeniorStaff) return 3;
-    if (s.isStaff) return 2;
-    if (s.isTrusted) return 1;
-    return 0;
-  }
-  function canManageRow(s: StaffRole) { return myLevel > targetLevel(s); }
   const [newUid, setNewUid] = useState("");
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
@@ -83,7 +32,6 @@ export default function AdminStaffRolesPage() {
   const [searching, setSearching] = useState(false);
   const [searchResult, setSearchResult] = useState<string | null>(null);
 
-  // Officer name/callsign search
   const [nameQuery, setNameQuery] = useState("");
   const [nameResults, setNameResults] = useState<OfficerResult[]>([]);
   const [nameSearching, setNameSearching] = useState(false);
@@ -112,17 +60,6 @@ export default function AdminStaffRolesPage() {
       setNewName("");
       setShowAdd(false);
     },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, field, value }: { id: number; field: string; value: boolean }) =>
-      fetch(`/api/admin/staff-roles/${id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: value }),
-      }).then((r) => r.json()),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/staff-roles"] }),
   });
 
   const deleteMutation = useMutation({
@@ -212,24 +149,21 @@ export default function AdminStaffRolesPage() {
           <Users className="w-4 h-4 text-teal-400" />
           <span className="text-base font-bold text-foreground">Staff Roles</span>
           <span className="text-xs text-muted-foreground font-mono ml-1">
-            Player role management · panel login access
+            Player management · panel login access
           </span>
         </div>
-        {myLevel >= 2 && (
-          <Button
-            size="sm"
-            onClick={() => setShowAdd((v) => !v)}
-            className="gap-2 text-xs bg-teal-600 hover:bg-teal-500 text-white border-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Player
-          </Button>
-        )}
+        <Button
+          size="sm"
+          onClick={() => setShowAdd((v) => !v)}
+          className="gap-2 text-xs bg-teal-600 hover:bg-teal-500 text-white border-0"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add Player
+        </Button>
       </div>
 
       {showAdd && (
         <div className="mb-4 p-4 bg-secondary/40 border border-border/60 rounded-md space-y-3">
-          {/* Row 1: name/callsign search */}
           <div ref={dropdownRef} className="relative">
             <label className="text-[11px] font-mono text-muted-foreground mb-1 block">
               Search by Name or Call Sign
@@ -272,7 +206,6 @@ export default function AdminStaffRolesPage() {
             )}
           </div>
 
-          {/* Row 2: UID + Display Name + buttons */}
           <div className="flex flex-col sm:flex-row gap-3 items-end">
             <div className="flex-1">
               <label className="text-[11px] font-mono text-muted-foreground mb-1 block">Discord UID *</label>
@@ -339,22 +272,14 @@ export default function AdminStaffRolesPage() {
               <tr className="bg-secondary/50 border-b border-border/50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Player</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground">Discord UID</th>
-                {ROLES.map((r) => (
-                  <th key={r.key} className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">
-                      {r.icon}
-                      <span className={r.color}>{r.label}</span>
-                    </div>
-                  </th>
-                ))}
                 <th className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground">Remove</th>
               </tr>
             </thead>
             <tbody>
               {staff.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-muted-foreground text-sm font-mono">
-                    No staff roles configured. Add a player above.
+                  <td colSpan={3} className="text-center py-12 text-muted-foreground text-sm font-mono">
+                    No staff configured. Add a player above.
                   </td>
                 </tr>
               ) : (
@@ -369,23 +294,11 @@ export default function AdminStaffRolesPage() {
                       )}
                     </td>
                     <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{s.discordUid}</td>
-                    {ROLES.map((r) => (
-                      <td key={r.key} className="text-center px-3 py-3">
-                        <div className="flex justify-center">
-                          <Toggle
-                            active={!!s[r.key]}
-                            disabled={!canManageRole(r.level)}
-                            onChange={(v) => updateMutation.mutate({ id: s.id, field: r.key, value: v })}
-                          />
-                        </div>
-                      </td>
-                    ))}
                     <td className="text-center px-3 py-3">
                       <button
-                        onClick={() => canManageRow(s) && deleteMutation.mutate(s.id)}
-                        disabled={!canManageRow(s)}
-                        className={`transition-colors ${canManageRow(s) ? "text-muted-foreground hover:text-red-400" : "text-muted-foreground/20 cursor-not-allowed"}`}
-                        title={canManageRow(s) ? "Remove" : "Insufficient level to remove"}
+                        onClick={() => deleteMutation.mutate(s.id)}
+                        className="text-muted-foreground hover:text-red-400 transition-colors"
+                        title="Remove"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -399,7 +312,7 @@ export default function AdminStaffRolesPage() {
       )}
 
       <p className="text-[11px] text-muted-foreground/60 mt-3 font-mono">
-        Players listed here can log in to the panel via Discord OAuth. Roles are informational — all entries have panel access.
+        Players listed here can log in to the panel via Discord OAuth. All entries have full panel access.
       </p>
     </Layout>
   );

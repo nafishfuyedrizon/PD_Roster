@@ -432,9 +432,6 @@ router.get("/admin/staff-roles", async (req, res): Promise<void> => {
 
 router.post("/admin/staff-roles", async (req, res): Promise<void> => {
   const sessionUser = (req.session as any)?.user;
-  // Minimum level 2 (FTP Supervisor) required to add staff members
-  const addLevel = sessionUser?.isOwner ? 5 : sessionUser?.isSuperAdmin ? 4 : sessionUser?.isSeniorStaff ? 3 : sessionUser?.isStaff ? 2 : sessionUser?.isTrusted ? 1 : 0;
-  if (addLevel < 2) { res.status(403).json({ error: "FTP Supervisor or above required to add staff members" }); return; }
   const { discordUid, displayName } = req.body;
   if (!discordUid?.trim()) { res.status(400).json({ error: "discordUid required" }); return; }
   try {
@@ -452,34 +449,11 @@ router.post("/admin/staff-roles", async (req, res): Promise<void> => {
 });
 
 router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
-  const sessionUser = (req.session as any)?.user;
-
-  // Determine caller's level: owner=5, isSuperAdmin=4, isSeniorStaff=3, isStaff=2, isTrusted=1
-  function callerLevel(): number {
-    if (!sessionUser) return 0;
-    if (sessionUser.isOwner) return 5;
-    if (sessionUser.isSuperAdmin) return 4;
-    if (sessionUser.isSeniorStaff) return 3;
-    if (sessionUser.isStaff) return 2;
-    if (sessionUser.isTrusted) return 1;
-    return 0;
-  }
-  const ROLE_LEVEL: Record<string, number> = {
-    isSuperAdmin: 4, isSeniorStaff: 3, isStaff: 2, isTrusted: 1,
-  };
-  const myLevel = callerLevel();
   const id = parseInt(req.params.id, 10);
-  const allowed = ["isSuperAdmin", "isSeniorStaff", "isStaff", "isTrusted", "displayName"];
+  const allowed = ["displayName"];
   const updates: Record<string, unknown> = {};
   for (const k of allowed) {
-    if (!(k in req.body)) continue;
-    const roleLevel = ROLE_LEVEL[k];
-    // Role fields: only allow if caller's level is strictly higher than the role being changed
-    if (roleLevel !== undefined && myLevel <= roleLevel) {
-      res.status(403).json({ error: `You cannot manage the '${k}' role — insufficient level` });
-      return;
-    }
-    updates[k] = req.body[k];
+    if (k in req.body) updates[k] = req.body[k];
   }
   if (!Object.keys(updates).length) { res.status(400).json({ error: "Nothing to update" }); return; }
   const [row] = await db.update(staffRolesTable).set(updates as any).where(eq(staffRolesTable.id, id)).returning();
@@ -488,15 +462,9 @@ router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/admin/staff-roles/:id", async (req, res): Promise<void> => {
-  const sessionUser = (req.session as any)?.user;
-  const myLevel = sessionUser?.isOwner ? 5 : sessionUser?.isSuperAdmin ? 4 : sessionUser?.isSeniorStaff ? 3 : sessionUser?.isStaff ? 2 : sessionUser?.isTrusted ? 1 : 0;
-  if (myLevel < 2) { res.status(403).json({ error: "FTP Supervisor or above required to remove staff members" }); return; }
   const id = parseInt(req.params.id, 10);
   const [sr] = await db.select().from(staffRolesTable).where(eq(staffRolesTable.id, id)).limit(1);
   if (!sr) { res.status(404).json({ error: "Not found" }); return; }
-  // Check caller outranks target
-  const targetLvl = sr.isSuperAdmin ? 4 : sr.isSeniorStaff ? 3 : sr.isStaff ? 2 : sr.isTrusted ? 1 : 0;
-  if (myLevel <= targetLvl) { res.status(403).json({ error: "Cannot remove a staff member of equal or higher rank" }); return; }
   await db.delete(staffRolesTable).where(eq(staffRolesTable.id, id));
   await auditLog(req, "DELETE", "staff-role", id, sr?.displayName ?? sr?.discordUid ?? null, null);
   res.status(204).end();
