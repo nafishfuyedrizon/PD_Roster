@@ -238,11 +238,17 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a));
   if (!allWeekPeriods.includes(_cwp)) allWeekPeriods.unshift(_cwp);
 
-  // Fetch ALL PD officers as the source of truth
-  const allPdOfficers = await db
+  // Fetch ALL PD officers as the source of truth (deduplicate by callSign)
+  const rawPdOfficers = await db
     .select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status, discordUsername: officersTable.discordUsername, discordUid: officersTable.discordUid })
     .from(officersTable)
     .orderBy(officersTable.rank, officersTable.callSign);
+  const _seenCs = new Set<string>();
+  const allPdOfficers = rawPdOfficers.filter((o) => {
+    if (_seenCs.has(o.callSign)) return false;
+    _seenCs.add(o.callSign);
+    return true;
+  });
 
   // Build a map of duty log data keyed by csNumber + weekPeriod
   // When multiple shifts selected, SUM hours per officer per weekPeriod

@@ -180,7 +180,7 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm text-foreground">{s.label}</div>
                       <div className="text-[10px] font-mono text-muted-foreground">
-                      {HOUR_OPTIONS[s.startHour]?.label} – {HOUR_OPTIONS[s.endHour]?.label} UTC
+                      {shiftSub(s.startHour, s.endHour) || "—"}
                     </div>
                   </div>
                   <button onClick={() => openEdit(s)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
