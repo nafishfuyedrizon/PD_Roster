@@ -449,6 +449,19 @@ export default function PdDutyHourPage() {
     return () => clearInterval(id);
   }, [qcMain]);
 
+  // Clamp nav indices so switching tabs never leaves weekNav/monthNav pointing
+  // to a slot that no longer exists in the new data, which would show "No data".
+  useEffect(() => {
+    if (weekPeriods.length > 0 && weekNav >= weekPeriods.length) {
+      setWeekNav(weekPeriods.length - 1);
+    }
+  }, [weekPeriods, weekNav]);
+  useEffect(() => {
+    if (months.length > 0 && monthNav >= months.length) {
+      setMonthNav(months.length - 1);
+    }
+  }, [months, monthNav]);
+
   const fmtDiscord = (p: { discordUid?: string | null; discordUsername?: string | null; name: string }) =>
     p.discordUid ? `<@${p.discordUid}>` : `@${p.discordUsername ?? p.name}`;
 
@@ -748,7 +761,7 @@ export default function PdDutyHourPage() {
               </button>
             </div>
           </div>
-          {breakdownLoading ? (
+          {breakdownLoading || statsLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-10 rounded-md" />)}
             </div>
@@ -806,7 +819,7 @@ export default function PdDutyHourPage() {
               </button>
             </div>
           </div>
-          {breakdownLoading ? (
+          {breakdownLoading || statsLoading ? (
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-10 rounded-md" />)}
             </div>

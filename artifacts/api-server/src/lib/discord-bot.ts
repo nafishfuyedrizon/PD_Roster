@@ -369,7 +369,7 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
 
 // ── Message processor ──────────────────────────────────────────────────────
 
-async function processMessage(msg: Message) {
+async function processMessage(msg: Message, opts?: { skipRecompute?: boolean }): Promise<{ licenseId: string; weekPeriod: string } | null> {
   const texts = getMessageTexts(msg);
   for (const text of texts) {
     const parsed = parseEventText(text);
@@ -392,12 +392,16 @@ async function processMessage(msg: Message) {
         })
         .onConflictDoNothing();
 
-      await recomputeDutyHours(parsed.licenseId, weekPeriod);
+      if (!opts?.skipRecompute) {
+        await recomputeDutyHours(parsed.licenseId, weekPeriod);
+      }
+      return { licenseId: parsed.licenseId, weekPeriod };
     } catch (err) {
       logger.error({ err, messageId: msg.id }, "Error processing message");
     }
     break;
   }
+  return null;
 }
 
 // ── Historical backfill ────────────────────────────────────────────────────
@@ -406,8 +410,12 @@ async function backfillHistory(channel: TextChannel) {
   logger.info({ channelId: channel.id }, "Starting history backfill");
   let before: string | undefined;
   let processed = 0;
+  const dirtyPairs = new Set<string>();
 
   // backfill up to 5 000 messages (50 batches of 100)
+  // We skip per-event recompute here to avoid hours flickering to 0 mid-backfill.
+  // Instead we collect all dirty (licenseId, weekPeriod) pairs and do one clean
+  // batch recompute after all events are stored.
   for (let i = 0; i < 50; i++) {
     const options: { limit: number; before?: string } = { limit: 100 };
     if (before) options.before = before;
@@ -420,7 +428,8 @@ async function backfillHistory(channel: TextChannel) {
     );
 
     for (const msg of sorted) {
-      await processMessage(msg);
+      const pair = await processMessage(msg, { skipRecompute: true });
+      if (pair) dirtyPairs.add(`${pair.licenseId}::${pair.weekPeriod}`);
       processed++;
     }
 
@@ -429,6 +438,15 @@ async function backfillHistory(channel: TextChannel) {
     before = oldest.id;
 
     if (msgs.size < 100) break;
+  }
+
+  // Now do a single batch recompute for all affected pairs — no mid-flight flickering
+  logger.info({ processed, pairs: dirtyPairs.size }, "Events stored, starting batch recompute");
+  for (const key of dirtyPairs) {
+    const [licenseId, weekPeriod] = key.split("::");
+    if (licenseId && weekPeriod) {
+      try { await recomputeDutyHours(licenseId, weekPeriod); } catch (_) {}
+    }
   }
 
   logger.info({ processed }, "History backfill complete");
