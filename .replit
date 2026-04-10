@@ -9,6 +9,8 @@ id = "artifacts/mockup-sandbox"
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
+build = ["sh", "-c", "pnpm --filter @workspace/api-server run build && BASE_PATH=/shift-roster/ PORT=19522 pnpm --filter @workspace/shift-roster run build"]
+run = ["sh", "-c", "node --enable-source-maps artifacts/api-server/dist/index.mjs"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
