@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/shift-roster/"
+title = "Shift Roster"
+version = "1.0.0"
+id = "artifacts/shift-roster"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/shift-roster/" ]
+localPort = 19522
+
+[services.development]
+run = "pnpm --filter @workspace/shift-roster run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/shift-roster", "run", "build" ]
+publicDir = "artifacts/shift-roster/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19522"
+BASE_PATH = "/shift-roster/"
