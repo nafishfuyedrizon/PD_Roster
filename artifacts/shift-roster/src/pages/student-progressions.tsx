@@ -442,6 +442,27 @@ export default function StudentProgressionsPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
 
+  function getPublicProgressionsUrl() {
+    const baseUrl = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
+    const publicPath = `${baseUrl}/public/progressions`.replace(/\/{2,}/g, "/");
+    return `${window.location.origin}${publicPath}`;
+  }
+
+  async function copyPublicProgressionsLink() {
+    const url = getPublicProgressionsUrl();
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        toast({ title: "Public link copied!", description: url });
+        return;
+      }
+      throw new Error("Clipboard unavailable");
+    } catch {
+      window.prompt("Copy this public link:", url);
+      toast({ title: "Copy manually", description: "Public link opened for manual copy." });
+    }
+  }
+
 
   const { data: cadets = [], isLoading } = useQuery<Cadet[]>({
     queryKey: ["/api/student-progressions"],
@@ -543,10 +564,7 @@ export default function StudentProgressionsPage() {
                 variant="outline"
                 size="sm"
                 className="h-7 gap-1.5 text-xs border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300"
-                onClick={() => {
-                  const url = `${window.location.origin}/shift-roster/public/progressions`;
-                  navigator.clipboard.writeText(url).then(() => toast({ title: "Public link copied!", description: url }));
-                }}
+                onClick={copyPublicProgressionsLink}
               >
                 <Link className="w-3 h-3" />
                 Copy Public Link
