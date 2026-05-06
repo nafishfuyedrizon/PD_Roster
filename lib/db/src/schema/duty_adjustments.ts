@@ -1,6 +1,6 @@
 import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
 
-export const dutyAdjustmentsTable = pgTable("duty_adjustments", {
+export const dutyAdjustmentsTable = pgTable("pd_duty_adjustments", {
   id: serial("id").primaryKey(),
   officerCs: text("officer_cs").notNull(),
   officerName: text("officer_name"),

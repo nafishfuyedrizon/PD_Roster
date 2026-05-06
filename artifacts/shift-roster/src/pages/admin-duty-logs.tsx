@@ -42,7 +42,7 @@ interface ShiftConfig {
 function useShiftConfigs() {
   return useQuery<ShiftConfig[]>({
     queryKey: ["shift-configs"],
-    queryFn: () => fetch("/api/ems/shift-configs").then((r) => r.json()),
+    queryFn: () => fetch("/api/pd/shift-configs").then((r) => r.json()),
     refetchInterval: 60_000,
   });
 }

@@ -63,7 +63,7 @@ interface ShiftConfig {
 function useShiftConfigs() {
   return useQuery<ShiftConfig[]>({
     queryKey: ["shift-configs"],
-    queryFn: () => fetch("/api/ems/shift-configs").then((r) => r.json()),
+    queryFn: () => fetch("/api/pd/shift-configs").then((r) => r.json()),
     refetchInterval: 60_000,
   });
 }
@@ -130,7 +130,7 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
     const payload = { ...form, sub: autoSub };
     try {
       if (adding) {
-        await fetch("/api/ems/shift-configs", {
+        await fetch("/api/pd/shift-configs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -140,7 +140,7 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
         const body = form.key && form.key !== editing.key
           ? { ...payload, newKey: form.key }
           : payload;
-        await fetch(`/api/ems/shift-configs/${editing.key}`, {
+        await fetch(`/api/pd/shift-configs/${editing.key}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -155,7 +155,7 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
 
   async function remove(key: string) {
     if (!confirm("Delete this shift?")) return;
-    await fetch(`/api/ems/shift-configs/${key}`, { method: "DELETE" });
+    await fetch(`/api/pd/shift-configs/${key}`, { method: "DELETE" });
     qc.invalidateQueries({ queryKey: ["shift-configs"] });
   }
 
@@ -415,7 +415,7 @@ function useOfficerDuty(callSign: string | null) {
   return useQuery<OfficerDutyDetail>({
     queryKey: ["officer-duty", callSign],
     queryFn: async () => {
-      const res = await fetch(`/api/ems/officer-duty/${encodeURIComponent(callSign!)}`);
+      const res = await fetch(`/api/pd/officer-duty/${encodeURIComponent(callSign!)}`);
       if (!res.ok) throw new Error("Failed to load officer");
       return res.json() as Promise<OfficerDutyDetail>;
     },
@@ -439,8 +439,8 @@ export default function PdDutyHourPage() {
 
   useEffect(() => {
     const id = setInterval(() => {
-      qcMain.invalidateQueries({ queryKey: ["/api/ems/stats"] });
-      qcMain.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      qcMain.invalidateQueries({ queryKey: ["/api/pd/stats"] });
+      qcMain.invalidateQueries({ queryKey: ["/api/pd/breakdown"] });
       qcMain.invalidateQueries({ queryKey: ["/api/roster/stats"] });
       qcMain.invalidateQueries({ queryKey: ["officer-duty"] });
       qcMain.invalidateQueries({ queryKey: ["shift-configs"] });

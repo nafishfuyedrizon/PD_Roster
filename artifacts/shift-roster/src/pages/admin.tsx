@@ -106,7 +106,7 @@ async function fetchAdjustments(month: string, year: string, shiftType: string):
 }
 
 async function fetchShiftConfigs(): Promise<ShiftConfig[]> {
-  const res = await fetch(`/api/ems/shift-configs`);
+  const res = await fetch(`/api/pd/shift-configs`);
   if (!res.ok) return [];
   return res.json();
 }
@@ -215,8 +215,8 @@ export default function AdminPage() {
     },
     onSuccess: (_data, { officer, sign }) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ems/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pd/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pd/breakdown"] });
       queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
       queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
@@ -243,8 +243,8 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ems/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pd/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pd/breakdown"] });
       queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
       queryClient.invalidateQueries({ queryKey: ["officer-duty"] });

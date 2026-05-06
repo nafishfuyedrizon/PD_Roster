@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { guard } from "../lib/auth-guard.js";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { db, emsDutyLogsTable, officersTable, shiftConfigsTable, dutyAdjustmentsTable } from "@workspace/db";
+import { db, emsDutyLogsTable, officersTable, shiftConfigsTable, dutyAdjustmentsTable, discordDutyEventsTable } from "@workspace/db";
+import { getCurrentOpenDutyWeekSecsByCallSign, getCurrentWeekPeriod } from "../lib/duty-officer-match.js";
 import {
   ListEmsDutyLogsQueryParams,
   ListEmsDutyLogsResponse,
@@ -34,20 +35,6 @@ function secondsToHms(secs: number): string {
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-// Returns the current Mon–Sun week period in UTC e.g. "04/06-04/12"
-function getCurrentWeekPeriod(): string {
-  const d = new Date();
-  const day = d.getUTCDay(); // 0=Sun
-  const diff = day === 0 ? -6 : 1 - day;
-  const mon = new Date(d);
-  mon.setUTCDate(d.getUTCDate() + diff);
-  const sun = new Date(mon);
-  sun.setUTCDate(mon.getUTCDate() + 6);
-  const fmt = (dt: Date) =>
-    `${String(dt.getUTCMonth() + 1).padStart(2, "0")}/${String(dt.getUTCDate()).padStart(2, "0")}`;
-  return `${fmt(mon)}-${fmt(sun)}`;
 }
 
 // Sort key for week periods that handles year boundaries correctly.
@@ -138,27 +125,35 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
   // which could be an old December week due to sort order ambiguity.
   const latestWeek = weekPeriod ?? currentWeekPeriod;
 
-  // All logs (for monthly stats)
-  const allLogs = await db
-    .select()
-    .from(emsDutyLogsTable)
-    .where(shiftCond);
-
-  // This week's logs
-  const weekLogs = await db
-    .select()
-    .from(emsDutyLogsTable)
-    .where(and(eq(emsDutyLogsTable.weekPeriod, latestWeek), shiftCond));
-
-  // Fetch ALL PD officers as the authority for names/ranks
-  const allPdOfficersForStats = await db
-    .select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status })
-    .from(officersTable);
+  const [allLogs, weekLogs, allPdOfficersForStats, allAdjustments, allDutyEvents] = await Promise.all([
+    db.select().from(emsDutyLogsTable).where(shiftCond),
+    db.select().from(emsDutyLogsTable).where(and(eq(emsDutyLogsTable.weekPeriod, latestWeek), shiftCond)),
+    db
+      .select({
+        id: officersTable.id,
+        callSign: officersTable.callSign,
+        name: officersTable.name,
+        rank: officersTable.rank,
+        status: officersTable.status,
+        discordUsername: officersTable.discordUsername,
+        rockstarLicenseId: officersTable.rockstarLicenseId,
+      })
+      .from(officersTable),
+    db.select().from(dutyAdjustmentsTable),
+    resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
+      ? db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt))
+      : Promise.resolve([]),
+  ]);
   const pdMap: Record<string, { name: string; rank: string; status: string }> = {};
   for (const o of allPdOfficersForStats) pdMap[o.callSign] = { name: o.name ?? o.callSign, rank: o.rank, status: o.status };
+  const liveWeekSecsByCs =
+    resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
+      ? getCurrentOpenDutyWeekSecsByCallSign(allDutyEvents, allPdOfficersForStats)
+      : {};
 
   // Active personnel = PD officers that are Active and have at least one duty log
   const logCsSet = new Set(allLogs.map((l) => l.csNumber));
+  Object.keys(liveWeekSecsByCs).forEach((cs) => logCsSet.add(cs));
   const activePersonnel = allPdOfficersForStats.filter(
     (o) => o.status === "Active" && logCsSet.has(o.callSign)
   ).length;
@@ -171,11 +166,14 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
     }
   }
 
-  // Incorporate ALL duty adjustments into monthly totals (no shift filter — adjustments apply to total hours)
-  const allAdjustments = await db.select().from(dutyAdjustmentsTable);
   for (const adj of allAdjustments) {
     if (pdMap[adj.officerCs]) {
       pdLogSecs[adj.officerCs] = (pdLogSecs[adj.officerCs] ?? 0) + adj.adjustmentSeconds;
+    }
+  }
+  for (const [cs, secs] of Object.entries(liveWeekSecsByCs)) {
+    if (pdMap[cs]) {
+      pdLogSecs[cs] = (pdLogSecs[cs] ?? 0) + secs;
     }
   }
 
@@ -186,6 +184,13 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
   for (const l of weekLogs) {
     if (pdMap[l.csNumber]) {
       weekLogSecs[l.csNumber] = (weekLogSecs[l.csNumber] ?? 0) + parseHms(l.dutyHours);
+    }
+  }
+  if (latestWeek === currentWeekPeriod) {
+    for (const [cs, secs] of Object.entries(liveWeekSecsByCs)) {
+      if (pdMap[cs]) {
+        weekLogSecs[cs] = (weekLogSecs[cs] ?? 0) + secs;
+      }
     }
   }
   const weeklyTopPerformers = Object.entries(weekLogSecs)
@@ -225,11 +230,26 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     ? eq(emsDutyLogsTable.shiftType, resolvedShifts[0]!)
     : inArray(emsDutyLogsTable.shiftType, resolvedShifts);
 
-  const logs = await db
-    .select()
-    .from(emsDutyLogsTable)
-    .where(shiftCond)
-    .orderBy(emsDutyLogsTable.weekPeriod);
+  const [logs, rawPdOfficers, allAdjustments, allDutyEvents] = await Promise.all([
+    db.select().from(emsDutyLogsTable).where(shiftCond).orderBy(emsDutyLogsTable.weekPeriod),
+    db
+      .select({
+        id: officersTable.id,
+        callSign: officersTable.callSign,
+        name: officersTable.name,
+        rank: officersTable.rank,
+        status: officersTable.status,
+        discordUsername: officersTable.discordUsername,
+        discordUid: officersTable.discordUid,
+        rockstarLicenseId: officersTable.rockstarLicenseId,
+      })
+      .from(officersTable)
+      .orderBy(officersTable.rank, officersTable.callSign),
+    db.select().from(dutyAdjustmentsTable),
+    resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
+      ? db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt))
+      : Promise.resolve([]),
+  ]);
 
   // Get distinct week periods sorted chronologically (most-recent first).
   // Use year-aware sort key so December weeks don't sort after April weeks.
@@ -237,12 +257,6 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
   const allWeekPeriods = [...new Set(logs.map((l) => l.weekPeriod))]
     .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a));
   if (!allWeekPeriods.includes(_cwp)) allWeekPeriods.unshift(_cwp);
-
-  // Fetch ALL PD officers as the source of truth (deduplicate by callSign)
-  const rawPdOfficers = await db
-    .select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status, discordUsername: officersTable.discordUsername, discordUid: officersTable.discordUid })
-    .from(officersTable)
-    .orderBy(officersTable.rank, officersTable.callSign);
   const _seenCs = new Set<string>();
   const allPdOfficers = rawPdOfficers.filter((o) => {
     if (_seenCs.has(o.callSign)) return false;
@@ -260,6 +274,14 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
       (logWeekSecsMap[l.csNumber]![l.weekPeriod] ?? 0) + parseHms(l.dutyHours);
     logSecsMap[l.csNumber] = (logSecsMap[l.csNumber] ?? 0) + parseHms(l.dutyHours);
   }
+  if (resolvedShifts.length === 1 && resolvedShifts[0] === "ALL") {
+    const liveWeekSecsByCs = getCurrentOpenDutyWeekSecsByCallSign(allDutyEvents, allPdOfficers);
+    for (const [cs, secs] of Object.entries(liveWeekSecsByCs)) {
+      if (!logWeekSecsMap[cs]) logWeekSecsMap[cs] = {};
+      logWeekSecsMap[cs]![_cwp] = (logWeekSecsMap[cs]![_cwp] ?? 0) + secs;
+      logSecsMap[cs] = (logSecsMap[cs] ?? 0) + secs;
+    }
+  }
   // Convert seconds back to HH:MM:SS for the week map
   const logMap: Record<string, Record<string, string | null>> = {};
   for (const [cs, weekMap] of Object.entries(logWeekSecsMap)) {
@@ -268,9 +290,6 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
       logMap[cs]![wp] = secondsToHms(secs);
     }
   }
-
-  // Fetch ALL duty adjustments — no shift filter, adjustments apply to officer total hours
-  const allAdjustments = await db.select().from(dutyAdjustmentsTable);
 
   // adjMonthMap[csNumber][MONTH] = total adjustment seconds for that month
   const adjMonthMap: Record<string, Record<string, number>> = {};
@@ -317,16 +336,28 @@ router.get("/ems/officer-duty/:callSign", async (req, res): Promise<void> => {
     return;
   }
 
-  const logs = await db
-    .select()
-    .from(emsDutyLogsTable)
-    .where(eq(emsDutyLogsTable.csNumber, callSign))
-    .orderBy(desc(emsDutyLogsTable.weekPeriod));
+  const [logs, allDutyEvents] = await Promise.all([
+    db
+      .select()
+      .from(emsDutyLogsTable)
+      .where(eq(emsDutyLogsTable.csNumber, callSign))
+      .orderBy(desc(emsDutyLogsTable.weekPeriod)),
+    db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt)),
+  ]);
 
   const weekMap: Record<string, Record<string, string>> = {};
   for (const l of logs) {
     if (!weekMap[l.weekPeriod]) weekMap[l.weekPeriod] = {};
     weekMap[l.weekPeriod]![l.shiftType] = l.dutyHours ?? "00:00:00";
+  }
+
+  const currentWeekPeriod = getCurrentWeekPeriod();
+  const liveWeekSecsByCs = getCurrentOpenDutyWeekSecsByCallSign(allDutyEvents, [officer]);
+  const liveSecs = liveWeekSecsByCs[callSign] ?? 0;
+  if (liveSecs > 0) {
+    if (!weekMap[currentWeekPeriod]) weekMap[currentWeekPeriod] = {};
+    const currentAllSecs = parseHms(weekMap[currentWeekPeriod]!.ALL);
+    weekMap[currentWeekPeriod]!.ALL = secondsToHms(currentAllSecs + liveSecs);
   }
 
   const weeks = Object.entries(weekMap)

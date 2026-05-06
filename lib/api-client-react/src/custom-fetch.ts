@@ -360,7 +360,16 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const fetchInit: RequestInit = { ...init, method, headers };
+
+  // Dev servers and browser caches can answer conditional GETs with 304,
+  // which React Query then treats as a failed fetch because there is no body.
+  // Default API reads to no-store so the browser always asks for a fresh body.
+  if ((method === "GET" || method === "HEAD") && fetchInit.cache == null) {
+    fetchInit.cache = "no-store";
+  }
+
+  const response = await fetch(input, fetchInit);
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

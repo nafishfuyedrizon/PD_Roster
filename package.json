@@ -3,11 +3,16 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm --filter @workspace/api-server run build && BASE_PATH=/shift-roster/ PORT=19522 pnpm --filter @workspace/shift-roster run build",
+    "preinstall": "node -e \"const fs=require('fs'); for (const file of ['package-lock.json','yarn.lock']) { if (fs.existsSync(file)) fs.unlinkSync(file); } const ua=process.env.npm_config_user_agent||''; if(!ua.startsWith('pnpm/')){ console.error('Use pnpm instead'); process.exit(1); }\"",
+    "build": "pnpm --filter @workspace/api-server run build && node -e \"const {spawnSync}=require('node:child_process'); const env={...process.env, BASE_PATH:'/shift-roster/', PORT:'19522'}; const result=spawnSync('pnpm',['--filter','@workspace/shift-roster','run','build'],{stdio:'inherit',env,shell:true}); process.exit(result.status ?? 1);\"",
     "start": "node --enable-source-maps artifacts/api-server/dist/index.mjs",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "win:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/windows/first-time-setup.ps1",
+    "win:start": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/windows/start-all.ps1",
+    "win:api": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/windows/start-api.ps1",
+    "win:panel": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/windows/start-panel.ps1",
+    "win:reset-db": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/windows/reset-database-from-dump.ps1"
   },
   "private": true,
   "devDependencies": {

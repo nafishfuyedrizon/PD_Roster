@@ -47,3 +47,24 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# secrets / environment
+.env
+.env.*
+*.local
+
+# database / backups
+database_dump.json
+backup.sql
+dump.sql
+*.sql
+
+# logs
+*.log
+qa-*.log
+
+# local/generated folders
+.agents/
+.canvas/
+.config/
+attached_assets/

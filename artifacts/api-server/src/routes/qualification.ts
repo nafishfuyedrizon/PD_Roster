@@ -227,7 +227,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
     SELECT
       a.officer_name,
       COALESCE(SUM(a.adjustment_seconds), 0) AS total_adj_seconds
-    FROM duty_adjustments a
+    FROM pd_duty_adjustments a
     JOIN officer_dates od ON a.officer_name = od.name
     WHERE od.since_date IS NULL
        OR (

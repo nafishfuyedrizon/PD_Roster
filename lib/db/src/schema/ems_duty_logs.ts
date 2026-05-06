@@ -2,7 +2,7 @@ import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const emsDutyLogsTable = pgTable("ems_duty_logs", {
+export const emsDutyLogsTable = pgTable("pd_duty_hour_totals", {
   id: serial("id").primaryKey(),
   csNumber: text("cs_number").notNull(),
   name: text("name").notNull(),

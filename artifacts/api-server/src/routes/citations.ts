@@ -32,10 +32,15 @@ async function getWebhookSecret(): Promise<string> {
 
 // ── Google Sheet CSV helpers ─────────────────────────────────────────────────
 
-function extractSheetId(urlOrId: string): string | null {
+function extractSheetInfo(urlOrId: string): { sheetId: string; gid: string | null } | null {
   const match = /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/.exec(urlOrId);
-  if (match) return match[1]!;
-  if (/^[a-zA-Z0-9_-]{20,}$/.test(urlOrId.trim())) return urlOrId.trim();
+  const gidMatch = /[?#&]gid=(\d+)/.exec(urlOrId);
+  if (match) {
+    return { sheetId: match[1]!, gid: gidMatch?.[1] ?? null };
+  }
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(urlOrId.trim())) {
+    return { sheetId: urlOrId.trim(), gid: null };
+  }
   return null;
 }
 
@@ -73,11 +78,15 @@ export async function syncFromGoogleSheet(): Promise<{ inserted: number; total: 
   const sheetUrl = await getSetting("citation_sheet_url");
   if (!sheetUrl) return { inserted: 0, total: 0, error: "Sheet URL not configured" };
 
-  const sheetId = extractSheetId(sheetUrl);
-  if (!sheetId) return { inserted: 0, total: 0, error: "Invalid Sheet URL" };
+  const sheetInfo = extractSheetInfo(sheetUrl);
+  if (!sheetInfo) return { inserted: 0, total: 0, error: "Invalid Sheet URL" };
 
-  const sheetName = await getSetting("citation_sheet_name") ?? "Citations";
-  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+  const sheetName = await getSetting("citation_sheet_name");
+  const csvUrl = sheetName
+    ? `https://docs.google.com/spreadsheets/d/${sheetInfo.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`
+    : sheetInfo.gid
+      ? `https://docs.google.com/spreadsheets/d/${sheetInfo.sheetId}/export?format=csv&gid=${encodeURIComponent(sheetInfo.gid)}`
+      : `https://docs.google.com/spreadsheets/d/${sheetInfo.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("Citations")}`;
 
   let text: string;
   try {

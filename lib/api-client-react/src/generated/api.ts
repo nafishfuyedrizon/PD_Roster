@@ -837,8 +837,8 @@ export const getListEmsDutyLogsUrl = (params?: ListEmsDutyLogsParams) => {
   const stringifiedParams = normalizedParams.toString();
 
   return stringifiedParams.length > 0
-    ? `/api/ems/duty-logs?${stringifiedParams}`
-    : `/api/ems/duty-logs`;
+    ? `/api/pd/duty-logs?${stringifiedParams}`
+    : `/api/pd/duty-logs`;
 };
 
 export const listEmsDutyLogs = async (
@@ -852,7 +852,7 @@ export const listEmsDutyLogs = async (
 };
 
 export const getListEmsDutyLogsQueryKey = (params?: ListEmsDutyLogsParams) => {
-  return [`/api/ems/duty-logs`, ...(params ? [params] : [])] as const;
+  return [`/api/pd/duty-logs`, ...(params ? [params] : [])] as const;
 };
 
 export const getListEmsDutyLogsQueryOptions = <
@@ -920,7 +920,7 @@ export function useListEmsDutyLogs<
  * @summary Create EMS duty log
  */
 export const getCreateEmsDutyLogUrl = () => {
-  return `/api/ems/duty-logs`;
+  return `/api/pd/duty-logs`;
 };
 
 export const createEmsDutyLog = async (
@@ -1017,8 +1017,8 @@ export const getGetEmsStatsUrl = (params?: GetEmsStatsParams) => {
   const stringifiedParams = normalizedParams.toString();
 
   return stringifiedParams.length > 0
-    ? `/api/ems/stats?${stringifiedParams}`
-    : `/api/ems/stats`;
+    ? `/api/pd/stats?${stringifiedParams}`
+    : `/api/pd/stats`;
 };
 
 export const getEmsStats = async (
@@ -1032,7 +1032,7 @@ export const getEmsStats = async (
 };
 
 export const getGetEmsStatsQueryKey = (params?: GetEmsStatsParams) => {
-  return [`/api/ems/stats`, ...(params ? [params] : [])] as const;
+  return [`/api/pd/stats`, ...(params ? [params] : [])] as const;
 };
 
 export const getGetEmsStatsQueryOptions = <
@@ -1111,8 +1111,8 @@ export const getGetEmsBreakdownUrl = (params?: GetEmsBreakdownParams) => {
   const stringifiedParams = normalizedParams.toString();
 
   return stringifiedParams.length > 0
-    ? `/api/ems/breakdown?${stringifiedParams}`
-    : `/api/ems/breakdown`;
+    ? `/api/pd/breakdown?${stringifiedParams}`
+    : `/api/pd/breakdown`;
 };
 
 export const getEmsBreakdown = async (
@@ -1126,7 +1126,7 @@ export const getEmsBreakdown = async (
 };
 
 export const getGetEmsBreakdownQueryKey = (params?: GetEmsBreakdownParams) => {
-  return [`/api/ems/breakdown`, ...(params ? [params] : [])] as const;
+  return [`/api/pd/breakdown`, ...(params ? [params] : [])] as const;
 };
 
 export const getGetEmsBreakdownQueryOptions = <
@@ -1194,7 +1194,7 @@ export function useGetEmsBreakdown<
  * @summary List all EMS week periods
  */
 export const getListEmsWeekPeriodsUrl = () => {
-  return `/api/ems/week-periods`;
+  return `/api/pd/week-periods`;
 };
 
 export const listEmsWeekPeriods = async (
@@ -1207,7 +1207,7 @@ export const listEmsWeekPeriods = async (
 };
 
 export const getListEmsWeekPeriodsQueryKey = () => {
-  return [`/api/ems/week-periods`] as const;
+  return [`/api/pd/week-periods`] as const;
 };
 
 export const getListEmsWeekPeriodsQueryOptions = <
@@ -1269,7 +1269,7 @@ export function useListEmsWeekPeriods<
  * @summary Update EMS duty log
  */
 export const getUpdateEmsDutyLogUrl = (id: number) => {
-  return `/api/ems/duty-logs/${id}`;
+  return `/api/pd/duty-logs/${id}`;
 };
 
 export const updateEmsDutyLog = async (
@@ -1356,7 +1356,7 @@ export const useUpdateEmsDutyLog = <
  * @summary Delete EMS duty log
  */
 export const getDeleteEmsDutyLogUrl = (id: number) => {
-  return `/api/ems/duty-logs/${id}`;
+  return `/api/pd/duty-logs/${id}`;
 };
 
 export const deleteEmsDutyLog = async (

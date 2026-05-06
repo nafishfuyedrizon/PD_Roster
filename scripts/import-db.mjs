@@ -11,6 +11,12 @@ if (!process.env.DATABASE_URL) {
 }
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const PD_REGISTRAR_TABLES = {
+  dutyHourTotals: "pd_duty_hour_totals",
+  discordDutyEvents: "pd_discord_duty_events",
+  shiftConfigs: "pd_shift_configs",
+  dutyAdjustments: "pd_duty_adjustments",
+};
 
 const dumpPath = resolve(__dirname, "../attached_assets/database_dump_1775473575672.json");
 const raw = readFileSync(dumpPath, "utf-8");
@@ -56,11 +62,11 @@ async function main() {
     console.log("  [done] site_settings");
   }
 
-  // 2. shift_configs
+  // 2. pd_shift_configs
   const shiftConfigs = dump.shift_configs ?? [];
   if (shiftConfigs.length > 0) {
-    console.log(`  [import] shift_configs — ${shiftConfigs.length} records`);
-    await insertChunk("shift_configs", shiftConfigs, ["key", "label", "sub", "icon", "start_hour", "end_hour", "sort_order"], (r) => [
+    console.log(`  [import] ${PD_REGISTRAR_TABLES.shiftConfigs} — ${shiftConfigs.length} records`);
+    await insertChunk(PD_REGISTRAR_TABLES.shiftConfigs, shiftConfigs, ["key", "label", "sub", "icon", "start_hour", "end_hour", "sort_order"], (r) => [
       r.key,
       r.label,
       r.sub ?? "",
@@ -69,7 +75,7 @@ async function main() {
       r.end_hour,
       r.sort_order ?? 0,
     ]);
-    console.log("  [done] shift_configs");
+    console.log(`  [done] ${PD_REGISTRAR_TABLES.shiftConfigs}`);
   }
 
   // 3. officers
@@ -155,13 +161,13 @@ async function main() {
     console.log("  [done] pd_duty_logs");
   }
 
-  // 5. ems_duty_logs
+  // 5. pd_duty_hour_totals
   const emsLogs = dump.ems_duty_logs ?? [];
   if (emsLogs.length > 0) {
-    console.log(`  [truncate+import] ems_duty_logs — ${emsLogs.length} records`);
-    await pool.query(`TRUNCATE TABLE ems_duty_logs RESTART IDENTITY`);
+    console.log(`  [truncate+import] ${PD_REGISTRAR_TABLES.dutyHourTotals} — ${emsLogs.length} records`);
+    await pool.query(`TRUNCATE TABLE ${PD_REGISTRAR_TABLES.dutyHourTotals} RESTART IDENTITY`);
     await insertChunk(
-      "ems_duty_logs",
+      PD_REGISTRAR_TABLES.dutyHourTotals,
       emsLogs,
       ["id", "cs_number", "name", "status", "rank", "week_period", "duty_year", "duty_hours", "shift_type", "created_at"],
       (r) => [
@@ -177,17 +183,17 @@ async function main() {
         r.created_at ? new Date(r.created_at) : new Date(),
       ]
     );
-    await pool.query(`SELECT setval('ems_duty_logs_id_seq', (SELECT MAX(id) FROM ems_duty_logs))`);
-    console.log("  [done] ems_duty_logs");
+    await pool.query(`SELECT setval(pg_get_serial_sequence('${PD_REGISTRAR_TABLES.dutyHourTotals}', 'id'), (SELECT MAX(id) FROM ${PD_REGISTRAR_TABLES.dutyHourTotals}))`);
+    console.log(`  [done] ${PD_REGISTRAR_TABLES.dutyHourTotals}`);
   }
 
-  // 6. discord_duty_events
+  // 6. pd_discord_duty_events
   const discordEvents = dump.discord_duty_events ?? [];
   if (discordEvents.length > 0) {
-    console.log(`  [truncate+import] discord_duty_events — ${discordEvents.length} records`);
-    await pool.query(`TRUNCATE TABLE discord_duty_events RESTART IDENTITY`);
+    console.log(`  [truncate+import] ${PD_REGISTRAR_TABLES.discordDutyEvents} — ${discordEvents.length} records`);
+    await pool.query(`TRUNCATE TABLE ${PD_REGISTRAR_TABLES.discordDutyEvents} RESTART IDENTITY`);
     await insertChunk(
-      "discord_duty_events",
+      PD_REGISTRAR_TABLES.discordDutyEvents,
       discordEvents,
       ["id", "license_id", "officer_name", "rank", "event_type", "event_at", "discord_message_id", "week_period", "created_at"],
       (r) => [
@@ -202,17 +208,17 @@ async function main() {
         r.created_at ? new Date(r.created_at) : new Date(),
       ]
     );
-    await pool.query(`SELECT setval('discord_duty_events_id_seq', (SELECT MAX(id) FROM discord_duty_events))`);
-    console.log("  [done] discord_duty_events");
+    await pool.query(`SELECT setval(pg_get_serial_sequence('${PD_REGISTRAR_TABLES.discordDutyEvents}', 'id'), (SELECT MAX(id) FROM ${PD_REGISTRAR_TABLES.discordDutyEvents}))`);
+    console.log(`  [done] ${PD_REGISTRAR_TABLES.discordDutyEvents}`);
   }
 
-  // 7. duty_adjustments
+  // 7. pd_duty_adjustments
   const adjustments = dump.duty_adjustments ?? [];
   if (adjustments.length > 0) {
-    console.log(`  [truncate+import] duty_adjustments — ${adjustments.length} records`);
-    await pool.query(`TRUNCATE TABLE duty_adjustments RESTART IDENTITY`);
+    console.log(`  [truncate+import] ${PD_REGISTRAR_TABLES.dutyAdjustments} — ${adjustments.length} records`);
+    await pool.query(`TRUNCATE TABLE ${PD_REGISTRAR_TABLES.dutyAdjustments} RESTART IDENTITY`);
     await insertChunk(
-      "duty_adjustments",
+      PD_REGISTRAR_TABLES.dutyAdjustments,
       adjustments,
       ["id", "officer_cs", "officer_name", "duty_month", "duty_year", "shift_type", "adjustment_seconds", "note", "created_at"],
       (r) => [
@@ -227,8 +233,8 @@ async function main() {
         r.created_at ? new Date(r.created_at) : new Date(),
       ]
     );
-    await pool.query(`SELECT setval('duty_adjustments_id_seq', (SELECT MAX(id) FROM duty_adjustments))`);
-    console.log("  [done] duty_adjustments");
+    await pool.query(`SELECT setval(pg_get_serial_sequence('${PD_REGISTRAR_TABLES.dutyAdjustments}', 'id'), (SELECT MAX(id) FROM ${PD_REGISTRAR_TABLES.dutyAdjustments}))`);
+    console.log(`  [done] ${PD_REGISTRAR_TABLES.dutyAdjustments}`);
   }
 
   console.log("\nImport complete!");

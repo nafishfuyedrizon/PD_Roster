@@ -2,7 +2,7 @@ import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const discordDutyEventsTable = pgTable("discord_duty_events", {
+export const discordDutyEventsTable = pgTable("pd_discord_duty_events", {
   id: serial("id").primaryKey(),
   licenseId: text("license_id").notNull(),
   officerName: text("officer_name").notNull(),

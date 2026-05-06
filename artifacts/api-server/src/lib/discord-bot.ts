@@ -14,6 +14,7 @@ import {
 } from "@workspace/db";
 import { eq, and, asc, desc, or, lt, gte, lte } from "drizzle-orm";
 import { logger } from "./logger";
+import { findOfficerByDutyIdentity } from "./duty-officer-match";
 
 async function botLog(actionType: string, entityType: string, entityName: string | null, changes: Record<string, unknown> | null = null) {
   try {
@@ -29,10 +30,27 @@ async function botLog(actionType: string, entityType: string, entityName: string
   } catch (_) {}
 }
 
-const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID!;
+const CHANNEL_ID = process.env.DISCORD_TIMESTAMP_CHANNEL_ID ?? "";
 const CITATION_CHANNEL_ID = process.env.DISCORD_CITATION_CHANNEL_ID ?? "";
 const FIR_CHANNEL_ID = process.env.DISCORD_FIR_CHANNEL_ID ?? "";
-const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!;
+const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN ?? "";
+const BACKFILL_MONTHS = Math.max(1, Number.parseInt(process.env.PD_REGISTRAR_BACKFILL_MONTHS ?? "3", 10) || 3);
+const MAX_BACKFILL_BATCHES = Math.max(1, Number.parseInt(process.env.PD_REGISTRAR_MAX_BACKFILL_BATCHES ?? "500", 10) || 500);
+let dutySyncEnabled = true;
+
+function isSafePdDutyChannelName(name: string | null | undefined): boolean {
+  const value = (name ?? "").toLowerCase();
+  const normalized = value.replace(/[\s_-]+/g, "");
+  if (!value) return false;
+  if (value.includes("ems")) return false;
+  return (
+    value.includes("pd") ||
+    value.includes("police") ||
+    value.includes("time-stamp") ||
+    value.includes("time stamp") ||
+    normalized.includes("timestamp")
+  );
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -254,16 +272,23 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
   }
 
   const officer = await db
-    .select()
+    .select({
+      id: officersTable.id,
+      callSign: officersTable.callSign,
+      name: officersTable.name,
+      rank: officersTable.rank,
+      status: officersTable.status,
+      discordUsername: officersTable.discordUsername,
+      rockstarLicenseId: officersTable.rockstarLicenseId,
+    })
     .from(officersTable)
-    .where(
-      or(
-        eq(officersTable.rockstarLicenseId, licenseId),
-        eq(officersTable.rockstarLicenseId, `license:${licenseId}`)
-      )
-    )
-    .limit(1)
-    .then((r) => r[0] ?? null);
+    .then((rows) =>
+      findOfficerByDutyIdentity(
+        licenseId,
+        events[events.length - 1]?.officerName ?? events[0]?.officerName ?? "",
+        rows,
+      ),
+    );
 
   if (!officer) return;
 
@@ -406,42 +431,68 @@ async function processMessage(msg: Message, opts?: { skipRecompute?: boolean }):
 
 // ── Historical backfill ────────────────────────────────────────────────────
 
-async function backfillHistory(channel: TextChannel) {
-  logger.info({ channelId: channel.id }, "Starting history backfill");
-  let before: string | undefined;
-  let processed = 0;
-  const dirtyPairs = new Set<string>();
+function getBackfillCutoffDate(months = BACKFILL_MONTHS): Date {
+  const cutoff = new Date();
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - months);
+  return cutoff;
+}
 
-  // backfill up to 5 000 messages (50 batches of 100)
-  // We skip per-event recompute here to avoid hours flickering to 0 mid-backfill.
-  // Instead we collect all dirty (licenseId, weekPeriod) pairs and do one clean
-  // batch recompute after all events are stored.
-  for (let i = 0; i < 50; i++) {
+async function forEachMessageSince(
+  channel: TextChannel,
+  cutoff: Date,
+  handler: (msg: Message) => Promise<void>,
+): Promise<{ scanned: number; processed: number; reachedCutoff: boolean }> {
+  let before: string | undefined;
+  let scanned = 0;
+  let processed = 0;
+  let reachedCutoff = false;
+
+  for (let i = 0; i < MAX_BACKFILL_BATCHES; i++) {
     const options: { limit: number; before?: string } = { limit: 100 };
     if (before) options.before = before;
 
     const msgs: Collection<string, Message> = await channel.messages.fetch(options);
     if (msgs.size === 0) break;
 
-    const sorted = [...msgs.values()].sort(
-      (a, b) => a.createdTimestamp - b.createdTimestamp
-    );
+    const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+    const inWindow = sorted.filter((msg) => msg.createdAt >= cutoff);
 
-    for (const msg of sorted) {
-      const pair = await processMessage(msg, { skipRecompute: true });
-      if (pair) dirtyPairs.add(`${pair.licenseId}::${pair.weekPeriod}`);
+    scanned += sorted.length;
+    for (const msg of inWindow) {
+      await handler(msg);
       processed++;
     }
 
     const oldest = sorted[0];
     if (!oldest) break;
-    before = oldest.id;
+    if (oldest.createdAt < cutoff) {
+      reachedCutoff = true;
+      break;
+    }
 
+    before = oldest.id;
     if (msgs.size < 100) break;
   }
 
+  return { scanned, processed, reachedCutoff };
+}
+
+async function backfillHistory(channel: TextChannel) {
+  const cutoff = getBackfillCutoffDate();
+  logger.info({ channelId: channel.id, backfillMonths: BACKFILL_MONTHS, cutoffAt: cutoff.toISOString() }, "Starting history backfill");
+  const dirtyPairs = new Set<string>();
+
+  const { scanned, processed, reachedCutoff } = await forEachMessageSince(
+    channel,
+    cutoff,
+    async (msg) => {
+      const pair = await processMessage(msg, { skipRecompute: true });
+      if (pair) dirtyPairs.add(`${pair.licenseId}::${pair.weekPeriod}`);
+    },
+  );
+
   // Now do a single batch recompute for all affected pairs — no mid-flight flickering
-  logger.info({ processed, pairs: dirtyPairs.size }, "Events stored, starting batch recompute");
+  logger.info({ scanned, processed, pairs: dirtyPairs.size, reachedCutoff }, "Events stored, starting batch recompute");
   for (const key of dirtyPairs) {
     const [licenseId, weekPeriod] = key.split("::");
     if (licenseId && weekPeriod) {
@@ -449,8 +500,8 @@ async function backfillHistory(channel: TextChannel) {
     }
   }
 
-  logger.info({ processed }, "History backfill complete");
-  await botLog("SYNC", "duty-hours", "History Backfill", { processed });
+  logger.info({ scanned, processed, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff }, "History backfill complete");
+  await botLog("SYNC", "duty-hours", "History Backfill", { scanned, processed, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff });
 }
 
 // ── Recompute all ──────────────────────────────────────────────────────────
@@ -665,31 +716,14 @@ async function updateFirThreadByThreadId(threadId: string): Promise<void> {
 }
 
 async function backfillFir(channel: TextChannel) {
-  logger.info({ channelId: channel.id }, "Starting FIR backfill");
-  let before: string | undefined;
-  let total = 0;
+  const cutoff = getBackfillCutoffDate();
+  logger.info({ channelId: channel.id, backfillMonths: BACKFILL_MONTHS, cutoffAt: cutoff.toISOString() }, "Starting FIR backfill");
+  const result = await forEachMessageSince(channel, cutoff, async (msg) => {
+    await processFirMessage(msg);
+  });
 
-  for (let i = 0; i < 50; i++) {
-    const options: { limit: number; before?: string } = { limit: 100 };
-    if (before) options.before = before;
-
-    const msgs: Collection<string, Message> = await channel.messages.fetch(options);
-    if (msgs.size === 0) break;
-
-    const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-    for (const msg of sorted) {
-      await processFirMessage(msg);
-      total++;
-    }
-
-    const oldest = sorted[0];
-    if (!oldest) break;
-    before = oldest.id;
-    if (msgs.size < 100) break;
-  }
-
-  logger.info({ channelId: channel.id, total }, "FIR backfill complete");
-  await botLog("SYNC", "fir", "FIR Backfill", { total });
+  logger.info({ channelId: channel.id, ...result, backfillMonths: BACKFILL_MONTHS }, "FIR backfill complete");
+  await botLog("SYNC", "fir", "FIR Backfill", { ...result, backfillMonths: BACKFILL_MONTHS });
 }
 
 async function processCitationMessage(msg: Message) {
@@ -730,38 +764,21 @@ async function processCitationMessage(msg: Message) {
 }
 
 async function backfillCitations(channel: TextChannel) {
-  logger.info({ channelId: channel.id }, "Starting citation backfill");
-  let before: string | undefined;
-  let total = 0;
+  const cutoff = getBackfillCutoffDate();
+  logger.info({ channelId: channel.id, backfillMonths: BACKFILL_MONTHS, cutoffAt: cutoff.toISOString() }, "Starting citation backfill");
+  const result = await forEachMessageSince(channel, cutoff, async (msg) => {
+    await processCitationMessage(msg);
+  });
 
-  for (let i = 0; i < 50; i++) {
-    const options: { limit: number; before?: string } = { limit: 100 };
-    if (before) options.before = before;
-
-    const msgs: Collection<string, Message> = await channel.messages.fetch(options);
-    if (msgs.size === 0) break;
-
-    const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-    for (const msg of sorted) {
-      await processCitationMessage(msg);
-      total++;
-    }
-
-    const oldest = sorted[0];
-    if (!oldest) break;
-    before = oldest.id;
-    if (msgs.size < 100) break;
-  }
-
-  logger.info({ total }, "Citation backfill complete");
-  await botLog("SYNC", "citation", "Citation Backfill", { total });
+  logger.info({ channelId: channel.id, ...result, backfillMonths: BACKFILL_MONTHS }, "Citation backfill complete");
+  await botLog("SYNC", "citation", "Citation Backfill", { ...result, backfillMonths: BACKFILL_MONTHS });
 }
 
 // ── Bot start ──────────────────────────────────────────────────────────────
 
 export async function startDiscordBot() {
-  if (!BOT_TOKEN || !CHANNEL_ID) {
-    logger.warn("DISCORD_BOT_TOKEN or DISCORD_TIMESTAMP_CHANNEL_ID not set — bot disabled");
+  if (!BOT_TOKEN) {
+    logger.warn("DISCORD_BOT_TOKEN not set — bot disabled");
     return;
   }
 
@@ -777,11 +794,26 @@ export async function startDiscordBot() {
     logger.info({ tag: client.user?.tag }, "Discord bot connected");
     await botLog("CONNECT", "bot", client.user?.tag ?? "Discord Bot", null);
 
-    const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
-    if (!channel || !(channel instanceof TextChannel)) {
-      logger.error({ CHANNEL_ID }, "Could not find time-stamp channel");
+    if (!CHANNEL_ID) {
+      dutySyncEnabled = false;
+      logger.warn("DISCORD_TIMESTAMP_CHANNEL_ID not set — PD duty sync disabled until a PD timestamp channel is configured");
     } else {
-      await backfillHistory(channel);
+      const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
+      if (!channel || !(channel instanceof TextChannel)) {
+        dutySyncEnabled = false;
+        logger.error({ CHANNEL_ID }, "Could not find PD time-stamp channel");
+      } else {
+        if (!isSafePdDutyChannelName(channel.name)) {
+          dutySyncEnabled = false;
+          logger.error(
+            { channelId: channel.id, channelName: channel.name },
+            "Duty sync blocked because configured timestamp channel is not PD-safe",
+          );
+        } else {
+          dutySyncEnabled = true;
+          await backfillHistory(channel);
+        }
+      }
     }
 
     if (CITATION_CHANNEL_ID) {
@@ -808,7 +840,7 @@ export async function startDiscordBot() {
   });
 
   client.on("messageCreate", async (msg) => {
-    if (msg.channelId === CHANNEL_ID) {
+    if (dutySyncEnabled && msg.channelId === CHANNEL_ID) {
       await processMessage(msg);
     } else if (CITATION_CHANNEL_ID && msg.channelId === CITATION_CHANNEL_ID) {
       await processCitationMessage(msg);

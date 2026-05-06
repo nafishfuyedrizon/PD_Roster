@@ -4,6 +4,20 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { logger } from "./logger";
 
+const PD_REGISTRAR_TABLES = {
+  dutyHourTotals: "pd_duty_hour_totals",
+  discordDutyEvents: "pd_discord_duty_events",
+  shiftConfigs: "pd_shift_configs",
+  dutyAdjustments: "pd_duty_adjustments",
+} as const;
+
+const LEGACY_PD_REGISTRAR_TABLES = {
+  dutyHourTotals: "ems_duty_logs",
+  discordDutyEvents: "discord_duty_events",
+  shiftConfigs: "shift_configs",
+  dutyAdjustments: "duty_adjustments",
+} as const;
+
 function val(v: unknown): unknown {
   if (v === null || v === undefined) return null;
   if (typeof v === "object") return JSON.stringify(v);
@@ -11,6 +25,23 @@ function val(v: unknown): unknown {
 }
 
 type DbClient = Awaited<ReturnType<typeof pool.connect>>;
+
+async function tableExists(client: DbClient, table: string): Promise<boolean> {
+  const r = await client.query(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relname = $1
+          AND c.relkind = 'r'
+      ) AS exists
+    `,
+    [table],
+  );
+  return !!r.rows[0]?.exists;
+}
 
 async function tableCount(client: DbClient, table: string): Promise<number> {
   const r = await client.query(`SELECT COUNT(*) FROM "${table}"`);
@@ -142,6 +173,127 @@ async function ensureDepartmentExists(client: DbClient, dept: string): Promise<v
   logger.info({ dept }, `Added ${dept} to departments list`);
 }
 
+async function ensurePdRegistrarTables(client: DbClient): Promise<void> {
+  const createStatements = [
+    `
+      CREATE TABLE IF NOT EXISTS "${PD_REGISTRAR_TABLES.dutyHourTotals}" (
+        "id" serial PRIMARY KEY,
+        "cs_number" text NOT NULL,
+        "name" text NOT NULL,
+        "status" text NOT NULL DEFAULT 'Active',
+        "rank" text NOT NULL,
+        "week_period" text NOT NULL,
+        "duty_year" text,
+        "duty_hours" text,
+        "shift_type" text NOT NULL DEFAULT 'ALL',
+        "created_at" timestamp DEFAULT now() NOT NULL
+      );
+    `,
+    `
+      CREATE TABLE IF NOT EXISTS "${PD_REGISTRAR_TABLES.discordDutyEvents}" (
+        "id" serial PRIMARY KEY,
+        "license_id" text NOT NULL,
+        "officer_name" text NOT NULL,
+        "rank" text,
+        "event_type" text NOT NULL,
+        "event_at" timestamptz NOT NULL,
+        "discord_message_id" text NOT NULL UNIQUE,
+        "week_period" text NOT NULL,
+        "created_at" timestamp DEFAULT now() NOT NULL
+      );
+    `,
+    `
+      CREATE TABLE IF NOT EXISTS "${PD_REGISTRAR_TABLES.shiftConfigs}" (
+        "key" text PRIMARY KEY,
+        "label" text NOT NULL,
+        "sub" text NOT NULL DEFAULT '',
+        "icon" text NOT NULL DEFAULT '●',
+        "start_hour" integer NOT NULL,
+        "end_hour" integer NOT NULL,
+        "sort_order" integer NOT NULL DEFAULT 0
+      );
+    `,
+    `
+      CREATE TABLE IF NOT EXISTS "${PD_REGISTRAR_TABLES.dutyAdjustments}" (
+        "id" serial PRIMARY KEY,
+        "officer_cs" text NOT NULL,
+        "officer_name" text,
+        "duty_month" text NOT NULL,
+        "duty_year" text NOT NULL,
+        "shift_type" text NOT NULL DEFAULT 'ALL',
+        "adjustment_seconds" integer NOT NULL,
+        "note" text,
+        "created_at" timestamp DEFAULT now() NOT NULL
+      );
+    `,
+  ];
+
+  for (const statement of createStatements) {
+    await client.query(statement);
+  }
+
+  const migrations: Array<{
+    from: string;
+    to: string;
+    cols: string[];
+    sequence?: string;
+  }> = [
+    {
+      from: LEGACY_PD_REGISTRAR_TABLES.dutyHourTotals,
+      to: PD_REGISTRAR_TABLES.dutyHourTotals,
+      cols: ["id", "cs_number", "name", "status", "rank", "week_period", "duty_year", "duty_hours", "shift_type", "created_at"],
+      sequence: "id",
+    },
+    {
+      from: LEGACY_PD_REGISTRAR_TABLES.discordDutyEvents,
+      to: PD_REGISTRAR_TABLES.discordDutyEvents,
+      cols: ["id", "license_id", "officer_name", "rank", "event_type", "event_at", "discord_message_id", "week_period", "created_at"],
+      sequence: "id",
+    },
+    {
+      from: LEGACY_PD_REGISTRAR_TABLES.shiftConfigs,
+      to: PD_REGISTRAR_TABLES.shiftConfigs,
+      cols: ["key", "label", "sub", "icon", "start_hour", "end_hour", "sort_order"],
+    },
+    {
+      from: LEGACY_PD_REGISTRAR_TABLES.dutyAdjustments,
+      to: PD_REGISTRAR_TABLES.dutyAdjustments,
+      cols: ["id", "officer_cs", "officer_name", "duty_month", "duty_year", "shift_type", "adjustment_seconds", "note", "created_at"],
+      sequence: "id",
+    },
+  ];
+
+  for (const migration of migrations) {
+    if (!(await tableExists(client, migration.from))) continue;
+
+    const cols = migration.cols.map((col) => `"${col}"`).join(", ");
+    await client.query(`
+      INSERT INTO "${migration.to}" (${cols})
+      SELECT ${cols}
+      FROM "${migration.from}"
+      ON CONFLICT DO NOTHING
+    `);
+
+    if (migration.sequence) {
+      await resetSeq(client, migration.to);
+    }
+
+    await client.query(`DROP TABLE "${migration.from}"`);
+    logger.info({ from: migration.from, to: migration.to }, "Migrated PD registrar table to prefixed name");
+  }
+
+  const compatibilityViews = [
+    `CREATE OR REPLACE VIEW "${LEGACY_PD_REGISTRAR_TABLES.dutyHourTotals}" AS SELECT * FROM "${PD_REGISTRAR_TABLES.dutyHourTotals}"`,
+    `CREATE OR REPLACE VIEW "${LEGACY_PD_REGISTRAR_TABLES.discordDutyEvents}" AS SELECT * FROM "${PD_REGISTRAR_TABLES.discordDutyEvents}"`,
+    `CREATE OR REPLACE VIEW "${LEGACY_PD_REGISTRAR_TABLES.shiftConfigs}" AS SELECT * FROM "${PD_REGISTRAR_TABLES.shiftConfigs}"`,
+    `CREATE OR REPLACE VIEW "${LEGACY_PD_REGISTRAR_TABLES.dutyAdjustments}" AS SELECT * FROM "${PD_REGISTRAR_TABLES.dutyAdjustments}"`,
+  ];
+
+  for (const statement of compatibilityViews) {
+    await client.query(statement);
+  }
+}
+
 export async function seedDatabase(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
 
@@ -155,10 +307,12 @@ export async function seedDatabase(): Promise<void> {
   const client = await pool.connect();
 
   try {
+    await ensurePdRegistrarTables(client);
+
     // Seed each table independently if empty — runs even when main seed is skipped
     await seedTableIfEmpty(client, "fto_doc_items", path.join(base, "fto-seed.json"));
     await seedTableIfEmpty(client, "ex_pd_officers", path.join(base, "ex-pd-seed.json"));
-    await seedTableIfEmpty(client, "duty_adjustments", path.join(base, "duty-adjustments-seed.json"));
+    await seedTableIfEmpty(client, PD_REGISTRAR_TABLES.dutyAdjustments, path.join(base, "duty-adjustments-seed.json"));
     await seedTableIfEmpty(client, "staff_roles", path.join(base, "staff-roles-seed.json"), "upsert", '"discord_uid"');
 
     // Always upsert student progressions — syncs progress fields even if rows already exist
@@ -189,27 +343,27 @@ export async function seedDatabase(): Promise<void> {
       "fivem_name","duty_hours","completion_status","appointed_fto","week_period"
     ].map(c => `${c}=EXCLUDED.${c}`).join(",");
 
-    const tables: Array<{ table: string; type: "insert" | "upsert"; conflict?: string; update?: string }> = [
-      { table: "officers", type: "upsert", conflict: '"id"', update: officerUpdate },
-      { table: "ems_duty_logs", type: "insert" },
-      { table: "discord_duty_events", type: "upsert", conflict: '"discord_message_id"' },
-      { table: "shift_configs", type: "upsert", conflict: '"key"', update: "label=EXCLUDED.label,sub=EXCLUDED.sub,icon=EXCLUDED.icon,start_hour=EXCLUDED.start_hour,end_hour=EXCLUDED.end_hour,sort_order=EXCLUDED.sort_order" },
-      { table: "site_settings", type: "upsert", conflict: '"key"', update: "value=EXCLUDED.value,updated_at=EXCLUDED.updated_at" },
-      { table: "pd_duty_logs", type: "insert" },
-      { table: "duty_adjustments", type: "insert" },
-      { table: "qualification_chart", type: "insert" },
-      { table: "admin_logs", type: "insert" },
-      { table: "staff_roles", type: "upsert", conflict: '"discord_uid"' },
-      { table: "pd_citations", type: "insert" },
-      { table: "pd_fir", type: "upsert", conflict: '"discord_message_id"' },
-      { table: "citation_deletion_logs", type: "insert" },
-      { table: "student_progressions", type: "insert" },
-      { table: "ex_pd_officers", type: "insert" },
-      { table: "fto_doc_items", type: "insert" },
+    const tables: Array<{ dumpKey: string; table: string; type: "insert" | "upsert"; conflict?: string; update?: string }> = [
+      { dumpKey: "officers", table: "officers", type: "upsert", conflict: '"id"', update: officerUpdate },
+      { dumpKey: "ems_duty_logs", table: PD_REGISTRAR_TABLES.dutyHourTotals, type: "insert" },
+      { dumpKey: "discord_duty_events", table: PD_REGISTRAR_TABLES.discordDutyEvents, type: "upsert", conflict: '"discord_message_id"' },
+      { dumpKey: "shift_configs", table: PD_REGISTRAR_TABLES.shiftConfigs, type: "upsert", conflict: '"key"', update: "label=EXCLUDED.label,sub=EXCLUDED.sub,icon=EXCLUDED.icon,start_hour=EXCLUDED.start_hour,end_hour=EXCLUDED.end_hour,sort_order=EXCLUDED.sort_order" },
+      { dumpKey: "site_settings", table: "site_settings", type: "upsert", conflict: '"key"', update: "value=EXCLUDED.value,updated_at=EXCLUDED.updated_at" },
+      { dumpKey: "pd_duty_logs", table: "pd_duty_logs", type: "insert" },
+      { dumpKey: "duty_adjustments", table: PD_REGISTRAR_TABLES.dutyAdjustments, type: "insert" },
+      { dumpKey: "qualification_chart", table: "qualification_chart", type: "insert" },
+      { dumpKey: "admin_logs", table: "admin_logs", type: "insert" },
+      { dumpKey: "staff_roles", table: "staff_roles", type: "upsert", conflict: '"discord_uid"' },
+      { dumpKey: "pd_citations", table: "pd_citations", type: "insert" },
+      { dumpKey: "pd_fir", table: "pd_fir", type: "upsert", conflict: '"discord_message_id"' },
+      { dumpKey: "citation_deletion_logs", table: "citation_deletion_logs", type: "insert" },
+      { dumpKey: "student_progressions", table: "student_progressions", type: "insert" },
+      { dumpKey: "ex_pd_officers", table: "ex_pd_officers", type: "insert" },
+      { dumpKey: "fto_doc_items", table: "fto_doc_items", type: "insert" },
     ];
 
     for (const t of tables) {
-      const rows = dump[t.table] || [];
+      const rows = dump[t.dumpKey] || [];
       let n: number;
       if (t.type === "upsert") {
         n = await upsertRows(client, t.table, rows, t.conflict!, t.update);
@@ -217,7 +371,7 @@ export async function seedDatabase(): Promise<void> {
         n = await insertRows(client, t.table, rows);
       }
       await resetSeq(client, t.table);
-      logger.info({ table: t.table, inserted: n, total: rows.length }, "Seeded table");
+      logger.info({ table: t.table, dumpKey: t.dumpKey, inserted: n, total: rows.length }, "Seeded table");
     }
 
     logger.info("Seed complete");

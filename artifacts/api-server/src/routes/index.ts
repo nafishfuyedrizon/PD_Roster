@@ -22,6 +22,13 @@ startSheetAutoSync();
 
 const router: IRouter = Router();
 
+router.use((req, _res, next) => {
+  if (req.url === "/pd" || req.url.startsWith("/pd/")) {
+    req.url = `/ems${req.url.slice(3)}`;
+  }
+  next();
+});
+
 router.use(authRouter);
 router.use(profileRouter);
 router.use(healthRouter);

@@ -20,6 +20,13 @@ if (!dumpPath) {
 
 const dump = JSON.parse(readFileSync(path.resolve(dumpPath), "utf-8"));
 
+const PD_REGISTRAR_TABLES = {
+  dutyHourTotals: "pd_duty_hour_totals",
+  discordDutyEvents: "pd_discord_duty_events",
+  shiftConfigs: "pd_shift_configs",
+  dutyAdjustments: "pd_duty_adjustments",
+};
+
 function val(v) {
   if (v === null || v === undefined) return null;
   if (typeof v === "object") return JSON.stringify(v);
@@ -125,16 +132,16 @@ async function main() {
     );
     await resetSequence(client, "officers");
 
-    console.log("\n--- ems_duty_logs ---");
-    await insertRows(client, "ems_duty_logs", dump.ems_duty_logs);
-    await resetSequence(client, "ems_duty_logs");
+    console.log(`\n--- ${PD_REGISTRAR_TABLES.dutyHourTotals} ---`);
+    await insertRows(client, PD_REGISTRAR_TABLES.dutyHourTotals, dump.ems_duty_logs);
+    await resetSequence(client, PD_REGISTRAR_TABLES.dutyHourTotals);
 
-    console.log("\n--- discord_duty_events ---");
-    await upsertRows(client, "discord_duty_events", dump.discord_duty_events, '"discord_message_id"', "DO NOTHING");
-    await resetSequence(client, "discord_duty_events");
+    console.log(`\n--- ${PD_REGISTRAR_TABLES.discordDutyEvents} ---`);
+    await upsertRows(client, PD_REGISTRAR_TABLES.discordDutyEvents, dump.discord_duty_events, '"discord_message_id"', "DO NOTHING");
+    await resetSequence(client, PD_REGISTRAR_TABLES.discordDutyEvents);
 
-    console.log("\n--- shift_configs ---");
-    await upsertRows(client, "shift_configs", dump.shift_configs, '"key"',
+    console.log(`\n--- ${PD_REGISTRAR_TABLES.shiftConfigs} ---`);
+    await upsertRows(client, PD_REGISTRAR_TABLES.shiftConfigs, dump.shift_configs, '"key"',
       `DO UPDATE SET
         label = EXCLUDED.label,
         sub = EXCLUDED.sub,
@@ -153,9 +160,9 @@ async function main() {
     await insertRows(client, "pd_duty_logs", dump.pd_duty_logs);
     await resetSequence(client, "pd_duty_logs");
 
-    console.log("\n--- duty_adjustments ---");
-    await insertRows(client, "duty_adjustments", dump.duty_adjustments);
-    await resetSequence(client, "duty_adjustments");
+    console.log(`\n--- ${PD_REGISTRAR_TABLES.dutyAdjustments} ---`);
+    await insertRows(client, PD_REGISTRAR_TABLES.dutyAdjustments, dump.duty_adjustments);
+    await resetSequence(client, PD_REGISTRAR_TABLES.dutyAdjustments);
 
     console.log("\n--- qualification_chart ---");
     await insertRows(client, "qualification_chart", dump.qualification_chart);

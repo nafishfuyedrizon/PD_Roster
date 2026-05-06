@@ -12,6 +12,10 @@ const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || "1286283853186596904";
 const DISCORD_OWNER_ID = process.env.DISCORD_OWNER_ID || "1286283853186596904";
 const DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS;
+const LOCAL_DEV_LOGIN = process.env.LOCAL_DEV_LOGIN === "true";
+const DEV_LOGIN_ID = process.env.DEV_LOGIN_ID || "463587754471718923";
+const DEV_LOGIN_USERNAME = process.env.DEV_LOGIN_USERNAME || "localadmin";
+const DEV_LOGIN_DISPLAY_NAME = process.env.DEV_LOGIN_DISPLAY_NAME || "Local Admin";
 
 // Temporary access store: discordUserId → expiry timestamp (ms)
 const tempAccessStore = new Map<string, number>();
@@ -63,6 +67,57 @@ function verifyState(state: string): boolean {
   if (isNaN(ts) || Date.now() - ts > STATE_TTL_MS) return false;
   return true;
 }
+
+function setSessionUser(req: Request, user: {
+  id: string;
+  username: string;
+  displayName: string;
+  avatar: string;
+  roles: string[];
+  guildId: string;
+  isOwner: boolean;
+  isSuperAdmin: boolean;
+  isSeniorStaff: boolean;
+  isStaff: boolean;
+  isTrusted: boolean;
+}) {
+  (req.session as any).user = user;
+}
+
+router.get("/auth/dev-login", async (req: Request, res: Response) => {
+  if (!LOCAL_DEV_LOGIN) {
+    res.status(404).json({ error: "Local dev login is disabled." });
+    return;
+  }
+
+  setSessionUser(req, {
+    id: DEV_LOGIN_ID,
+    username: DEV_LOGIN_USERNAME,
+    displayName: DEV_LOGIN_DISPLAY_NAME,
+    avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
+    roles: ["local-dev"],
+    guildId: DISCORD_GUILD_ID,
+    isOwner: true,
+    isSuperAdmin: true,
+    isSeniorStaff: true,
+    isStaff: true,
+    isTrusted: true,
+  });
+
+  try {
+    await db.insert(adminLogsTable).values({
+      actionType: "LOGIN",
+      entityType: "session",
+      entityId: DEV_LOGIN_ID,
+      entityName: DEV_LOGIN_DISPLAY_NAME,
+      changedBy: DEV_LOGIN_DISPLAY_NAME,
+      changedByUid: DEV_LOGIN_ID,
+      changes: { mode: "local-dev" } as any,
+    });
+  } catch {}
+
+  res.redirect("/shift-roster/dashboard");
+});
 
 router.get("/auth/discord", (req: Request, res: Response) => {
   if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET) {
@@ -243,7 +298,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     const staffRole = staffRows[0] ?? null;
     const isHC  = isStaffRole && (staffRole?.isSeniorStaff ?? false); // High Command
     const isFTP = isStaffRole && (staffRole?.isStaff ?? false);       // FTP Supervisor
-    (req.session as any).user = {
+    setSessionUser(req, {
       id: discordUser.id,
       username: discordUser.username,
       displayName,
@@ -255,7 +310,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       isSeniorStaff: isOwner || isHC,
       isStaff: isOwner || isHC || isFTP,
       isTrusted: isOwner || isStaffRole,
-    };
+    });
 
     try {
       await db.insert(adminLogsTable).values({
@@ -319,6 +374,7 @@ router.post("/auth/logout", (req: Request, res: Response) => {
 router.get("/auth/config", (_req: Request, res: Response) => {
   res.json({
     configured: !!(DISCORD_CLIENT_ID && DISCORD_CLIENT_SECRET),
+    localDevLogin: LOCAL_DEV_LOGIN,
     guildId: DISCORD_GUILD_ID,
   });
 });

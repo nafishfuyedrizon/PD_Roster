@@ -30,7 +30,7 @@ export function useAuth() {
     refetchOnWindowFocus: false,
   });
 
-  const { data: config } = useQuery<{ configured: boolean }>({
+  const { data: config } = useQuery<{ configured: boolean; localDevLogin?: boolean }>({
     queryKey: ["auth-config"],
     queryFn: () => fetch("/api/auth/config").then((r) => r.json()),
     staleTime: Infinity,
@@ -50,6 +50,7 @@ export function useAuth() {
     isLoaded: !isLoading,
     isSignedIn: !!data?.user,
     isConfigured: config?.configured ?? true,
+    canUseLocalDevLogin: config?.localDevLogin ?? false,
     logout: () => logoutMutation.mutate(),
   };
 }

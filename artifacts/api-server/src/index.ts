@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startDiscordBot } from "./lib/discord-bot";
+import { startPdMariaMirror } from "./lib/pd-maria-mirror";
 import { seedDatabase } from "./lib/seed";
 
 const rawPort = process.env["PORT"];
@@ -27,6 +28,8 @@ seedDatabase()
       }
 
       logger.info({ port }, "Server listening");
+
+      startPdMariaMirror();
 
       startDiscordBot().catch((err) => {
         logger.error({ err }, "Discord bot failed to start");

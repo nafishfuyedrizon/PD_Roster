@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const { isSignedIn, isLoaded, isConfigured } = useAuth();
+  const { isSignedIn, isLoaded, isConfigured, canUseLocalDevLogin } = useAuth();
   const [, setLocation] = useLocation();
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -22,7 +22,7 @@ export default function LoginPage() {
     }
   }, [isLoaded, isSignedIn, setLocation]);
 
-  const errorMessage = isConfigured === false
+  const errorMessage = isConfigured === false && !canUseLocalDevLogin
     ? "Discord OAuth not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET."
     : authError === "not_member"
       ? "Access denied. You are not a member of the authorized Discord server."
@@ -80,8 +80,17 @@ export default function LoginPage() {
             Login with Discord
           </a>
 
+          {canUseLocalDevLogin && (
+            <a
+              href="/api/auth/dev-login"
+              className="w-full flex items-center justify-center gap-3 py-3 px-5 rounded-xl font-bold text-sm tracking-widest uppercase transition-all bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/40 active:scale-95"
+            >
+              Enter with Local Admin
+            </a>
+          )}
+
           <p className="text-[11px] text-slate-500 text-center font-mono">
-            Login using your Discord account linked to your EMS profile
+            Login using Discord, or use local admin mode on this PC if enabled
           </p>
         </div>
       </div>

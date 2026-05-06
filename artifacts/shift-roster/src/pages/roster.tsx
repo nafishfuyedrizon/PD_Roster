@@ -203,8 +203,8 @@ export default function RosterPage() {
     queryClient.invalidateQueries({ queryKey: getListOfficersQueryKey() });
     queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
     queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/ems/stats"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/ems/breakdown"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pd/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pd/breakdown"] });
     queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
     queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     queryClient.invalidateQueries({ queryKey: ["profile"] });
