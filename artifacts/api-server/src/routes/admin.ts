@@ -2,6 +2,17 @@ import { Router } from "express";
 import { db, discordChannelsTable, pdDutyLogsTable, officersTable, discordDutyEventsTable, emsDutyLogsTable, dutyAdjustmentsTable, adminLogsTable, staffRolesTable } from "@workspace/db";
 import { eq, and, gte, lte, ilike, or, desc, asc, inArray } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
+import {
+  getMysqlAdminDutyLogs,
+  getMysqlDutyAdjustments,
+  getMysqlDutyLogs,
+  getMysqlOfficers,
+  getMysqlOfficersList,
+  getMysqlPanelLogs,
+  getMysqlStaffRoles,
+  isMysqlDatabaseUrl,
+  searchMysqlOfficers,
+} from "../lib/pd-mysql-read.js";
 
 const MONTH_NAMES = ["","JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
 
@@ -96,6 +107,12 @@ router.get("/admin/duty-logs", async (req, res): Promise<void> => {
     search?: string; dateFrom?: string; dateTo?: string; shiftType?: string;
   };
 
+  if (isMysqlDatabaseUrl) {
+    const logs = await getMysqlAdminDutyLogs({ search, dateFrom, dateTo, shiftType });
+    res.json(logs);
+    return;
+  }
+
   const conditions = [];
   if (shiftType && shiftType !== "All") conditions.push(eq(pdDutyLogsTable.shiftType, shiftType));
   if (dateFrom) conditions.push(gte(pdDutyLogsTable.logDate, dateFrom));
@@ -182,6 +199,10 @@ router.delete("/admin/duty-logs/:id", async (req, res): Promise<void> => {
 
 // Officers list for dropdown
 router.get("/admin/officers-list", async (_req, res): Promise<void> => {
+  if (isMysqlDatabaseUrl) {
+    res.json(await getMysqlOfficersList());
+    return;
+  }
   const officers = await db
     .select({ id: officersTable.id, callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank })
     .from(officersTable)
@@ -309,6 +330,78 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
   // Combined key for adjustments stored as "RS_1,RS_2" (sorted)
   const combinedShiftKey = resolvedShifts.join(",");
 
+  if (isMysqlDatabaseUrl) {
+    const [allOfficers, allLogs, adjustments] = await Promise.all([
+      getMysqlOfficers(),
+      getMysqlDutyLogs(),
+      getMysqlDutyAdjustments(),
+    ]);
+
+    const officerMap = new Map(allOfficers.filter((o) => o.callSign).map((o) => [o.callSign, o]));
+    const baseSecs: Record<string, number> = {};
+
+    for (const log of allLogs) {
+      if (!officerMap.has(log.csNumber)) continue;
+      if (log.dutyYear && String(log.dutyYear) !== year) continue;
+      if (weekEndMonthNum(log.weekPeriod) !== monthNum) continue;
+      if (combinedShiftKey !== "ALL") {
+        if (useSingle) {
+          if (log.shiftType !== resolvedShifts[0]) continue;
+        } else if (!resolvedShifts.includes(log.shiftType)) {
+          continue;
+        }
+      }
+      baseSecs[log.csNumber] = (baseSecs[log.csNumber] ?? 0) + parseHmsLocal(log.dutyHours);
+    }
+
+    const adjRows = adjustments.filter((row) =>
+      row.dutyMonth.toUpperCase() === month.toUpperCase()
+      && row.dutyYear === year
+      && row.shiftType === combinedShiftKey,
+    );
+
+    const adjSecs: Record<string, number> = {};
+    for (const row of adjRows) {
+      adjSecs[row.officerCs] = (adjSecs[row.officerCs] ?? 0) + row.adjustmentSeconds;
+    }
+
+    const officers = allOfficers.map((officer) => {
+      const cs = officer.callSign;
+      const base = baseSecs[cs] ?? 0;
+      const adj = adjSecs[cs] ?? 0;
+      const total = Math.max(0, base + adj);
+      return {
+        cs,
+        name: officer.name ?? cs,
+        rank: officer.rank,
+        status: officer.status,
+        lastPromotion: officer.lastPromotion ?? null,
+        baseSecs: base,
+        adjustSecs: adj,
+        totalSecs: total,
+        baseTotal: secsToHms(base),
+        adjustTotal: adj === 0 ? "+00:00:00" : secsToHmsAdj(adj),
+        grandTotal: secsToHms(total),
+      };
+    });
+
+    res.json({
+      month: month.toUpperCase(),
+      year,
+      officers,
+      adjustments: adjRows.map((row) => ({
+        id: row.id,
+        officerCs: row.officerCs,
+        officerName: row.officerName,
+        adjustmentSeconds: row.adjustmentSeconds,
+        adjustDisplay: secsToHmsAdj(row.adjustmentSeconds),
+        note: row.note,
+        createdAt: row.createdAt,
+      })),
+    });
+    return;
+  }
+
   // Base hours: use inArray to sum across all selected shifts
   const logShiftCond = useSingle
     ? eq(emsDutyLogsTable.shiftType, resolvedShifts[0]!)
@@ -423,6 +516,10 @@ router.delete("/admin/duty-adjustments/:id", async (req, res): Promise<void> => 
 router.get("/admin/officer-search", async (req, res): Promise<void> => {
   const q = String(req.query.q ?? "").trim();
   if (!q) { res.json([]); return; }
+  if (isMysqlDatabaseUrl) {
+    res.json(await searchMysqlOfficers(q));
+    return;
+  }
   const rows = await db
     .select({
       id: officersTable.id,
@@ -441,6 +538,10 @@ router.get("/admin/officer-search", async (req, res): Promise<void> => {
 // ─── Staff Roles ──────────────────────────────────────────────────────────────
 
 router.get("/admin/staff-roles", async (req, res): Promise<void> => {
+  if (isMysqlDatabaseUrl) {
+    res.json(await getMysqlStaffRoles());
+    return;
+  }
   const rows = await db.select().from(staffRolesTable).orderBy(asc(staffRolesTable.createdAt));
   res.json(rows);
 });
@@ -494,6 +595,11 @@ router.delete("/admin/staff-roles/:id", async (req, res): Promise<void> => {
 router.get("/admin/logs", async (req, res): Promise<void> => {
   const limit = Math.min(parseInt(String(req.query.limit ?? "100"), 10), 500);
   const offset = parseInt(String(req.query.offset ?? "0"), 10);
+
+  if (isMysqlDatabaseUrl) {
+    res.json(await getMysqlPanelLogs(limit, offset));
+    return;
+  }
 
   const logs = await db
     .select()

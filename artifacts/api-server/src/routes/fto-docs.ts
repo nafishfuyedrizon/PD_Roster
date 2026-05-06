@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, ftoDocItemsTable } from "@workspace/db";
 import { eq, and, asc } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
+import { getMysqlFtoDocItems, isMysqlDatabaseUrl } from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
@@ -19,6 +20,14 @@ function callerLevel(req: any): number {
 // GET /api/fto-docs — all items ordered by sort_order
 router.get("/fto-docs", async (req, res): Promise<void> => {
   res.set("Cache-Control", "no-store");
+  if (isMysqlDatabaseUrl) {
+    try {
+      res.json(await getMysqlFtoDocItems());
+    } catch {
+      res.json([]);
+    }
+    return;
+  }
   const items = await db
     .select()
     .from(ftoDocItemsTable)

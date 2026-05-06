@@ -2,6 +2,11 @@ import { Router, type IRouter } from "express";
 import { db, qualificationChartTable, officersTable, studentProgressionsTable } from "@workspace/db";
 import { eq, sql, notInArray, or, ilike, and } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
+import {
+  getMysqlFtpMembers,
+  getMysqlQualificationEntries,
+  isMysqlDatabaseUrl,
+} from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
@@ -142,6 +147,10 @@ async function syncRosterToQualChart(): Promise<void> {
 }
 
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
+  if (isMysqlDatabaseUrl) {
+    res.json(await getMysqlQualificationEntries());
+    return;
+  }
   // Ensure all roster officers have a qual chart entry, and voter columns are in sync
   await Promise.all([syncRosterToQualChart(), syncVotersToQualChart()]);
 
@@ -408,6 +417,10 @@ router.delete("/qualification-chart/:id", async (req, res): Promise<void> => {
 
 // GET /api/ftp-members — returns FTO and HC members (officers with ftp=true flag)
 router.get("/ftp-members", async (_req, res): Promise<void> => {
+  if (isMysqlDatabaseUrl) {
+    res.json(await getMysqlFtpMembers());
+    return;
+  }
   const rows = await db
     .select({ name: officersTable.name, rank: officersTable.rank, callSign: officersTable.callSign })
     .from(officersTable)

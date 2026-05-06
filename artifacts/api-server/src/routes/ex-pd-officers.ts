@@ -3,11 +3,17 @@ import { db, exPdOfficersTable } from "@workspace/db";
 import { eq, ilike, or, sql } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
 import { guard } from "../lib/auth-guard.js";
+import { getMysqlExPdOfficers, isMysqlDatabaseUrl } from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
 router.get("/ex-pd-officers", async (req, res): Promise<void> => {
   const { search, division, status } = req.query as Record<string, string>;
+
+  if (isMysqlDatabaseUrl) {
+    res.json(await getMysqlExPdOfficers({ search, division, status }));
+    return;
+  }
 
   const conditions: ReturnType<typeof eq>[] = [];
 

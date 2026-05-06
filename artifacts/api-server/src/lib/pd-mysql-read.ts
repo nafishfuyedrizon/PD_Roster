@@ -40,6 +40,14 @@ export async function mysqlQuery<T>(query: string, params: unknown[] = []): Prom
   return rows as T[];
 }
 
+export async function mysqlExecute(
+  query: string,
+  params: unknown[] = [],
+): Promise<mysql.ResultSetHeader> {
+  const [result] = await getMysqlPool().execute(query, params);
+  return result as mysql.ResultSetHeader;
+}
+
 function asBool(value: unknown): boolean {
   return value === true || value === 1 || value === "1";
 }
@@ -51,6 +59,48 @@ function asDate(value: unknown): Date {
     if (!Number.isNaN(date.getTime())) return date;
   }
   return new Date(0);
+}
+
+function asString(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return null;
+}
+
+function parseTimeHours(value: unknown): number {
+  const text = asString(value)?.trim();
+  if (!text) return 0;
+  const parts = text.split(":").map((part) => Number(part));
+  if (parts.length === 2) {
+    return (parts[0] ?? 0) + (parts[1] ?? 0) / 60;
+  }
+  if (parts.length === 3) {
+    return (parts[0] ?? 0) + (parts[1] ?? 0) / 60 + (parts[2] ?? 0) / 3600;
+  }
+  const num = Number(text);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function parseJsonObject(value: unknown): Record<string, string> | null {
+  if (typeof value !== "string" || !value.trim()) return {};
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return Object.fromEntries(
+        Object.entries(parsed as Record<string, unknown>).map(([key, item]) => [
+          key,
+          asString(item) ?? "",
+        ]),
+      );
+    }
+  } catch {
+    return {};
+  }
+  return {};
+}
+
+function toMysqlDateOnly(value: unknown): string {
+  return asDate(value).toISOString().slice(0, 10);
 }
 
 type MysqlOfficerRow = {
@@ -140,6 +190,179 @@ type MysqlSiteSettingRow = {
   key: string;
   value: string;
   updated_at: unknown;
+};
+
+type MysqlStaffRoleJoinedRow = {
+  id: number;
+  discordUid: string | null;
+  displayName: string | null;
+  isSeniorStaff: unknown;
+  isStaff: unknown;
+  isSuperAdmin: unknown;
+  updatedAt: unknown;
+};
+
+type MysqlPanelLogRow = {
+  id: number;
+  action: string | null;
+  target_name: string | null;
+  details: string | null;
+  performed_by: string | null;
+  created_at: unknown;
+};
+
+type MysqlRawDutyLogRow = {
+  id: number;
+  log_date: unknown;
+  start_time: string | null;
+  end_time: string | null;
+  cs_number: string | null;
+  officer_name: string | null;
+  rank: string | null;
+  shift_type: string | null;
+  duration: string | null;
+  notes: string | null;
+  created_at: unknown;
+};
+
+type MysqlExPdOfficerRow = {
+  id: number;
+  call_sign: string | null;
+  character_id: string | null;
+  name: string | null;
+  phone_no: string | null;
+  division: string | null;
+  rank: string | null;
+  discord_username: string | null;
+  discord_uid: string | null;
+  rockstar_license_id: string | null;
+  steam_profile: string | null;
+  steam_64_hex_id: string | null;
+  steam_2_id: string | null;
+  insurance: string | null;
+  status: string | null;
+  exit_date: string | null;
+  date_of_joining: string | null;
+  last_promotion: string | null;
+  air1: unknown;
+  speed: unknown;
+  notes: string | null;
+  created_at: unknown;
+  updated_at: unknown;
+};
+
+type MysqlCitationRow = {
+  id: number;
+  discord_message_id: string | null;
+  title: string | null;
+  incident: string | null;
+  location: string | null;
+  evidence: string | null;
+  incident_report: string | null;
+  suspect_name: string | null;
+  suspect_cid: string | null;
+  suspect_contact: string | null;
+  charges: string | null;
+  officer_name: string | null;
+  raw_content: string | null;
+  posted_at: unknown;
+  created_at: unknown;
+};
+
+type MysqlCitationTopOfficerRow = {
+  officer_name: string | null;
+  citations: number | string | null;
+};
+
+type MysqlStudentProgressionRow = {
+  id: number;
+  badge_number: string | null;
+  discord_id: string | null;
+  discord_name: string | null;
+  name: string | null;
+  timezone: string | null;
+  current_phase: string | null;
+  status: string | null;
+  strikes: string | null;
+  hire_date: string | null;
+  loa_end_date: string | null;
+  discord_interview: unknown;
+  in_city_interview: unknown;
+  basic_training: unknown;
+  obs_h2: unknown;
+  obs_h4: unknown;
+  obs_h6: unknown;
+  obs_h8: unknown;
+  obs_h10: unknown;
+  obs_h12: unknown;
+  obs_h14: unknown;
+  mdt: unknown;
+  advance_training: unknown;
+  neg_pri: unknown;
+  neg_sec: unknown;
+  neg_ter: unknown;
+  neg_par: unknown;
+  inc_pri: unknown;
+  inc_sec: unknown;
+  inc_ter: unknown;
+  inc_par: unknown;
+  evi_pri: unknown;
+  evi_sec: unknown;
+  evi_ter: unknown;
+  evi_par: unknown;
+  sus_pri: unknown;
+  sus_sec: unknown;
+  sus_ter: unknown;
+  sus_par: unknown;
+  drv_pri: unknown;
+  drv_sec: unknown;
+  drv_ter: unknown;
+  drv_par: unknown;
+  t11_pri: unknown;
+  t11_sec: unknown;
+  t11_ter: unknown;
+  t11_par: unknown;
+  pit: unknown;
+  pit_sec: unknown;
+  pit_ter: unknown;
+  calls_911: unknown;
+  drv_solo: unknown;
+  t11_solo: unknown;
+  pit_par: unknown;
+  solo_ready: unknown;
+  solo_start_date: string | null;
+  eligible_trooper_date: string | null;
+  cleared_trooper: unknown;
+  created_at: unknown;
+  updated_at: unknown;
+};
+
+type MysqlQualificationRow = {
+  id: number;
+  call_sign: string | null;
+  member_name: string | null;
+  rank: string | null;
+  days_in_present_rank: string | null;
+  duty_time_in_rank: string | null;
+  status: string | null;
+  vote_by_hc: string | null;
+  notes: string | null;
+  last_promotion_date: string | null;
+  department: string | null;
+  discord_uid: string | null;
+  date_of_joining: string | null;
+};
+
+type MysqlFtoDocItemRow = {
+  id: number;
+  doc_id: string | null;
+  section_id: string | null;
+  item_text: string | null;
+  item_type: string | null;
+  is_important: unknown;
+  is_highlight: unknown;
+  sort_order: number | null;
+  created_at: unknown;
 };
 
 export async function getMysqlOfficers() {
@@ -287,4 +510,421 @@ export async function setMysqlSetting(key: string, value: unknown): Promise<void
      ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()`,
     [key, serialized],
   );
+}
+
+export async function getMysqlOfficersList() {
+  const rows = await mysqlQuery<MysqlOfficerRow>(
+    `SELECT id, call_sign, name, rank, discord_uid, discord_username
+     FROM pd_officers
+     ORDER BY call_sign ASC, id ASC`,
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    callSign: row.call_sign ?? "",
+    name: row.name ?? null,
+    rank: row.rank ?? null,
+    discordUid: row.discord_uid ?? null,
+    discordUsername: row.discord_username ?? null,
+  }));
+}
+
+export async function searchMysqlOfficers(query: string, limit = 10) {
+  const like = `%${query.trim()}%`;
+  const rows = await mysqlQuery<MysqlOfficerRow>(
+    `SELECT id, call_sign, name, rank, discord_uid, discord_username
+     FROM pd_officers
+     WHERE name LIKE ? OR call_sign LIKE ?
+     ORDER BY call_sign ASC, id ASC
+     LIMIT ?`,
+    [like, like, limit],
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    callSign: row.call_sign ?? "",
+    name: row.name ?? null,
+    rank: row.rank ?? null,
+    discordUid: row.discord_uid ?? null,
+    discordUsername: row.discord_username ?? null,
+  }));
+}
+
+export async function getMysqlStaffRoles() {
+  const rows = await mysqlQuery<MysqlStaffRoleJoinedRow>(
+    `SELECT
+       sr.id,
+       m.discord_id AS discordUid,
+       COALESCE(NULLIF(m.name, ''), NULLIF(m.call_sign, ''), CONCAT('Member #', sr.member_id)) AS displayName,
+       sr.is_senior_staff AS isSeniorStaff,
+       sr.is_staff AS isStaff,
+       sr.is_super_admin AS isSuperAdmin,
+       sr.updated_at AS updatedAt
+     FROM staff_roles sr
+     LEFT JOIN members m ON m.id = sr.member_id
+     ORDER BY sr.updated_at ASC, sr.id ASC`,
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    discordUid: row.discordUid ?? "",
+    displayName: row.displayName ?? null,
+    isSeniorStaff: asBool(row.isSeniorStaff),
+    isStaff: asBool(row.isStaff),
+    isSuperAdmin: asBool(row.isSuperAdmin),
+    addedBy: null,
+    createdAt: asDate(row.updatedAt),
+  }));
+}
+
+export async function getMysqlAdminDutyLogs(filters: {
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  shiftType?: string;
+}) {
+  const params: unknown[] = [];
+  const conditions: string[] = [];
+
+  if (filters.shiftType && filters.shiftType !== "All") {
+    conditions.push("shift_type = ?");
+    params.push(filters.shiftType);
+  }
+  if (filters.dateFrom) {
+    conditions.push("DATE(log_date) >= ?");
+    params.push(filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    conditions.push("DATE(log_date) <= ?");
+    params.push(filters.dateTo);
+  }
+  if (filters.search?.trim()) {
+    conditions.push("(officer_name LIKE ? OR cs_number LIKE ?)");
+    const like = `%${filters.search.trim()}%`;
+    params.push(like, like);
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const rows = await mysqlQuery<MysqlRawDutyLogRow>(
+    `SELECT *
+     FROM pd_duty_logs
+     ${whereClause}
+     ORDER BY log_date DESC, created_at DESC, id DESC`,
+    params,
+  );
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    logDate: toMysqlDateOnly(row.log_date),
+    startTime: row.start_time ?? null,
+    endTime: row.end_time ?? null,
+    csNumber: row.cs_number ?? "",
+    officerName: row.officer_name ?? "",
+    rank: row.rank ?? "",
+    shiftType: row.shift_type ?? "Full",
+    duration: row.duration ?? "00:00:00",
+    notes: row.notes ?? null,
+    createdAt: asDate(row.created_at),
+  }));
+}
+
+export async function getMysqlPanelLogs(limit = 100, offset = 0) {
+  const rows = await mysqlQuery<MysqlPanelLogRow>(
+    `SELECT *
+     FROM panel_logs
+     ORDER BY created_at DESC, id DESC
+     LIMIT ? OFFSET ?`,
+    [limit, offset],
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    actionType: row.action ?? "UNKNOWN",
+    entityType: row.target_name ?? "panel",
+    entityId: null,
+    entityName: row.target_name ?? null,
+    changedBy: row.performed_by ?? "Unknown",
+    changedByUid: null,
+    changes: row.details ? { details: row.details } : null,
+    createdAt: asDate(row.created_at),
+  }));
+}
+
+export async function getMysqlExPdOfficers(filters: {
+  search?: string;
+  division?: string;
+  status?: string;
+}) {
+  const params: unknown[] = [];
+  const conditions: string[] = [];
+  if (filters.division && filters.division !== "ALL") {
+    conditions.push("division = ?");
+    params.push(filters.division);
+  }
+  if (filters.status && filters.status !== "ALL") {
+    conditions.push("status = ?");
+    params.push(filters.status);
+  }
+  if (filters.search?.trim()) {
+    const like = `%${filters.search.trim()}%`;
+    conditions.push(
+      `(name LIKE ? OR call_sign LIKE ? OR character_id LIKE ? OR discord_username LIKE ? OR division LIKE ? OR rank LIKE ?)`,
+    );
+    params.push(like, like, like, like, like, like);
+  }
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const rows = await mysqlQuery<MysqlExPdOfficerRow>(
+    `SELECT *
+     FROM pd_ex_pd_officers
+     ${whereClause}
+     ORDER BY id ASC`,
+    params,
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    callSign: row.call_sign ?? null,
+    characterId: row.character_id ?? null,
+    name: row.name ?? "",
+    phoneNo: row.phone_no ?? null,
+    division: row.division ?? null,
+    rank: row.rank ?? null,
+    discordUsername: row.discord_username ?? null,
+    discordUid: row.discord_uid ?? null,
+    rockstarLicenseId: row.rockstar_license_id ?? null,
+    steamProfile: row.steam_profile ?? null,
+    steam64HexId: row.steam_64_hex_id ?? null,
+    steam2Id: row.steam_2_id ?? null,
+    insurance: row.insurance ?? null,
+    status: row.status ?? null,
+    exitDate: row.exit_date ?? null,
+    dateOfJoining: row.date_of_joining ?? null,
+    lastPromotion: row.last_promotion ?? null,
+    air1: asBool(row.air1),
+    speed: asBool(row.speed),
+    notes: row.notes ?? null,
+    createdAt: asDate(row.created_at),
+    updatedAt: asDate(row.updated_at),
+  }));
+}
+
+export async function getMysqlCitations(filters: {
+  search?: string;
+  officer?: string;
+  limit?: number;
+}) {
+  const limit = Math.min(Math.max(Number(filters.limit ?? 1000), 1), 10000);
+  const params: unknown[] = [];
+  const conditions: string[] = [];
+  if (filters.search?.trim()) {
+    const like = `%${filters.search.trim()}%`;
+    conditions.push(
+      `(suspect_name LIKE ? OR suspect_cid LIKE ? OR charges LIKE ? OR officer_name LIKE ? OR title LIKE ? OR incident LIKE ?)`,
+    );
+    params.push(like, like, like, like, like, like);
+  } else if (filters.officer?.trim()) {
+    conditions.push("officer_name LIKE ?");
+    params.push(`%${filters.officer.trim()}%`);
+  }
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  params.push(limit);
+  const rows = await mysqlQuery<MysqlCitationRow>(
+    `SELECT *
+     FROM pd_citations
+     ${whereClause}
+     ORDER BY posted_at DESC, id DESC
+     LIMIT ?`,
+    params,
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    discordMessageId: row.discord_message_id ?? null,
+    title: row.title ?? null,
+    incident: row.incident ?? null,
+    location: row.location ?? null,
+    evidence: row.evidence ?? null,
+    incidentReport: row.incident_report ?? null,
+    suspectName: row.suspect_name ?? null,
+    suspectCid: row.suspect_cid ?? null,
+    suspectContact: row.suspect_contact ?? null,
+    charges: row.charges ?? null,
+    officerName: row.officer_name ?? null,
+    rawContent: row.raw_content ?? null,
+    postedAt: asDate(row.posted_at),
+    createdAt: asDate(row.created_at),
+  }));
+}
+
+export async function getMysqlCitationStats() {
+  const totalRows = await mysqlQuery<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM pd_citations`,
+  );
+  const topOfficers = await mysqlQuery<MysqlCitationTopOfficerRow>(
+    `SELECT officer_name, COUNT(*) AS citations
+     FROM pd_citations
+     WHERE officer_name IS NOT NULL AND officer_name <> ''
+     GROUP BY officer_name
+     ORDER BY citations DESC
+     LIMIT 10`,
+  );
+  return {
+    total: Number(totalRows[0]?.count ?? 0),
+    topOfficers: topOfficers.map((row) => ({
+      officer_name: row.officer_name ?? "Unknown",
+      citations: Number(row.citations ?? 0),
+    })),
+  };
+}
+
+export async function getMysqlStudentProgressions() {
+  const rows = await mysqlQuery<MysqlStudentProgressionRow>(
+    `SELECT * FROM pd_student_progressions ORDER BY id ASC`,
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    badgeNumber: row.badge_number ?? null,
+    discordId: row.discord_id ?? null,
+    discordName: row.discord_name ?? null,
+    name: row.name ?? "",
+    timezone: row.timezone ?? null,
+    currentPhase: row.current_phase ?? "Phase 1",
+    status: row.status ?? "Active",
+    strikes: row.strikes ?? "0/4",
+    hireDate: row.hire_date ?? null,
+    loaEndDate: row.loa_end_date ?? null,
+    discordInterview: asBool(row.discord_interview),
+    inCityInterview: asBool(row.in_city_interview),
+    basicTraining: asBool(row.basic_training),
+    obsH2: asBool(row.obs_h2),
+    obsH4: asBool(row.obs_h4),
+    obsH6: asBool(row.obs_h6),
+    obsH8: asBool(row.obs_h8),
+    obsH10: asBool(row.obs_h10),
+    obsH12: asBool(row.obs_h12),
+    obsH14: asBool(row.obs_h14),
+    mdt: asBool(row.mdt),
+    advanceTraining: asBool(row.advance_training),
+    negPri: asBool(row.neg_pri),
+    negSec: asBool(row.neg_sec),
+    negTer: asBool(row.neg_ter),
+    negPar: asBool(row.neg_par),
+    incPri: asBool(row.inc_pri),
+    incSec: asBool(row.inc_sec),
+    incTer: asBool(row.inc_ter),
+    incPar: asBool(row.inc_par),
+    eviPri: asBool(row.evi_pri),
+    eviSec: asBool(row.evi_sec),
+    eviTer: asBool(row.evi_ter),
+    eviPar: asBool(row.evi_par),
+    susPri: asBool(row.sus_pri),
+    susSec: asBool(row.sus_sec),
+    susTer: asBool(row.sus_ter),
+    susPar: asBool(row.sus_par),
+    drvPri: asBool(row.drv_pri),
+    drvSec: asBool(row.drv_sec),
+    drvTer: asBool(row.drv_ter),
+    drvPar: asBool(row.drv_par),
+    t11Pri: asBool(row.t11_pri),
+    t11Sec: asBool(row.t11_sec),
+    t11Ter: asBool(row.t11_ter),
+    t11Par: asBool(row.t11_par),
+    pit: asBool(row.pit),
+    pitSec: asBool(row.pit_sec),
+    pitTer: asBool(row.pit_ter),
+    calls911: asBool(row.calls_911),
+    drvSolo: asBool(row.drv_solo),
+    t11Solo: asBool(row.t11_solo),
+    pitPar: asBool(row.pit_par),
+    soloReady: asBool(row.solo_ready),
+    soloStartDate: row.solo_start_date ?? null,
+    eligibleTrooperDate: row.eligible_trooper_date ?? null,
+    clearedTrooper: asBool(row.cleared_trooper),
+    createdAt: asDate(row.created_at),
+    updatedAt: asDate(row.updated_at),
+  }));
+}
+
+export async function getMysqlQualificationEntries() {
+  const rows = await mysqlQuery<MysqlQualificationRow>(
+    `SELECT
+       q.id,
+       q.call_sign,
+       q.member_name,
+       q.rank,
+       q.days_in_present_rank,
+       q.duty_time_in_rank,
+       q.status,
+       q.vote_by_hc,
+       q.notes,
+       q.last_promotion_date,
+       o.department,
+       o.discord_uid,
+       o.date_of_joining
+     FROM qualification_chart q
+     LEFT JOIN pd_officers o
+       ON o.call_sign = q.call_sign OR o.name = q.member_name
+     ORDER BY q.sort_order ASC, q.id ASC`,
+  );
+  const allowedStatuses = new Set([
+    "QUALIFIED",
+    "QUALIFIED Sergeant Exam",
+    "NOT QUALIFIED",
+    "DUTY HOURS NOT COMPLETED",
+    "DAYS NOT COMPLETED",
+    "PROMOTION ON HOLD",
+    "Sergeant Exam",
+    "Deputy exam",
+    "Trooper Exam",
+  ]);
+  return rows.map((row) => ({
+    id: Number(row.id),
+    name: row.member_name ?? row.call_sign ?? "",
+    discordUid: row.discord_uid ?? null,
+    rank: row.rank ?? null,
+    department: row.department ?? null,
+    daysInRank: row.days_in_present_rank ? Number(row.days_in_present_rank) || 0 : null,
+    hoursInRank: parseTimeHours(row.duty_time_in_rank),
+    citationCount: 0,
+    citationAutoCount: 0,
+    firCount: 0,
+    acceptedFirCount: 0,
+    lastPromotion: row.last_promotion_date ?? null,
+    joiningDate: row.date_of_joining ?? null,
+    strikesMajor: "0/4",
+    strikesMinor: "0/2",
+    qualStatus: row.status && allowedStatuses.has(row.status) ? row.status : null,
+    notes: row.notes ?? null,
+    ftbVotes: {},
+    hcVotes: parseJsonObject(row.vote_by_hc),
+    rosterLinked: true,
+  }));
+}
+
+export async function getMysqlFtpMembers() {
+  const rows = await mysqlQuery<MysqlOfficerRow>(
+    `SELECT name, rank, call_sign
+     FROM pd_officers
+     WHERE ftp = 1 OR is_management = 1
+     ORDER BY rank ASC, call_sign ASC`,
+  );
+  return {
+    members: rows.map((row) => ({
+      name: row.name ?? row.call_sign ?? "",
+      rank: row.rank ?? "",
+    })),
+  };
+}
+
+export async function getMysqlFtoDocItems() {
+  const rows = await mysqlQuery<MysqlFtoDocItemRow>(
+    `SELECT *
+     FROM pd_fto_doc_items
+     ORDER BY doc_id ASC, sort_order ASC, id ASC`,
+  );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    docId: row.doc_id ?? "",
+    sectionId: row.section_id ?? "",
+    itemText: row.item_text ?? "",
+    itemType: row.item_type ?? "bullet",
+    isImportant: asBool(row.is_important),
+    isHighlight: asBool(row.is_highlight),
+    sortOrder: Number(row.sort_order ?? 0),
+    createdAt: asDate(row.created_at),
+  }));
 }

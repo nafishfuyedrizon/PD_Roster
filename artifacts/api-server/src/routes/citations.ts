@@ -2,12 +2,23 @@ import { Router } from "express";
 import { db, pdCitationsTable, siteSettingsTable, citationDeletionLogsTable } from "@workspace/db";
 import { desc, eq, ilike, or, sql, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import {
+  getMysqlCitations,
+  getMysqlCitationStats,
+  getMysqlSetting,
+  isMysqlDatabaseUrl,
+  mysqlExecute,
+  setMysqlSetting,
+} from "../lib/pd-mysql-read.js";
 
 const router = Router();
 
 // ── Settings helpers ────────────────────────────────────────────────────────
 
 async function getSetting(key: string): Promise<string | null> {
+  if (isMysqlDatabaseUrl) {
+    return await getMysqlSetting(key);
+  }
   const [row] = await db
     .select({ value: siteSettingsTable.value })
     .from(siteSettingsTable)
@@ -18,6 +29,10 @@ async function getSetting(key: string): Promise<string | null> {
 }
 
 async function setSetting(key: string, value: string): Promise<void> {
+  if (isMysqlDatabaseUrl) {
+    await setMysqlSetting(key, value);
+    return;
+  }
   await db.insert(siteSettingsTable).values({ key, value: JSON.stringify(value) })
     .onConflictDoUpdate({ target: siteSettingsTable.key, set: { value: JSON.stringify(value), updatedAt: new Date() } });
 }
@@ -119,20 +134,42 @@ export async function syncFromGoogleSheet(): Promise<{ inserted: number; total: 
     const postedAt = rawDate ? new Date(rawDate) : new Date();
     if (isNaN(postedAt.getTime())) continue;
 
-    await db.insert(pdCitationsTable).values({
-      title:          sanitize(row[1]),
-      incident:       sanitize(row[2]),
-      location:       sanitize(row[3]),
-      evidence:       sanitize(row[4]),
-      incidentReport: sanitize(row[5]),
-      suspectName:    sanitize(row[6]),
-      suspectCid:     sanitize(row[7]),
-      suspectContact: sanitize(row[8]),
-      charges:        sanitize(row[9]),
-      officerName:    sanitize(row[10]),
-      rawContent:     row.join(", ").slice(0, 4000),
-      postedAt,
-    }).onConflictDoNothing();
+    if (isMysqlDatabaseUrl) {
+      await mysqlExecute(
+        `INSERT INTO pd_citations
+          (title, incident, location, evidence, incident_report, suspect_name, suspect_cid, suspect_contact, charges, officer_name, raw_content, posted_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          sanitize(row[1]),
+          sanitize(row[2]),
+          sanitize(row[3]),
+          sanitize(row[4]),
+          sanitize(row[5]),
+          sanitize(row[6]),
+          sanitize(row[7]),
+          sanitize(row[8]),
+          sanitize(row[9]),
+          sanitize(row[10]),
+          row.join(", ").slice(0, 4000),
+          postedAt.toISOString().slice(0, 19).replace("T", " "),
+        ],
+      );
+    } else {
+      await db.insert(pdCitationsTable).values({
+        title:          sanitize(row[1]),
+        incident:       sanitize(row[2]),
+        location:       sanitize(row[3]),
+        evidence:       sanitize(row[4]),
+        incidentReport: sanitize(row[5]),
+        suspectName:    sanitize(row[6]),
+        suspectCid:     sanitize(row[7]),
+        suspectContact: sanitize(row[8]),
+        charges:        sanitize(row[9]),
+        officerName:    sanitize(row[10]),
+        rawContent:     row.join(", ").slice(0, 4000),
+        postedAt,
+      }).onConflictDoNothing();
+    }
     inserted++;
   }
 
@@ -212,6 +249,10 @@ async function forwardToDiscord(discordWebhookUrl: string, body: Record<string, 
 router.get("/citations", async (req, res): Promise<void> => {
   const { search, officer, limit: lim } = req.query as Record<string, string>;
   const limit = lim ? Math.min(parseInt(lim, 10) || 10000, 10000) : 10000;
+  if (isMysqlDatabaseUrl) {
+    res.json(await getMysqlCitations({ search, officer, limit }));
+    return;
+  }
   let query = db.select().from(pdCitationsTable).orderBy(desc(pdCitationsTable.postedAt)).$dynamic();
   if (search?.trim()) {
     const q = `%${search.trim()}%`;
@@ -227,6 +268,10 @@ router.get("/citations", async (req, res): Promise<void> => {
 });
 
 router.get("/citations/stats", async (_req, res): Promise<void> => {
+  if (isMysqlDatabaseUrl) {
+    res.json(await getMysqlCitationStats());
+    return;
+  }
   const [total] = await db.select({ count: sql<number>`count(*)::int` }).from(pdCitationsTable);
   const topOfficers = await db.execute(
     sql`SELECT officer_name, count(*)::int AS citations FROM pd_citations WHERE officer_name IS NOT NULL GROUP BY officer_name ORDER BY citations DESC LIMIT 10`

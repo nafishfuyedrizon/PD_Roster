@@ -3,15 +3,16 @@
 ## Run
 
 1. Open this folder.
-2. Double-click `RUN_WINDOWS.bat`.
+2. Put your PD MySQL database URL and Discord values in `.env.local`.
+3. Double-click `RUN_DISCORD_WINDOWS.bat`.
 
 The script will:
 
 - verify `pnpm`
 - install dependencies
-- push the PostgreSQL schema
-- import `database_dump.json`
+- skip PostgreSQL-only setup when using MySQL/MariaDB
 - start the API server
+- start the Discord bot inside the API window
 - start the Shift Roster panel
 - open the website automatically
 
@@ -28,16 +29,25 @@ Login:
 
 ## Database
 
-Default local database:
+Recommended local database:
 
 ```text
-postgresql://pd_roster_user:pd_roster_pass@localhost:5432/pd_roster
+mysql://USER:PASSWORD@HOST:3306/DATABASE
 ```
 
-This folder is already configured for the PostgreSQL Server running on this machine.
+If you still use PostgreSQL locally, `FIRST_TIME_SETUP.bat` will continue to push schema and import `database_dump.json`.
+
+Required Discord values in `.env.local`:
+
+```text
+DISCORD_BOT_TOKEN=
+DISCORD_TIMESTAMP_CHANNEL_ID=
+DISCORD_FIR_CHANNEL_ID=
+```
 
 ## Useful files
 
+- `RUN_DISCORD_WINDOWS.bat`
 - `RUN_WINDOWS.bat`
 - `FIRST_TIME_SETUP.bat`
 - `RUN_API_ONLY.bat`
