@@ -56,6 +56,7 @@ const BACKFILL_MONTHS = Math.max(1, Number.parseInt(process.env.PD_REGISTRAR_BAC
 const MAX_BACKFILL_BATCHES = Math.max(1, Number.parseInt(process.env.PD_REGISTRAR_MAX_BACKFILL_BATCHES ?? "500", 10) || 500);
 const RECENT_RESCAN_LIMIT = Math.max(1, Math.min(200, Number.parseInt(process.env.PD_REGISTRAR_RECENT_RESCAN_LIMIT ?? "200", 10) || 200));
 const RECENT_RESCAN_INTERVAL_MS = Math.max(5000, Number.parseInt(process.env.PD_REGISTRAR_RECENT_RESCAN_INTERVAL_MS ?? "30000", 10) || 30000);
+const SECONDARY_RECENT_RESCAN_LIMIT = Math.max(1, Math.min(10, Number.parseInt(process.env.PD_REGISTRAR_SECONDARY_RESCAN_LIMIT ?? "10", 10) || 10));
 let dutySyncEnabled = true;
 
 function isSafePdDutyChannelName(name: string | null | undefined): boolean {
@@ -835,7 +836,7 @@ function stripDiscordMarkdown(text: string): string {
     .trim();
 }
 
-async function processFirMessage(msg: Message) {
+async function processFirMessage(msg: Message): Promise<boolean> {
   const allTexts: string[] = [];
   if (msg.content) allTexts.push(msg.content);
   for (const embed of msg.embeds) {
@@ -848,17 +849,18 @@ async function processFirMessage(msg: Message) {
 
   const rawCombined = allTexts.join("\n");
   const combined = stripDiscordMarkdown(rawCombined);
-  if (!isFirMessage(combined)) return;
+  if (!isFirMessage(combined)) return false;
 
   const parsed = parseFir(combined);
 
   const hasData = !!(parsed.complainantName || parsed.complainantCid || parsed.eventDescription || parsed.suspectDetails);
-  if (!hasData) return;
+  if (!hasData) return false;
 
   const threadReplies = await fetchFirThreadReplies(msg);
   const threadId = msg.thread?.id ?? null;
 
   try {
+    let changed = false;
     if (isMysqlDatabaseUrl) {
       const existing = await mysqlQuery<{ id: number }>(
         `SELECT id FROM pd_fir WHERE discord_message_id = ? LIMIT 1`,
@@ -871,6 +873,7 @@ async function processFirMessage(msg: Message) {
            WHERE discord_message_id = ?`,
           [threadId, threadReplies.length > 0 ? JSON.stringify(threadReplies) : null, msg.id],
         );
+        changed = true;
       } else {
         const nextId = await getNextMysqlId("pd_fir");
         await mysqlExecute(
@@ -894,6 +897,7 @@ async function processFirMessage(msg: Message) {
             msg.createdAt,
           ],
         );
+        changed = true;
       }
     } else {
       await db.insert(pdFirTable).values({
@@ -916,11 +920,14 @@ async function processFirMessage(msg: Message) {
           threadReplies: threadReplies.length > 0 ? threadReplies : null,
         },
       });
+      changed = true;
     }
     broadcastFirEvent("new_fir");
+    return changed;
   } catch (err) {
     logger.error({ err, messageId: msg.id }, "Error saving FIR");
   }
+  return false;
 }
 
 async function fetchFirThreadReplies(msg: Message): Promise<FirThreadMessage[]> {
@@ -1000,7 +1007,7 @@ async function backfillFir(channel: TextChannel) {
   await botLog("SYNC", "fir", "FIR Backfill", { ...result, backfillMonths: BACKFILL_MONTHS });
 }
 
-async function processCitationMessage(msg: Message) {
+async function processCitationMessage(msg: Message): Promise<boolean> {
   const allTexts: string[] = [];
   if (msg.content) allTexts.push(msg.content);
   for (const embed of msg.embeds) {
@@ -1012,11 +1019,12 @@ async function processCitationMessage(msg: Message) {
   }
 
   const combined = allTexts.join("\n");
-  if (!isCitationMessage(combined)) return;
+  if (!isCitationMessage(combined)) return false;
 
   const parsed = parseCitation(combined);
 
   try {
+    let inserted = false;
     if (isMysqlDatabaseUrl) {
       const existing = await mysqlQuery<{ id: number }>(
         `SELECT id FROM pd_citations WHERE discord_message_id = ? LIMIT 1`,
@@ -1046,6 +1054,7 @@ async function processCitationMessage(msg: Message) {
             msg.createdAt,
           ],
         );
+        inserted = true;
       }
     } else {
       await db.insert(pdCitationsTable).values({
@@ -1063,10 +1072,13 @@ async function processCitationMessage(msg: Message) {
         rawContent:     combined.slice(0, 4000),
         postedAt:       msg.createdAt,
       }).onConflictDoNothing();
+      inserted = true;
     }
+    return inserted;
   } catch (err) {
     logger.error({ err, messageId: msg.id }, "Error saving citation");
   }
+  return false;
 }
 
 async function backfillCitations(channel: TextChannel) {
@@ -1078,6 +1090,88 @@ async function backfillCitations(channel: TextChannel) {
 
   logger.info({ channelId: channel.id, ...result, backfillMonths: BACKFILL_MONTHS }, "Citation backfill complete");
   await botLog("SYNC", "citation", "Citation Backfill", { ...result, backfillMonths: BACKFILL_MONTHS });
+}
+
+async function reconcileRecentCitationMessages(channel: TextChannel) {
+  const msgs = await channel.messages.fetch({ limit: SECONDARY_RECENT_RESCAN_LIMIT });
+  const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+  let inserted = 0;
+
+  for (const msg of sorted) {
+    if (await processCitationMessage(msg)) {
+      inserted++;
+    }
+  }
+
+  logger.info(
+    { scanned: sorted.length, inserted, intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: SECONDARY_RECENT_RESCAN_LIMIT },
+    "Recent citation reconcile complete",
+  );
+}
+
+async function reconcileRecentFirMessages(channel: TextChannel) {
+  const msgs = await channel.messages.fetch({ limit: SECONDARY_RECENT_RESCAN_LIMIT });
+  const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+  let changed = 0;
+
+  for (const msg of sorted) {
+    if (await processFirMessage(msg)) {
+      changed++;
+    }
+  }
+
+  logger.info(
+    { scanned: sorted.length, changed, intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: SECONDARY_RECENT_RESCAN_LIMIT },
+    "Recent FIR reconcile complete",
+  );
+}
+
+function startRecentCitationReconcileLoop(channel: TextChannel) {
+  let running = false;
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await reconcileRecentCitationMessages(channel);
+    } catch (err) {
+      logger.error({ err }, "Recent citation reconcile failed");
+    } finally {
+      running = false;
+    }
+  };
+
+  setInterval(() => {
+    void run();
+  }, RECENT_RESCAN_INTERVAL_MS);
+
+  logger.info(
+    { intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: SECONDARY_RECENT_RESCAN_LIMIT },
+    "Periodic citation reconcile enabled",
+  );
+}
+
+function startRecentFirReconcileLoop(channel: TextChannel) {
+  let running = false;
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await reconcileRecentFirMessages(channel);
+    } catch (err) {
+      logger.error({ err }, "Recent FIR reconcile failed");
+    } finally {
+      running = false;
+    }
+  };
+
+  setInterval(() => {
+    void run();
+  }, RECENT_RESCAN_INTERVAL_MS);
+
+  logger.info(
+    { intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: SECONDARY_RECENT_RESCAN_LIMIT },
+    "Periodic FIR reconcile enabled",
+  );
 }
 
 // ── Bot start ──────────────────────────────────────────────────────────────
@@ -1131,6 +1225,9 @@ export async function startDiscordBot() {
         logger.warn({ CITATION_CHANNEL_ID }, "Could not find citation channel — set DISCORD_CITATION_CHANNEL_ID");
       } else {
         await backfillCitations(citationChannel);
+        logger.info("Citation history backfill complete. Live citation sync is now active");
+        await reconcileRecentCitationMessages(citationChannel);
+        startRecentCitationReconcileLoop(citationChannel);
       }
     } else {
       logger.warn("DISCORD_CITATION_CHANNEL_ID not set — citation sync disabled");
@@ -1142,6 +1239,9 @@ export async function startDiscordBot() {
         logger.warn({ FIR_CHANNEL_ID }, "Could not find FIR channel — set DISCORD_FIR_CHANNEL_ID");
       } else {
         await backfillFir(firChannel);
+        logger.info("FIR history backfill complete. Live FIR sync is now active");
+        await reconcileRecentFirMessages(firChannel);
+        startRecentFirReconcileLoop(firChannel);
       }
     } else {
       logger.warn("DISCORD_FIR_CHANNEL_ID not set — FIR sync disabled");
