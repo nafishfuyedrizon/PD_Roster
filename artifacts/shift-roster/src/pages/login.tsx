@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { apiUrl } from "@/lib/api-base";
 
 export default function LoginPage() {
   const { isSignedIn, isLoaded, isConfigured, canUseLocalDevLogin, loginLocal } = useAuth();
@@ -67,7 +68,7 @@ export default function LoginPage() {
           )}
 
           <a
-            href="/api/auth/discord"
+            href={apiUrl("/api/auth/discord")}
             className={`w-full flex items-center justify-center gap-3 py-3 px-5 rounded-xl font-bold text-sm tracking-widest uppercase transition-all ${
               isConfigured === false
                 ? "bg-indigo-700/40 text-indigo-300/60 cursor-not-allowed pointer-events-none"
