@@ -54,6 +54,8 @@ const FIR_CHANNEL_ID = process.env.DISCORD_FIR_CHANNEL_ID ?? "";
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN ?? "";
 const BACKFILL_MONTHS = Math.max(1, Number.parseInt(process.env.PD_REGISTRAR_BACKFILL_MONTHS ?? "3", 10) || 3);
 const MAX_BACKFILL_BATCHES = Math.max(1, Number.parseInt(process.env.PD_REGISTRAR_MAX_BACKFILL_BATCHES ?? "500", 10) || 500);
+const RECENT_RESCAN_LIMIT = Math.max(1, Math.min(200, Number.parseInt(process.env.PD_REGISTRAR_RECENT_RESCAN_LIMIT ?? "200", 10) || 200));
+const RECENT_RESCAN_INTERVAL_MS = Math.max(5000, Number.parseInt(process.env.PD_REGISTRAR_RECENT_RESCAN_INTERVAL_MS ?? "30000", 10) || 30000);
 let dutySyncEnabled = true;
 
 function isSafePdDutyChannelName(name: string | null | undefined): boolean {
@@ -533,7 +535,10 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
 
 // ── Message processor ──────────────────────────────────────────────────────
 
-async function processMessage(msg: Message, opts?: { skipRecompute?: boolean }): Promise<{ licenseId: string; weekPeriod: string } | null> {
+async function processMessage(
+  msg: Message,
+  opts?: { skipRecompute?: boolean },
+): Promise<{ licenseId: string; weekPeriod: string; inserted: boolean } | null> {
   const texts = getMessageTexts(msg);
   for (const text of texts) {
     const parsed = parseEventText(text);
@@ -543,6 +548,7 @@ async function processMessage(msg: Message, opts?: { skipRecompute?: boolean }):
     const weekPeriod = getWeekPeriod(eventAt);
 
     try {
+      let inserted = false;
       if (isMysqlDatabaseUrl) {
         const existing = await mysqlQuery<{ id: number }>(
           `SELECT id FROM pd_discord_duty_events WHERE discord_message_id = ? LIMIT 1`,
@@ -556,9 +562,10 @@ async function processMessage(msg: Message, opts?: { skipRecompute?: boolean }):
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [nextId, parsed.licenseId, parsed.officerName, parsed.rank, parsed.eventType, eventAt, msg.id, weekPeriod],
           );
+          inserted = true;
         }
       } else {
-        await db
+        const insertResult = await db
           .insert(discordDutyEventsTable)
           .values({
             licenseId: parsed.licenseId,
@@ -570,12 +577,13 @@ async function processMessage(msg: Message, opts?: { skipRecompute?: boolean }):
             weekPeriod,
           })
           .onConflictDoNothing();
+        inserted = Array.isArray(insertResult) || !!insertResult;
       }
 
-      if (!opts?.skipRecompute) {
+      if (inserted && !opts?.skipRecompute) {
         await recomputeDutyHours(parsed.licenseId, weekPeriod);
       }
-      return { licenseId: parsed.licenseId, weekPeriod };
+      return { licenseId: parsed.licenseId, weekPeriod, inserted };
     } catch (err) {
       logger.error({ err, messageId: msg.id }, "Error processing message");
     }
@@ -657,6 +665,62 @@ async function backfillHistory(channel: TextChannel) {
 
   logger.info({ scanned, processed, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff }, "History backfill complete");
   await botLog("SYNC", "duty-hours", "History Backfill", { scanned, processed, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff });
+}
+
+async function reconcileRecentDutyMessages(channel: TextChannel) {
+  const msgs = await channel.messages.fetch({ limit: RECENT_RESCAN_LIMIT });
+  const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+  const dirtyPairs = new Set<string>();
+  let inserted = 0;
+
+  for (const msg of sorted) {
+    const pair = await processMessage(msg, { skipRecompute: true });
+    if (pair?.inserted) {
+      inserted++;
+      dirtyPairs.add(`${pair.licenseId}::${pair.weekPeriod}`);
+    }
+  }
+
+  for (const key of dirtyPairs) {
+    const [licenseId, weekPeriod] = key.split("::");
+    if (licenseId && weekPeriod) {
+      try {
+        await recomputeDutyHours(licenseId, weekPeriod);
+      } catch (err) {
+        logger.error({ err, licenseId, weekPeriod }, "Recent duty reconcile recompute error");
+      }
+    }
+  }
+
+  logger.info(
+    { scanned: sorted.length, inserted, repairedPairs: dirtyPairs.size, intervalMs: RECENT_RESCAN_INTERVAL_MS },
+    "Recent duty reconcile complete",
+  );
+}
+
+function startRecentDutyReconcileLoop(channel: TextChannel) {
+  let running = false;
+
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await reconcileRecentDutyMessages(channel);
+    } catch (err) {
+      logger.error({ err }, "Recent duty reconcile failed");
+    } finally {
+      running = false;
+    }
+  };
+
+  setInterval(() => {
+    void run();
+  }, RECENT_RESCAN_INTERVAL_MS);
+
+  logger.info(
+    { intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: RECENT_RESCAN_LIMIT },
+    "Periodic duty reconcile enabled",
+  );
 }
 
 // ── Recompute all ──────────────────────────────────────────────────────────
@@ -1054,6 +1118,9 @@ export async function startDiscordBot() {
         } else {
           dutySyncEnabled = true;
           await backfillHistory(channel);
+          logger.info("Duty history backfill complete. Live duty sync is now active");
+          await reconcileRecentDutyMessages(channel);
+          startRecentDutyReconcileLoop(channel);
         }
       }
     }
