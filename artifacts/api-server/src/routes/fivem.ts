@@ -1,6 +1,13 @@
 import { Router, type IRouter } from "express";
 import { db, siteSettingsTable, officersTable, discordDutyEventsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import {
+  getMysqlDutyEvents,
+  getMysqlOfficers,
+  getMysqlSetting,
+  isMysqlDatabaseUrl,
+  setMysqlSetting,
+} from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
@@ -20,8 +27,9 @@ function formatElapsed(since: Date): string {
 
 // GET /api/fivem/players
 router.get("/fivem/players", async (req, res): Promise<void> => {
-  const [setting] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "fivem_server_url")).limit(1);
-  const serverUrl = setting?.value?.trim();
+  const serverUrl = isMysqlDatabaseUrl
+    ? await getMysqlSetting("fivem_server_url")
+    : (await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "fivem_server_url")).limit(1))[0]?.value?.trim();
 
   if (!serverUrl) {
     res.json({ configured: false, online: false, players: [] });
@@ -37,7 +45,7 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
     const resp = await fetch(`${base}/players.json`, { signal: controller.signal });
     clearTimeout(timeout);
     if (resp.ok) {
-      fivemPlayers = await resp.json();
+      fivemPlayers = (await resp.json()) as any[];
       online = true;
     }
   } catch {
@@ -57,7 +65,9 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
   lastKnownIds = currentIds;
 
   // Get all officers
-  const officers = await db.select().from(officersTable);
+  const officers = isMysqlDatabaseUrl
+    ? await getMysqlOfficers()
+    : await db.select().from(officersTable);
 
   const licenseMap = new Map<string, typeof officers[0]>();
   const fivemNameMap = new Map<string, typeof officers[0]>();
@@ -71,7 +81,9 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
     }
   }
 
-  const dutyEvents = await db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt));
+  const dutyEvents = isMysqlDatabaseUrl
+    ? await getMysqlDutyEvents()
+    : await db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt));
 
   // Map: FiveM character name → officer (via duty log license → officers table)
   const dutyNameMap = new Map<string, typeof officers[0]>();
@@ -141,6 +153,11 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
 router.put("/fivem/server-url", async (req, res): Promise<void> => {
   const { url } = req.body;
   if (typeof url !== "string") { res.status(400).json({ error: "url required" }); return; }
+  if (isMysqlDatabaseUrl) {
+    await setMysqlSetting("fivem_server_url", url.trim());
+    res.json({ ok: true });
+    return;
+  }
   await db.insert(siteSettingsTable)
     .values({ key: "fivem_server_url", value: url.trim() })
     .onConflictDoUpdate({ target: siteSettingsTable.key, set: { value: url.trim(), updatedAt: new Date() } });

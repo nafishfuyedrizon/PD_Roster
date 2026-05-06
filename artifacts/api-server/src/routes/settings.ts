@@ -3,6 +3,11 @@ import { eq } from "drizzle-orm";
 import { db, siteSettingsTable, DEFAULT_SETTINGS } from "@workspace/db";
 import { auditLog } from "../lib/audit.js";
 import { guard } from "../lib/auth-guard.js";
+import {
+  getMysqlSettings,
+  isMysqlDatabaseUrl,
+  setMysqlSetting,
+} from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
@@ -17,6 +22,9 @@ async function ensureDefaults(): Promise<void> {
 }
 
 async function getAllSettings(): Promise<Record<string, unknown>> {
+  if (isMysqlDatabaseUrl) {
+    return getMysqlSettings();
+  }
   await ensureDefaults();
   const rows = await db.select().from(siteSettingsTable);
   const result: Record<string, unknown> = { ...DEFAULT_SETTINGS };
@@ -36,6 +44,12 @@ router.put("/admin/settings", async (req, res): Promise<void> => {
   const { key, value } = req.body as { key: string; value: unknown };
   if (!key) { res.status(400).json({ error: "key is required" }); return; }
   const serialized = JSON.stringify(value);
+  if (isMysqlDatabaseUrl) {
+    await setMysqlSetting(key, value);
+    await auditLog(req, "UPDATE", "site-setting", null, key, { old: null, new: serialized });
+    res.json({ ok: true, key, value });
+    return;
+  }
   const [existing] = await db.select({ value: siteSettingsTable.value }).from(siteSettingsTable).where(eq(siteSettingsTable.key, key)).limit(1);
   await db
     .insert(siteSettingsTable)

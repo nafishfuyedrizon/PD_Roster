@@ -3,6 +3,12 @@ import { desc, eq } from "drizzle-orm";
 import { db, discordDutyEventsTable, emsDutyLogsTable, officersTable } from "@workspace/db";
 import { getAllSettings } from "./settings";
 import { findOfficerByDutyIdentity, getCurrentOpenDutySessions } from "../lib/duty-officer-match.js";
+import {
+  getMysqlDutyEvents,
+  getMysqlDutyLogs,
+  getMysqlOfficers,
+  isMysqlDatabaseUrl,
+} from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
@@ -48,9 +54,9 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   const selectedWeek = weekParam === "previous" ? previousWeek : currentWeek;
 
   const [officers, allEvents, allLogs, siteSettings] = await Promise.all([
-    db.select().from(officersTable),
-    db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt)),
-    db.select().from(emsDutyLogsTable).where(eq(emsDutyLogsTable.shiftType, "ALL")),
+    isMysqlDatabaseUrl ? getMysqlOfficers() : db.select().from(officersTable),
+    isMysqlDatabaseUrl ? getMysqlDutyEvents() : db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt)),
+    isMysqlDatabaseUrl ? getMysqlDutyLogs().then((rows) => rows.filter((row) => row.shiftType === "ALL")) : db.select().from(emsDutyLogsTable).where(eq(emsDutyLogsTable.shiftType, "ALL")),
     getAllSettings(),
   ]);
 

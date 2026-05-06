@@ -21,6 +21,12 @@ import {
   UpdateOfficerResponse,
   DeleteOfficerParams,
 } from "@workspace/api-zod";
+import {
+  getMysqlDutyAdjustments,
+  getMysqlDutyLogs,
+  getMysqlOfficers,
+  isMysqlDatabaseUrl,
+} from "../lib/pd-mysql-read.js";
 
 function todayMDY(): string {
   const d = new Date();
@@ -49,11 +55,24 @@ router.get("/roster", async (req, res): Promise<void> => {
   if (isManagement === "true") conditions.push(eq(officersTable.isManagement, true));
   if (isManagement === "false") conditions.push(eq(officersTable.isManagement, false));
 
-  const officers = await db
-    .select()
-    .from(officersTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(officersTable.rank, officersTable.callSign);
+  const officers = isMysqlDatabaseUrl
+    ? (await getMysqlOfficers()).filter((officer) => {
+        if (department && officer.department !== department) return false;
+        if (status && officer.status !== status) return false;
+        if (weekPeriod && officer.weekPeriod !== weekPeriod) return false;
+        if (ftp === "true" && !officer.ftp) return false;
+        if (ftp === "false" && officer.ftp) return false;
+        if (isManagement === "true" && !officer.isManagement) return false;
+        if (isManagement === "false" && officer.isManagement) return false;
+        return true;
+      }).sort((a, b) =>
+        a.rank.localeCompare(b.rank) || a.callSign.localeCompare(b.callSign),
+      )
+    : await db
+        .select()
+        .from(officersTable)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(officersTable.rank, officersTable.callSign);
 
   res.json(ListOfficersResponse.parse(officers));
 });
@@ -132,7 +151,9 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   }
 
   // Officer counts & breakdowns always from current officers table (no period filter needed)
-  const allOfficers = await db.select().from(officersTable);
+  const allOfficers = isMysqlDatabaseUrl
+    ? await getMysqlOfficers()
+    : await db.select().from(officersTable);
 
   const totalOfficers = allOfficers.length;
   const activeOfficers = allOfficers.filter((o) => o.status === "Active").length;
@@ -174,10 +195,38 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
     adjConditions.push(eq(dutyAdjustmentsTable.dutyMonth, monthNumToName(endMonthNum)));
   }
 
-  const [dutyLogs, adjustments] = await Promise.all([
-    db.select().from(emsDutyLogsTable).where(and(...logConditions)),
-    db.select().from(dutyAdjustmentsTable).where(and(...adjConditions)),
-  ]);
+  const [dutyLogs, adjustments] = await Promise.all(
+    isMysqlDatabaseUrl
+      ? [
+          getMysqlDutyLogs().then((rows) =>
+            rows.filter((row) => {
+              if (row.shiftType !== "ALL") return false;
+              if (weekPeriod && row.weekPeriod !== weekPeriod) return false;
+              if (!weekPeriod) {
+                if (month && row.weekPeriod.slice(0, 2) !== month) return false;
+                if (year && row.dutyYear !== year) return false;
+              }
+              return true;
+            }),
+          ),
+          getMysqlDutyAdjustments().then((rows) =>
+            rows.filter((row) => {
+              if (row.shiftType !== "ALL") return false;
+              if (month && row.dutyMonth !== monthNumToName(month)) return false;
+              if (year && row.dutyYear !== year) return false;
+              if (weekPeriod) {
+                const endMonthNum = weekPeriod.slice(6, 8);
+                if (row.dutyMonth !== monthNumToName(endMonthNum)) return false;
+              }
+              return true;
+            }),
+          ),
+        ]
+      : [
+          db.select().from(emsDutyLogsTable).where(and(...logConditions)),
+          db.select().from(dutyAdjustmentsTable).where(and(...adjConditions)),
+        ],
+  );
 
   // Group adjustments by officerCs → net seconds
   const adjSecsByCs = new Map<string, number>();
@@ -292,12 +341,16 @@ router.get("/roster/fto-pairs", async (req, res): Promise<void> => {
 });
 
 router.get("/roster/week-periods", async (_req, res): Promise<void> => {
-  const rows = await db
-    .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
-    .from(emsDutyLogsTable)
-    .orderBy(desc(emsDutyLogsTable.weekPeriod));
-
-  const periods = rows.map((r) => r.weekPeriod).filter((p) => p && p.trim() !== "");
+  const periods = isMysqlDatabaseUrl
+    ? [...new Set((await getMysqlDutyLogs()).map((row) => row.weekPeriod))]
+        .filter((period) => period && period.trim() !== "")
+        .sort((a, b) => b.localeCompare(a))
+    : (await db
+        .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
+        .from(emsDutyLogsTable)
+        .orderBy(desc(emsDutyLogsTable.weekPeriod)))
+        .map((r) => r.weekPeriod)
+        .filter((p) => p && p.trim() !== "");
   res.json(ListWeekPeriodsResponse.parse(periods));
 });
 
@@ -308,10 +361,12 @@ router.get("/roster/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [officer] = await db
-    .select()
-    .from(officersTable)
-    .where(eq(officersTable.id, params.data.id));
+  const officer = isMysqlDatabaseUrl
+    ? (await getMysqlOfficers()).find((row) => row.id === params.data.id)
+    : (await db
+        .select()
+        .from(officersTable)
+        .where(eq(officersTable.id, params.data.id)))[0];
 
   if (!officer) {
     res.status(404).json({ error: "Officer not found" });
@@ -575,7 +630,34 @@ router.post("/roster/officer-lookup", async (req, res): Promise<void> => {
   const namePart = raw.replace(/\s*\[.*?\]\s*$/, "").trim();
 
   const sel = { id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid };
-  let officer: typeof sel | null = null;
+  let officer: { id: number; name: string | null; callSign: string; discordUid: string | null } | null = null;
+
+  if (isMysqlDatabaseUrl) {
+    const officers = await getMysqlOfficers();
+    if (!officer && cid) {
+      officer = officers.find((row) => row.citizenId === cid) ?? null;
+    }
+    if (!officer && namePart) {
+      const q = namePart.toLowerCase();
+      officer = officers.find((row) => (row.name ?? "").toLowerCase().includes(q)) ?? null;
+    }
+    if (!officer && namePart) {
+      const firstName = namePart.split(/\s+/)[0]?.toLowerCase();
+      if (firstName && firstName.length >= 3) {
+        officer = officers.find((row) => (row.name ?? "").toLowerCase().startsWith(`${firstName} `)) ?? null;
+      }
+    }
+    if (!officer && namePart) {
+      const words = namePart.split(/\s+/).filter((w: string) => w.length >= 4).map((w) => w.toLowerCase());
+      officer = officers.find((row) => {
+        const name = (row.name ?? "").toLowerCase();
+        return words.some((word) => name.includes(word));
+      }) ?? null;
+    }
+    if (!officer) { res.status(404).json({ error: "Officer not found", searched: raw }); return; }
+    res.json(officer);
+    return;
+  }
 
   if (!officer && cid) {
     const rows = await db.select(sel).from(officersTable).where(eq(officersTable.citizenId, cid)).limit(1);
@@ -617,7 +699,34 @@ router.get("/roster/officer-lookup", async (req, res): Promise<void> => {
 
   const sel = { id: officersTable.id, name: officersTable.name, callSign: officersTable.callSign, discordUid: officersTable.discordUid };
 
-  let officer: typeof sel | null = null;
+  let officer: { id: number; name: string | null; callSign: string; discordUid: string | null } | null = null;
+
+  if (isMysqlDatabaseUrl) {
+    const officers = await getMysqlOfficers();
+    if (!officer && cid) {
+      officer = officers.find((row) => row.citizenId === cid) ?? null;
+    }
+    if (!officer && namePart) {
+      const q = namePart.toLowerCase();
+      officer = officers.find((row) => (row.name ?? "").toLowerCase().includes(q)) ?? null;
+    }
+    if (!officer && namePart) {
+      const firstName = namePart.split(/\s+/)[0]?.toLowerCase();
+      if (firstName && firstName.length >= 3) {
+        officer = officers.find((row) => (row.name ?? "").toLowerCase().startsWith(`${firstName} `)) ?? null;
+      }
+    }
+    if (!officer && namePart) {
+      const words = namePart.split(/\s+/).filter(w => w.length >= 4).map((w) => w.toLowerCase());
+      officer = officers.find((row) => {
+        const name = (row.name ?? "").toLowerCase();
+        return words.some((word) => name.includes(word));
+      }) ?? null;
+    }
+    if (!officer) { res.status(404).json({ error: "Officer not found", searched: namePart }); return; }
+    res.json(officer);
+    return;
+  }
 
   // 1) Match by citizen_id — most reliable
   if (!officer && cid) {

@@ -3,6 +3,11 @@ import type { Request, Response } from "express";
 import { db } from "@workspace/db";
 import { officersTable, emsDutyLogsTable } from "@workspace/db/schema";
 import { or, eq, and, inArray } from "drizzle-orm";
+import {
+  getMysqlDutyLogs,
+  getMysqlOfficers,
+  isMysqlDatabaseUrl,
+} from "../lib/pd-mysql-read.js";
 
 const router = Router();
 
@@ -39,11 +44,14 @@ router.get("/profile", async (req: Request, res: Response) => {
     if (sessionUser.id) conditions.push(eq(officersTable.discordUid, sessionUser.id));
     if (sessionUser.username) conditions.push(eq(officersTable.discordUsername, sessionUser.username));
 
-    const officers = conditions.length
-      ? await db.select().from(officersTable).where(or(...conditions)).limit(1)
-      : [];
-
-    const officer = officers[0] ?? null;
+    const officer = isMysqlDatabaseUrl
+      ? (await getMysqlOfficers()).find((row) =>
+          (sessionUser.id && row.discordUid === sessionUser.id) ||
+          (sessionUser.username && row.discordUsername === sessionUser.username),
+        ) ?? null
+      : (conditions.length
+          ? (await db.select().from(officersTable).where(or(...conditions)).limit(1))[0]
+          : null);
 
     if (!officer) {
       res.json({
@@ -61,10 +69,14 @@ router.get("/profile", async (req: Request, res: Response) => {
       return;
     }
 
-    const allWeekRows = await db
-      .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
-      .from(emsDutyLogsTable)
-      .where(eq(emsDutyLogsTable.csNumber, officer.callSign));
+    const allWeekRows = isMysqlDatabaseUrl
+      ? (await getMysqlDutyLogs())
+          .filter((row) => row.csNumber === officer.callSign)
+          .map((row) => ({ weekPeriod: row.weekPeriod }))
+      : await db
+          .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
+          .from(emsDutyLogsTable)
+          .where(eq(emsDutyLogsTable.csNumber, officer.callSign));
 
     const weeks = allWeekRows
       .map((r) => r.weekPeriod)
@@ -82,15 +94,19 @@ router.get("/profile", async (req: Request, res: Response) => {
 
     if (weeks.length > 0) {
       const nonNullWeeks = weeks.filter((w): w is string => w !== null);
-      const logs = await db
-        .select()
-        .from(emsDutyLogsTable)
-        .where(
-          and(
-            eq(emsDutyLogsTable.csNumber, officer.callSign),
-            inArray(emsDutyLogsTable.weekPeriod, nonNullWeeks),
-          ),
-        );
+      const logs = isMysqlDatabaseUrl
+        ? (await getMysqlDutyLogs()).filter((row) =>
+            row.csNumber === officer.callSign && nonNullWeeks.includes(row.weekPeriod),
+          )
+        : await db
+            .select()
+            .from(emsDutyLogsTable)
+            .where(
+              and(
+                eq(emsDutyLogsTable.csNumber, officer.callSign),
+                inArray(emsDutyLogsTable.weekPeriod, nonNullWeeks),
+              ),
+            );
 
       for (const log of logs) {
         if (log.weekPeriod && log.shiftType && weeks.includes(log.weekPeriod)) {
@@ -150,15 +166,23 @@ router.get("/profile/view", async (req: Request, res: Response) => {
     if (officerId) conditions.push(eq(officersTable.id, officerId));
     if (discordUid) conditions.push(eq(officersTable.discordUid, discordUid));
 
-    const officers = await db.select().from(officersTable).where(or(...conditions)).limit(1);
-    const officer = officers[0] ?? null;
+    const officer = isMysqlDatabaseUrl
+      ? (await getMysqlOfficers()).find((row) =>
+          (officerId && row.id === officerId) ||
+          (discordUid && row.discordUid === discordUid),
+        ) ?? null
+      : (await db.select().from(officersTable).where(or(...conditions)).limit(1))[0] ?? null;
 
     if (!officer) { res.json({ officer: null, weeks: [], duties: {} }); return; }
 
-    const allWeekRows2 = await db
-      .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
-      .from(emsDutyLogsTable)
-      .where(eq(emsDutyLogsTable.csNumber, officer.callSign));
+    const allWeekRows2 = isMysqlDatabaseUrl
+      ? (await getMysqlDutyLogs())
+          .filter((row) => row.csNumber === officer.callSign)
+          .map((row) => ({ weekPeriod: row.weekPeriod }))
+      : await db
+          .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
+          .from(emsDutyLogsTable)
+          .where(eq(emsDutyLogsTable.csNumber, officer.callSign));
 
     const weeks = allWeekRows2
       .map((r) => r.weekPeriod)
@@ -173,12 +197,16 @@ router.get("/profile/view", async (req: Request, res: Response) => {
     }
     if (weeks.length > 0) {
       const nonNullWeeks = weeks.filter((w): w is string => w !== null);
-      const logs = await db.select().from(emsDutyLogsTable).where(
-        and(
-          eq(emsDutyLogsTable.csNumber, officer.callSign),
-          inArray(emsDutyLogsTable.weekPeriod, nonNullWeeks),
-        ),
-      );
+      const logs = isMysqlDatabaseUrl
+        ? (await getMysqlDutyLogs()).filter((row) =>
+            row.csNumber === officer.callSign && nonNullWeeks.includes(row.weekPeriod),
+          )
+        : await db.select().from(emsDutyLogsTable).where(
+            and(
+              eq(emsDutyLogsTable.csNumber, officer.callSign),
+              inArray(emsDutyLogsTable.weekPeriod, nonNullWeeks),
+            ),
+          );
       for (const log of logs) {
         if (log.weekPeriod && log.shiftType && weeks.includes(log.weekPeriod)) {
           duties[log.weekPeriod][log.shiftType.toUpperCase()] = log.dutyHours ?? "00:00";

@@ -17,6 +17,14 @@ import {
   UpdateEmsDutyLogResponse,
   DeleteEmsDutyLogParams,
 } from "@workspace/api-zod";
+import {
+  getMysqlDutyAdjustments,
+  getMysqlDutyEvents,
+  getMysqlDutyLogs,
+  getMysqlOfficers,
+  getMysqlShiftConfigs,
+  isMysqlDatabaseUrl,
+} from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
@@ -65,10 +73,28 @@ router.get("/ems/duty-logs", async (req, res): Promise<void> => {
   const conditions = [eq(emsDutyLogsTable.shiftType, resolvedShift)];
   if (weekPeriod) conditions.push(eq(emsDutyLogsTable.weekPeriod, weekPeriod));
 
-  const [logs, allOfficers] = await Promise.all([
-    db.select().from(emsDutyLogsTable).where(and(...conditions)).orderBy(emsDutyLogsTable.csNumber, emsDutyLogsTable.weekPeriod),
-    db.select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status }).from(officersTable),
-  ]);
+  const [logs, allOfficers] = await Promise.all(
+    isMysqlDatabaseUrl
+      ? [
+          getMysqlDutyLogs().then((rows) =>
+            rows
+              .filter((row) => row.shiftType === resolvedShift && (!weekPeriod || row.weekPeriod === weekPeriod))
+              .sort((a, b) => a.csNumber.localeCompare(b.csNumber) || a.weekPeriod.localeCompare(b.weekPeriod)),
+          ),
+          getMysqlOfficers().then((rows) =>
+            rows.map((row) => ({
+              callSign: row.callSign,
+              name: row.name,
+              rank: row.rank,
+              status: row.status,
+            })),
+          ),
+        ]
+      : [
+          db.select().from(emsDutyLogsTable).where(and(...conditions)).orderBy(emsDutyLogsTable.csNumber, emsDutyLogsTable.weekPeriod),
+          db.select({ callSign: officersTable.callSign, name: officersTable.name, rank: officersTable.rank, status: officersTable.status }).from(officersTable),
+        ],
+  );
 
   const officerByCs = new Map(allOfficers.filter((o) => o.callSign).map((o) => [o.callSign!, o]));
 
@@ -109,10 +135,18 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
     : inArray(emsDutyLogsTable.shiftType, resolvedShifts);
 
   // Get all weeks to determine current week and monthly window
-  const allWeeks = await db
-    .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
-    .from(emsDutyLogsTable)
-    .where(shiftCond);
+  const allWeeks = isMysqlDatabaseUrl
+    ? (await getMysqlDutyLogs())
+        .filter((row) =>
+          resolvedShifts.length === 1
+            ? row.shiftType === resolvedShifts[0]
+            : resolvedShifts.includes(row.shiftType),
+        )
+        .map((row) => ({ weekPeriod: row.weekPeriod }))
+    : await db
+        .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
+        .from(emsDutyLogsTable)
+        .where(shiftCond);
 
   const currentWeekPeriod = getCurrentWeekPeriod();
   // Sort chronologically (most-recent first) using year-aware sort key so that
@@ -125,25 +159,60 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
   // which could be an old December week due to sort order ambiguity.
   const latestWeek = weekPeriod ?? currentWeekPeriod;
 
-  const [allLogs, weekLogs, allPdOfficersForStats, allAdjustments, allDutyEvents] = await Promise.all([
-    db.select().from(emsDutyLogsTable).where(shiftCond),
-    db.select().from(emsDutyLogsTable).where(and(eq(emsDutyLogsTable.weekPeriod, latestWeek), shiftCond)),
-    db
-      .select({
-        id: officersTable.id,
-        callSign: officersTable.callSign,
-        name: officersTable.name,
-        rank: officersTable.rank,
-        status: officersTable.status,
-        discordUsername: officersTable.discordUsername,
-        rockstarLicenseId: officersTable.rockstarLicenseId,
-      })
-      .from(officersTable),
-    db.select().from(dutyAdjustmentsTable),
-    resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
-      ? db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt))
-      : Promise.resolve([]),
-  ]);
+  const [allLogs, weekLogs, allPdOfficersForStats, allAdjustments, allDutyEvents] = await Promise.all(
+    isMysqlDatabaseUrl
+      ? [
+          getMysqlDutyLogs().then((rows) =>
+            rows.filter((row) =>
+              resolvedShifts.length === 1
+                ? row.shiftType === resolvedShifts[0]
+                : resolvedShifts.includes(row.shiftType),
+            ),
+          ),
+          getMysqlDutyLogs().then((rows) =>
+            rows.filter((row) =>
+              row.weekPeriod === latestWeek &&
+              (resolvedShifts.length === 1
+                ? row.shiftType === resolvedShifts[0]
+                : resolvedShifts.includes(row.shiftType)),
+            ),
+          ),
+          getMysqlOfficers().then((rows) =>
+            rows.map((row) => ({
+              id: row.id,
+              callSign: row.callSign,
+              name: row.name,
+              rank: row.rank,
+              status: row.status,
+              discordUsername: row.discordUsername,
+              rockstarLicenseId: row.rockstarLicenseId,
+            })),
+          ),
+          getMysqlDutyAdjustments(),
+          resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
+            ? getMysqlDutyEvents()
+            : Promise.resolve([]),
+        ]
+      : [
+          db.select().from(emsDutyLogsTable).where(shiftCond),
+          db.select().from(emsDutyLogsTable).where(and(eq(emsDutyLogsTable.weekPeriod, latestWeek), shiftCond)),
+          db
+            .select({
+              id: officersTable.id,
+              callSign: officersTable.callSign,
+              name: officersTable.name,
+              rank: officersTable.rank,
+              status: officersTable.status,
+              discordUsername: officersTable.discordUsername,
+              rockstarLicenseId: officersTable.rockstarLicenseId,
+            })
+            .from(officersTable),
+          db.select().from(dutyAdjustmentsTable),
+          resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
+            ? db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt))
+            : Promise.resolve([]),
+        ],
+  );
   const pdMap: Record<string, { name: string; rank: string; status: string }> = {};
   for (const o of allPdOfficersForStats) pdMap[o.callSign] = { name: o.name ?? o.callSign, rank: o.rank, status: o.status };
   const liveWeekSecsByCs =
@@ -230,26 +299,58 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
     ? eq(emsDutyLogsTable.shiftType, resolvedShifts[0]!)
     : inArray(emsDutyLogsTable.shiftType, resolvedShifts);
 
-  const [logs, rawPdOfficers, allAdjustments, allDutyEvents] = await Promise.all([
-    db.select().from(emsDutyLogsTable).where(shiftCond).orderBy(emsDutyLogsTable.weekPeriod),
-    db
-      .select({
-        id: officersTable.id,
-        callSign: officersTable.callSign,
-        name: officersTable.name,
-        rank: officersTable.rank,
-        status: officersTable.status,
-        discordUsername: officersTable.discordUsername,
-        discordUid: officersTable.discordUid,
-        rockstarLicenseId: officersTable.rockstarLicenseId,
-      })
-      .from(officersTable)
-      .orderBy(officersTable.rank, officersTable.callSign),
-    db.select().from(dutyAdjustmentsTable),
-    resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
-      ? db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt))
-      : Promise.resolve([]),
-  ]);
+  const [logs, rawPdOfficers, allAdjustments, allDutyEvents] = await Promise.all(
+    isMysqlDatabaseUrl
+      ? [
+          getMysqlDutyLogs().then((rows) =>
+            rows
+              .filter((row) =>
+                resolvedShifts.length === 1
+                  ? row.shiftType === resolvedShifts[0]
+                  : resolvedShifts.includes(row.shiftType),
+              )
+              .sort((a, b) => a.weekPeriod.localeCompare(b.weekPeriod)),
+          ),
+          getMysqlOfficers().then((rows) =>
+            rows
+              .map((row) => ({
+                id: row.id,
+                callSign: row.callSign,
+                name: row.name,
+                rank: row.rank,
+                status: row.status,
+                discordUsername: row.discordUsername,
+                discordUid: row.discordUid,
+                rockstarLicenseId: row.rockstarLicenseId,
+              }))
+              .sort((a, b) => a.rank.localeCompare(b.rank) || a.callSign.localeCompare(b.callSign)),
+          ),
+          getMysqlDutyAdjustments(),
+          resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
+            ? getMysqlDutyEvents()
+            : Promise.resolve([]),
+        ]
+      : [
+          db.select().from(emsDutyLogsTable).where(shiftCond).orderBy(emsDutyLogsTable.weekPeriod),
+          db
+            .select({
+              id: officersTable.id,
+              callSign: officersTable.callSign,
+              name: officersTable.name,
+              rank: officersTable.rank,
+              status: officersTable.status,
+              discordUsername: officersTable.discordUsername,
+              discordUid: officersTable.discordUid,
+              rockstarLicenseId: officersTable.rockstarLicenseId,
+            })
+            .from(officersTable)
+            .orderBy(officersTable.rank, officersTable.callSign),
+          db.select().from(dutyAdjustmentsTable),
+          resolvedShifts.length === 1 && resolvedShifts[0] === "ALL"
+            ? db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt))
+            : Promise.resolve([]),
+        ],
+  );
 
   // Get distinct week periods sorted chronologically (most-recent first).
   // Use year-aware sort key so December weeks don't sort after April weeks.
@@ -325,25 +426,38 @@ router.get("/ems/breakdown", async (req, res): Promise<void> => {
 router.get("/ems/officer-duty/:callSign", async (req, res): Promise<void> => {
   const callSign = req.params.callSign as string;
 
-  const [officer] = await db
-    .select()
-    .from(officersTable)
-    .where(eq(officersTable.callSign, callSign))
-    .limit(1);
+  const officer = isMysqlDatabaseUrl
+    ? (await getMysqlOfficers()).find((row) => row.callSign === callSign)
+    : (await db
+        .select()
+        .from(officersTable)
+        .where(eq(officersTable.callSign, callSign))
+        .limit(1))[0];
 
   if (!officer) {
     res.status(404).json({ error: "Officer not found" });
     return;
   }
 
-  const [logs, allDutyEvents] = await Promise.all([
-    db
-      .select()
-      .from(emsDutyLogsTable)
-      .where(eq(emsDutyLogsTable.csNumber, callSign))
-      .orderBy(desc(emsDutyLogsTable.weekPeriod)),
-    db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt)),
-  ]);
+  const [logs, allDutyEvents] = await Promise.all(
+    isMysqlDatabaseUrl
+      ? [
+          getMysqlDutyLogs().then((rows) =>
+            rows
+              .filter((row) => row.csNumber === callSign)
+              .sort((a, b) => b.weekPeriod.localeCompare(a.weekPeriod)),
+          ),
+          getMysqlDutyEvents(),
+        ]
+      : [
+          db
+            .select()
+            .from(emsDutyLogsTable)
+            .where(eq(emsDutyLogsTable.csNumber, callSign))
+            .orderBy(desc(emsDutyLogsTable.weekPeriod)),
+          db.select().from(discordDutyEventsTable).orderBy(desc(discordDutyEventsTable.eventAt)),
+        ],
+  );
 
   const weekMap: Record<string, Record<string, string>> = {};
   for (const l of logs) {
@@ -387,9 +501,11 @@ router.get("/ems/officer-duty/:callSign", async (req, res): Promise<void> => {
 });
 
 router.get("/ems/week-periods", async (_req, res): Promise<void> => {
-  const rows = await db
-    .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
-    .from(emsDutyLogsTable);
+  const rows = isMysqlDatabaseUrl
+    ? [...new Set((await getMysqlDutyLogs()).map((row) => row.weekPeriod))].map((weekPeriod) => ({ weekPeriod }))
+    : await db
+        .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
+        .from(emsDutyLogsTable);
 
   // Use year-aware sort so December weeks sort before April weeks correctly
   const sorted = rows.map((r) => r.weekPeriod)
@@ -456,10 +572,14 @@ const DEFAULT_SHIFTS = [
 ];
 
 router.get("/ems/shift-configs", async (_req, res): Promise<void> => {
-  let rows = await db.select().from(shiftConfigsTable).orderBy(shiftConfigsTable.sortOrder);
+  let rows = isMysqlDatabaseUrl
+    ? await getMysqlShiftConfigs()
+    : await db.select().from(shiftConfigsTable).orderBy(shiftConfigsTable.sortOrder);
   if (rows.length === 0) {
-    await db.insert(shiftConfigsTable).values(DEFAULT_SHIFTS).onConflictDoNothing();
-    rows = await db.select().from(shiftConfigsTable).orderBy(shiftConfigsTable.sortOrder);
+    if (!isMysqlDatabaseUrl) {
+      await db.insert(shiftConfigsTable).values(DEFAULT_SHIFTS).onConflictDoNothing();
+      rows = await db.select().from(shiftConfigsTable).orderBy(shiftConfigsTable.sortOrder);
+    }
   }
   res.json(rows);
 });
