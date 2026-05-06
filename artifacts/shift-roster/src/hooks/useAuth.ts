@@ -14,6 +14,14 @@ export interface AuthUser {
   isTrusted: boolean;
 }
 
+async function readJsonOrNull<T>(res: Response): Promise<T | null> {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return null;
+  }
+  return res.json() as Promise<T>;
+}
+
 export function useAuth() {
   const qc = useQueryClient();
 
@@ -22,8 +30,8 @@ export function useAuth() {
     queryFn: async () => {
       const res = await fetch("/api/auth/me", { credentials: "include" });
       if (res.status === 401) return null;
-      if (!res.ok) throw new Error("Failed to fetch auth");
-      return res.json();
+      if (!res.ok) return null;
+      return readJsonOrNull<{ user: AuthUser }>(res);
     },
     retry: false,
     staleTime: 30_000,
@@ -32,7 +40,17 @@ export function useAuth() {
 
   const { data: config } = useQuery<{ configured: boolean; localDevLogin?: boolean }>({
     queryKey: ["auth-config"],
-    queryFn: () => fetch("/api/auth/config").then((r) => r.json()),
+    queryFn: async () => {
+      const res = await fetch("/api/auth/config");
+      if (!res.ok) return { configured: false, localDevLogin: false };
+      return (
+        (await readJsonOrNull<{ configured: boolean; localDevLogin?: boolean }>(res)) ?? {
+          configured: false,
+          localDevLogin: false,
+        }
+      );
+    },
+    retry: false,
     staleTime: Infinity,
   });
 
