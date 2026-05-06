@@ -1,0 +1,2 @@
+[build]
+command = "PORT=5173 BASE_PATH=/shift-roster/ API_PROXY_TARGET=http://localhost:5000 pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build && PORT=5173 BASE_PATH=/shift-roster/ pnpm --filter @workspace/shift-roster run build"
