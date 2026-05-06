@@ -151,7 +151,7 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
   const currentWeekPeriod = getCurrentWeekPeriod();
   // Sort chronologically (most-recent first) using year-aware sort key so that
   // December weeks don't falsely appear "later" than April weeks.
-  const weekPeriods = allWeeks.map((w) => w.weekPeriod)
+  const weekPeriods = [...new Set(allWeeks.map((w) => w.weekPeriod))]
     .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a));
   // Always include the current week even if no logs exist yet
   if (!weekPeriods.includes(currentWeekPeriod)) weekPeriods.unshift(currentWeekPeriod);

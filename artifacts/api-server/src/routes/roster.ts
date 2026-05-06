@@ -318,11 +318,18 @@ router.get("/roster/fto-pairs", async (req, res): Promise<void> => {
   const { weekPeriod } = parsed.data;
   const conditions = weekPeriod ? [eq(officersTable.weekPeriod, weekPeriod)] : [];
 
-  const officers = await db
-    .select()
-    .from(officersTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(officersTable.appointedFto, officersTable.callSign);
+  const officers = isMysqlDatabaseUrl
+    ? (await getMysqlOfficers())
+        .filter((officer) => !weekPeriod || officer.weekPeriod === weekPeriod)
+        .sort((a, b) =>
+          (a.appointedFto ?? "").localeCompare(b.appointedFto ?? "") ||
+          a.callSign.localeCompare(b.callSign),
+        )
+    : await db
+        .select()
+        .from(officersTable)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(officersTable.appointedFto, officersTable.callSign);
 
   const ftoMap: Record<string, typeof officers> = {};
   for (const o of officers) {
