@@ -3,6 +3,7 @@ import { db, studentProgressionsTable, officersTable, CHECKPOINT_FIELDS } from "
 import { eq, sql } from "drizzle-orm";
 import { guard } from "../lib/auth-guard.js";
 import {
+  getNextMysqlId,
   getMysqlOfficers,
   getMysqlStudentProgressions,
   isMysqlDatabaseUrl,
@@ -192,13 +193,15 @@ router.post("/student-progressions", async (req, res): Promise<void> => {
   const { name, badgeNumber, discordId, discordName, timezone, currentPhase, status, strikes, hireDate, loaEndDate, soloStartDate, eligibleTrooperDate } = req.body;
   if (!name) { res.status(400).json({ error: "name required" }); return; }
   if (isMysqlDatabaseUrl) {
+    const nextId = await getNextMysqlId("pd_student_progressions");
     const result = await mysqlExecute(
       `INSERT INTO pd_student_progressions (
-        name, badge_number, discord_id, discord_name, timezone,
+        id, name, badge_number, discord_id, discord_name, timezone,
         current_phase, status, strikes, hire_date, loa_end_date, solo_start_date, eligible_trooper_date,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
+        nextId,
         name,
         badgeNumber ?? null,
         discordId ?? null,
@@ -213,7 +216,7 @@ router.post("/student-progressions", async (req, res): Promise<void> => {
         eligibleTrooperDate ?? null,
       ],
     );
-    const row = await getMysqlStudentProgressionById(Number(result.insertId));
+    const row = await getMysqlStudentProgressionById(nextId);
     res.json(row);
     return;
   }
@@ -313,11 +316,13 @@ export async function syncStudentProgressionsWithRoster(): Promise<{ added: stri
 
     for (const officer of ptaOfficers) {
       if (!officer.callSign || cadetBadgeSet.has(officer.callSign)) continue;
+      const nextId = await getNextMysqlId("pd_student_progressions");
       await mysqlExecute(
         `INSERT INTO pd_student_progressions (
-          name, badge_number, discord_id, discord_name, timezone, current_phase, status, strikes, hire_date, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          id, name, badge_number, discord_id, discord_name, timezone, current_phase, status, strikes, hire_date, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
         [
+          nextId,
           officer.name ?? officer.callSign,
           officer.callSign,
           officer.discordUid ?? null,

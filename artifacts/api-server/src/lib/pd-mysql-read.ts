@@ -48,6 +48,33 @@ export async function mysqlExecute(
   return result as mysql.ResultSetHeader;
 }
 
+const NEXT_ID_TABLES = new Set([
+  "pd_duty_logs",
+  "pd_duty_adjustments",
+  "pd_fto_doc_items",
+  "pd_ex_pd_officers",
+  "pd_staff_roles",
+  "pd_qualification_chart",
+  "pd_admin_logs",
+  "pd_discord_duty_events",
+  "pd_citations",
+  "pd_fir",
+  "pd_student_progressions",
+  "pd_duty_hour_totals",
+  "pd_discord_channels",
+  "pd_citation_deletion_logs",
+]);
+
+export async function getNextMysqlId(tableName: string): Promise<number> {
+  if (!NEXT_ID_TABLES.has(tableName)) {
+    throw new Error(`Table ${tableName} is not allowed for next-id lookup.`);
+  }
+  const rows = await mysqlQuery<{ nextId: number | string | null }>(
+    `SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM ${tableName}`,
+  );
+  return Number(rows[0]?.nextId ?? 1);
+}
+
 function asBool(value: unknown): boolean {
   return value === true || value === 1 || value === "1";
 }
@@ -194,20 +221,25 @@ type MysqlSiteSettingRow = {
 
 type MysqlStaffRoleJoinedRow = {
   id: number;
-  discordUid: string | null;
-  displayName: string | null;
+  isSuperAdmin: unknown;
   isSeniorStaff: unknown;
   isStaff: unknown;
-  isSuperAdmin: unknown;
-  updatedAt: unknown;
+  isTrusted: unknown;
+  discord_uid: string | null;
+  display_name: string | null;
+  added_by: string | null;
+  created_at: unknown;
 };
 
 type MysqlPanelLogRow = {
   id: number;
-  action: string | null;
-  target_name: string | null;
-  details: string | null;
-  performed_by: string | null;
+  action_type: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  entity_name: string | null;
+  changed_by: string | null;
+  changed_by_uid: string | null;
+  changes: string | null;
   created_at: unknown;
 };
 
@@ -339,18 +371,21 @@ type MysqlStudentProgressionRow = {
 
 type MysqlQualificationRow = {
   id: number;
-  call_sign: string | null;
-  member_name: string | null;
-  rank: string | null;
-  days_in_present_rank: string | null;
-  duty_time_in_rank: string | null;
-  status: string | null;
-  vote_by_hc: string | null;
-  notes: string | null;
-  last_promotion_date: string | null;
-  department: string | null;
+  name: string | null;
   discord_uid: string | null;
-  date_of_joining: string | null;
+  rank: string | null;
+  department: string | null;
+  days_in_rank: number | string | null;
+  hours_in_rank: number | string | null;
+  citation_count: number | string | null;
+  fir_count: number | string | null;
+  last_promotion: string | null;
+  strikes_major: string | null;
+  strikes_minor: string | null;
+  qual_status: string | null;
+  notes: string | null;
+  ftb_votes: string | null;
+  hc_votes: string | null;
 };
 
 type MysqlFtoDocItemRow = {
@@ -504,10 +539,13 @@ export async function getMysqlSetting(key: string): Promise<string | null> {
 
 export async function setMysqlSetting(key: string, value: unknown): Promise<void> {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
-  await mysqlQuery(
-    `INSERT INTO pd_site_settings (\`key\`, value, updated_at)
-     VALUES (?, ?, NOW())
-     ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()`,
+  const updated = await mysqlExecute(
+    `UPDATE pd_site_settings SET value = ?, updated_at = NOW() WHERE \`key\` = ?`,
+    [serialized, key],
+  );
+  if (updated.affectedRows > 0) return;
+  await mysqlExecute(
+    `INSERT INTO pd_site_settings (\`key\`, value, updated_at) VALUES (?, ?, NOW())`,
     [key, serialized],
   );
 }
@@ -550,27 +588,20 @@ export async function searchMysqlOfficers(query: string, limit = 10) {
 
 export async function getMysqlStaffRoles() {
   const rows = await mysqlQuery<MysqlStaffRoleJoinedRow>(
-    `SELECT
-       sr.id,
-       m.discord_id AS discordUid,
-       COALESCE(NULLIF(m.name, ''), NULLIF(m.call_sign, ''), CONCAT('Member #', sr.member_id)) AS displayName,
-       sr.is_senior_staff AS isSeniorStaff,
-       sr.is_staff AS isStaff,
-       sr.is_super_admin AS isSuperAdmin,
-       sr.updated_at AS updatedAt
-     FROM staff_roles sr
-     LEFT JOIN members m ON m.id = sr.member_id
-     ORDER BY sr.updated_at ASC, sr.id ASC`,
+    `SELECT *
+     FROM pd_staff_roles
+     ORDER BY created_at ASC, id ASC`,
   );
   return rows.map((row) => ({
     id: Number(row.id),
-    discordUid: row.discordUid ?? "",
-    displayName: row.displayName ?? null,
+    isSuperAdmin: asBool(row.isSuperAdmin),
     isSeniorStaff: asBool(row.isSeniorStaff),
     isStaff: asBool(row.isStaff),
-    isSuperAdmin: asBool(row.isSuperAdmin),
-    addedBy: null,
-    createdAt: asDate(row.updatedAt),
+    isTrusted: asBool(row.isTrusted),
+    discordUid: row.discord_uid ?? "",
+    displayName: row.display_name ?? null,
+    addedBy: row.added_by ?? null,
+    createdAt: asDate(row.created_at),
   }));
 }
 
@@ -628,20 +659,20 @@ export async function getMysqlAdminDutyLogs(filters: {
 export async function getMysqlPanelLogs(limit = 100, offset = 0) {
   const rows = await mysqlQuery<MysqlPanelLogRow>(
     `SELECT *
-     FROM panel_logs
+     FROM pd_admin_logs
      ORDER BY created_at DESC, id DESC
      LIMIT ? OFFSET ?`,
     [limit, offset],
   );
   return rows.map((row) => ({
     id: Number(row.id),
-    actionType: row.action ?? "UNKNOWN",
-    entityType: row.target_name ?? "panel",
-    entityId: null,
-    entityName: row.target_name ?? null,
-    changedBy: row.performed_by ?? "Unknown",
-    changedByUid: null,
-    changes: row.details ? { details: row.details } : null,
+    actionType: row.action_type ?? "UNKNOWN",
+    entityType: row.entity_type ?? "panel",
+    entityId: row.entity_id ?? null,
+    entityName: row.entity_name ?? null,
+    changedBy: row.changed_by ?? "Unknown",
+    changedByUid: row.changed_by_uid ?? null,
+    changes: parseJsonObject(row.changes),
     createdAt: asDate(row.created_at),
   }));
 }
@@ -841,24 +872,9 @@ export async function getMysqlStudentProgressions() {
 
 export async function getMysqlQualificationEntries() {
   const rows = await mysqlQuery<MysqlQualificationRow>(
-    `SELECT
-       q.id,
-       q.call_sign,
-       q.member_name,
-       q.rank,
-       q.days_in_present_rank,
-       q.duty_time_in_rank,
-       q.status,
-       q.vote_by_hc,
-       q.notes,
-       q.last_promotion_date,
-       o.department,
-       o.discord_uid,
-       o.date_of_joining
-     FROM qualification_chart q
-     LEFT JOIN pd_officers o
-       ON o.call_sign = q.call_sign OR o.name = q.member_name
-     ORDER BY q.sort_order ASC, q.id ASC`,
+    `SELECT *
+     FROM pd_qualification_chart
+     ORDER BY department ASC, rank ASC, name ASC, id ASC`,
   );
   const allowedStatuses = new Set([
     "QUALIFIED",
@@ -873,24 +889,24 @@ export async function getMysqlQualificationEntries() {
   ]);
   return rows.map((row) => ({
     id: Number(row.id),
-    name: row.member_name ?? row.call_sign ?? "",
+    name: row.name ?? "",
     discordUid: row.discord_uid ?? null,
     rank: row.rank ?? null,
     department: row.department ?? null,
-    daysInRank: row.days_in_present_rank ? Number(row.days_in_present_rank) || 0 : null,
-    hoursInRank: parseTimeHours(row.duty_time_in_rank),
-    citationCount: 0,
+    daysInRank: row.days_in_rank != null ? Number(row.days_in_rank) || 0 : null,
+    hoursInRank: row.hours_in_rank != null ? Number(row.hours_in_rank) || 0 : 0,
+    citationCount: Number(row.citation_count ?? 0),
     citationAutoCount: 0,
-    firCount: 0,
+    firCount: Number(row.fir_count ?? 0),
     acceptedFirCount: 0,
-    lastPromotion: row.last_promotion_date ?? null,
-    joiningDate: row.date_of_joining ?? null,
-    strikesMajor: "0/4",
-    strikesMinor: "0/2",
-    qualStatus: row.status && allowedStatuses.has(row.status) ? row.status : null,
+    lastPromotion: row.last_promotion ?? null,
+    joiningDate: null,
+    strikesMajor: row.strikes_major ?? "0/4",
+    strikesMinor: row.strikes_minor ?? "0/2",
+    qualStatus: row.qual_status && allowedStatuses.has(row.qual_status) ? row.qual_status : null,
     notes: row.notes ?? null,
-    ftbVotes: {},
-    hcVotes: parseJsonObject(row.vote_by_hc),
+    ftbVotes: parseJsonObject(row.ftb_votes),
+    hcVotes: parseJsonObject(row.hc_votes),
     rosterLinked: true,
   }));
 }

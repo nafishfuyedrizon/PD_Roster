@@ -4,6 +4,7 @@ import { eq, and, asc } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
 import {
   getMysqlFtoDocItems,
+  getNextMysqlId,
   isMysqlDatabaseUrl,
   mysqlExecute,
 } from "../lib/pd-mysql-read.js";
@@ -50,11 +51,13 @@ router.post("/fto-docs", async (req, res): Promise<void> => {
   }
 
   if (isMysqlDatabaseUrl) {
+    const nextId = await getNextMysqlId("pd_fto_doc_items");
     const result = await mysqlExecute(
       `INSERT INTO pd_fto_doc_items
-        (doc_id, section_id, item_text, item_type, is_important, is_highlight, sort_order, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+        (id, doc_id, section_id, item_text, item_type, is_important, is_highlight, sort_order, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
+        nextId,
         docId,
         sectionId,
         itemText,
@@ -65,7 +68,7 @@ router.post("/fto-docs", async (req, res): Promise<void> => {
       ],
     );
     const row = {
-      id: Number(result.insertId),
+      id: nextId,
       docId,
       sectionId,
       itemText,

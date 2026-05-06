@@ -15,9 +15,27 @@ import {
 import { eq, and, asc, desc, or, lt, gte, lte } from "drizzle-orm";
 import { logger } from "./logger";
 import { findOfficerByDutyIdentity } from "./duty-officer-match";
+import {
+  getMysqlOfficers,
+  getMysqlShiftConfigs,
+  getNextMysqlId,
+  isMysqlDatabaseUrl,
+  mysqlExecute,
+  mysqlQuery,
+} from "./pd-mysql-read.js";
 
 async function botLog(actionType: string, entityType: string, entityName: string | null, changes: Record<string, unknown> | null = null) {
   try {
+    if (isMysqlDatabaseUrl) {
+      const nextId = await getNextMysqlId("pd_admin_logs");
+      await mysqlExecute(
+        `INSERT INTO pd_admin_logs
+          (id, action_type, entity_type, entity_id, entity_name, changed_by, changed_by_uid, changes, created_at)
+         VALUES (?, ?, ?, NULL, ?, 'Discord Bot', NULL, ?, NOW())`,
+        [nextId, actionType, entityType, entityName, changes ? JSON.stringify(changes) : null],
+      );
+      return;
+    }
     await db.insert(adminLogsTable).values({
       actionType,
       entityType,
@@ -128,6 +146,11 @@ const DEFAULT_SHIFT_WINDOWS: Record<string, [number, number]> = {
 };
 
 async function getShiftWindows(): Promise<Record<string, [number, number]>> {
+  if (isMysqlDatabaseUrl) {
+    const rows = await getMysqlShiftConfigs();
+    if (rows.length === 0) return DEFAULT_SHIFT_WINDOWS;
+    return Object.fromEntries(rows.map((row) => [row.key, [row.startHour, row.endHour]]));
+  }
   const rows = await db.select().from(shiftConfigsTable);
   if (rows.length === 0) return DEFAULT_SHIFT_WINDOWS;
   const map: Record<string, [number, number]> = {};
@@ -170,6 +193,40 @@ async function upsertDutyLog(
   shiftType: string,
   dutyHours: string
 ): Promise<void> {
+  if (isMysqlDatabaseUrl) {
+    const existing = await mysqlQuery<{ id: number }>(
+      `SELECT id
+       FROM pd_duty_hour_totals
+       WHERE cs_number = ? AND week_period = ? AND shift_type = ?
+       LIMIT 1`,
+      [callSign, weekPeriod, shiftType],
+    ).then((rows) => rows[0] ?? null);
+
+    if (existing) {
+      await mysqlExecute(
+        `UPDATE pd_duty_hour_totals
+         SET name = ?, rank = ?, status = ?, duty_hours = ?
+         WHERE id = ?`,
+        [name, rank, status, dutyHours, existing.id],
+      );
+      return;
+    }
+
+    const now = new Date();
+    const endMonth = parseInt(weekPeriod.slice(6, 8), 10);
+    const dutyYear = endMonth > now.getMonth() + 1
+      ? String(now.getFullYear() - 1)
+      : String(now.getFullYear());
+    const nextId = await getNextMysqlId("pd_duty_hour_totals");
+    await mysqlExecute(
+      `INSERT INTO pd_duty_hour_totals
+        (id, cs_number, name, rank, status, week_period, duty_year, duty_hours, shift_type, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [nextId, callSign, name, rank, status, weekPeriod, dutyYear, dutyHours, shiftType],
+    );
+    return;
+  }
+
   const existing = await db
     .select({ id: emsDutyLogsTable.id })
     .from(emsDutyLogsTable)
@@ -205,16 +262,44 @@ async function upsertDutyLog(
 // ── Duty-hour recompute ────────────────────────────────────────────────────
 
 async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
-  const events = await db
-    .select()
-    .from(discordDutyEventsTable)
-    .where(
-      and(
-        eq(discordDutyEventsTable.licenseId, licenseId),
-        eq(discordDutyEventsTable.weekPeriod, weekPeriod)
+  const events = isMysqlDatabaseUrl
+    ? await mysqlQuery<{
+        id: number;
+        license_id: string;
+        officer_name: string | null;
+        rank: string | null;
+        event_type: "on" | "off";
+        event_at: string | Date;
+        discord_message_id: string | null;
+        week_period: string;
+      }>(
+        `SELECT *
+         FROM pd_discord_duty_events
+         WHERE license_id = ? AND week_period = ?
+         ORDER BY event_at ASC, id ASC`,
+        [licenseId, weekPeriod],
+      ).then((rows) =>
+        rows.map((row) => ({
+          id: row.id,
+          licenseId: row.license_id,
+          officerName: row.officer_name ?? "",
+          rank: row.rank ?? "",
+          eventType: row.event_type,
+          eventAt: new Date(row.event_at),
+          discordMessageId: row.discord_message_id ?? "",
+          weekPeriod: row.week_period,
+        })),
       )
-    )
-    .orderBy(asc(discordDutyEventsTable.eventAt));
+    : await db
+        .select()
+        .from(discordDutyEventsTable)
+        .where(
+          and(
+            eq(discordDutyEventsTable.licenseId, licenseId),
+            eq(discordDutyEventsTable.weekPeriod, weekPeriod)
+          )
+        )
+        .orderBy(asc(discordDutyEventsTable.eventAt));
 
   // Cross-week carry-over: if the first event of this week is "off", look back for
   // an unmatched "on" from a prior week (handles sessions that span the BST week boundary).
@@ -222,23 +307,41 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
   if (events.length > 0 && events[0]!.eventType === "off") {
     const firstOffAt = events[0]!.eventAt;
     // Find the most recent "on" before this week's first "off"
-    const lastOnRow = await db
-      .select({ eventAt: discordDutyEventsTable.eventAt })
-      .from(discordDutyEventsTable)
-      .where(and(eq(discordDutyEventsTable.licenseId, licenseId), eq(discordDutyEventsTable.eventType, "on"), lt(discordDutyEventsTable.eventAt, firstOffAt)))
-      .orderBy(desc(discordDutyEventsTable.eventAt))
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const lastOnRow = isMysqlDatabaseUrl
+      ? await mysqlQuery<{ event_at: string | Date }>(
+          `SELECT event_at
+           FROM pd_discord_duty_events
+           WHERE license_id = ? AND event_type = 'on' AND event_at < ?
+           ORDER BY event_at DESC, id DESC
+           LIMIT 1`,
+          [licenseId, firstOffAt],
+        ).then((rows) => rows[0] ? { eventAt: new Date(rows[0].event_at) } : null)
+      : await db
+          .select({ eventAt: discordDutyEventsTable.eventAt })
+          .from(discordDutyEventsTable)
+          .where(and(eq(discordDutyEventsTable.licenseId, licenseId), eq(discordDutyEventsTable.eventType, "on"), lt(discordDutyEventsTable.eventAt, firstOffAt)))
+          .orderBy(desc(discordDutyEventsTable.eventAt))
+          .limit(1)
+          .then((r) => r[0] ?? null);
 
     if (lastOnRow) {
       // Find the most recent "off" before this week's first "off"
-      const lastOffRow = await db
-        .select({ eventAt: discordDutyEventsTable.eventAt })
-        .from(discordDutyEventsTable)
-        .where(and(eq(discordDutyEventsTable.licenseId, licenseId), eq(discordDutyEventsTable.eventType, "off"), lt(discordDutyEventsTable.eventAt, firstOffAt)))
-        .orderBy(desc(discordDutyEventsTable.eventAt))
-        .limit(1)
-        .then((r) => r[0] ?? null);
+      const lastOffRow = isMysqlDatabaseUrl
+        ? await mysqlQuery<{ event_at: string | Date }>(
+            `SELECT event_at
+             FROM pd_discord_duty_events
+             WHERE license_id = ? AND event_type = 'off' AND event_at < ?
+             ORDER BY event_at DESC, id DESC
+             LIMIT 1`,
+            [licenseId, firstOffAt],
+          ).then((rows) => rows[0] ? { eventAt: new Date(rows[0].event_at) } : null)
+        : await db
+            .select({ eventAt: discordDutyEventsTable.eventAt })
+            .from(discordDutyEventsTable)
+            .where(and(eq(discordDutyEventsTable.licenseId, licenseId), eq(discordDutyEventsTable.eventType, "off"), lt(discordDutyEventsTable.eventAt, firstOffAt)))
+            .orderBy(desc(discordDutyEventsTable.eventAt))
+            .limit(1)
+            .then((r) => r[0] ?? null);
 
       // Session is open only if the last "on" is more recent than the last "off"
       if (!lastOffRow || new Date(lastOnRow.eventAt) > new Date(lastOffRow.eventAt)) {
@@ -271,17 +374,19 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
     }
   }
 
-  const officer = await db
-    .select({
-      id: officersTable.id,
-      callSign: officersTable.callSign,
-      name: officersTable.name,
-      rank: officersTable.rank,
-      status: officersTable.status,
-      discordUsername: officersTable.discordUsername,
-      rockstarLicenseId: officersTable.rockstarLicenseId,
-    })
-    .from(officersTable)
+  const officer = await (isMysqlDatabaseUrl
+    ? getMysqlOfficers()
+    : db
+        .select({
+          id: officersTable.id,
+          callSign: officersTable.callSign,
+          name: officersTable.name,
+          rank: officersTable.rank,
+          status: officersTable.status,
+          discordUsername: officersTable.discordUsername,
+          rockstarLicenseId: officersTable.rockstarLicenseId,
+        })
+        .from(officersTable))
     .then((rows) =>
       findOfficerByDutyIdentity(
         licenseId,
@@ -321,10 +426,14 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
   const weekDateEnd   = `${dutyYear2}-${endMm}-${endDd}`;
 
   // Load shift config labels to assign the correct shift to each session
-  const shiftConfigRows = await db
-    .select({ key: shiftConfigsTable.key, label: shiftConfigsTable.label })
-    .from(shiftConfigsTable);
-  const shiftLabelMap = Object.fromEntries(shiftConfigRows.map((r) => [r.key, r.label]));
+  const shiftLabelMap = isMysqlDatabaseUrl
+    ? Object.fromEntries((await getMysqlShiftConfigs()).map((row) => [row.key, row.label]))
+    : Object.fromEntries(
+        (await db
+          .select({ key: shiftConfigsTable.key, label: shiftConfigsTable.label })
+          .from(shiftConfigsTable))
+          .map((row) => [row.key, row.label]),
+      );
 
   // Determine the shift label for a session.
   // "Atomic" shifts are all but the widest window (the widest is the composite).
@@ -362,31 +471,61 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
   }
 
   // Replace all bot-imported sessions for this officer + week
-  await db
-    .delete(pdDutyLogsTable)
-    .where(
-      and(
-        eq(pdDutyLogsTable.csNumber, cs),
-        eq(pdDutyLogsTable.notes, "discord"),
-        gte(pdDutyLogsTable.logDate, weekDateStart),
-        lte(pdDutyLogsTable.logDate, weekDateEnd)
-      )
+  if (isMysqlDatabaseUrl) {
+    await mysqlExecute(
+      `DELETE FROM pd_duty_logs
+       WHERE cs_number = ? AND notes = 'discord' AND log_date >= ? AND log_date <= ?`,
+      [cs, weekDateStart, weekDateEnd],
     );
+  } else {
+    await db
+      .delete(pdDutyLogsTable)
+      .where(
+        and(
+          eq(pdDutyLogsTable.csNumber, cs),
+          eq(pdDutyLogsTable.notes, "discord"),
+          gte(pdDutyLogsTable.logDate, weekDateStart),
+          lte(pdDutyLogsTable.logDate, weekDateEnd)
+        )
+      );
+  }
 
   if (sessions.length > 0) {
-    await db.insert(pdDutyLogsTable).values(
-      sessions.map(({ start, end }) => ({
-        logDate:     start.toISOString().split("T")[0]!,
-        startTime:   start.toISOString().substring(11, 16),
-        endTime:     end.toISOString().substring(11, 16),
-        csNumber:    cs,
-        officerName: name,
-        rank,
-        shiftType:   sessionShiftLabel(start, end),
-        duration:    secsToHms(Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))),
-        notes:       "discord",
-      }))
-    );
+    if (isMysqlDatabaseUrl) {
+      for (const { start, end } of sessions) {
+        const nextId = await getNextMysqlId("pd_duty_logs");
+        await mysqlExecute(
+          `INSERT INTO pd_duty_logs
+            (id, log_date, start_time, end_time, cs_number, officer_name, rank, shift_type, duration, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'discord')`,
+          [
+            nextId,
+            start.toISOString().split("T")[0]!,
+            start.toISOString().substring(11, 16),
+            end.toISOString().substring(11, 16),
+            cs,
+            name,
+            rank,
+            sessionShiftLabel(start, end),
+            secsToHms(Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))),
+          ],
+        );
+      }
+    } else {
+      await db.insert(pdDutyLogsTable).values(
+        sessions.map(({ start, end }) => ({
+          logDate:     start.toISOString().split("T")[0]!,
+          startTime:   start.toISOString().substring(11, 16),
+          endTime:     end.toISOString().substring(11, 16),
+          csNumber:    cs,
+          officerName: name,
+          rank,
+          shiftType:   sessionShiftLabel(start, end),
+          duration:    secsToHms(Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))),
+          notes:       "discord",
+        }))
+      );
+    }
   }
 
   logger.info({ licenseId, weekPeriod, totalSecs }, "Updated duty hours");
@@ -404,18 +543,34 @@ async function processMessage(msg: Message, opts?: { skipRecompute?: boolean }):
     const weekPeriod = getWeekPeriod(eventAt);
 
     try {
-      await db
-        .insert(discordDutyEventsTable)
-        .values({
-          licenseId: parsed.licenseId,
-          officerName: parsed.officerName,
-          rank: parsed.rank,
-          eventType: parsed.eventType,
-          eventAt,
-          discordMessageId: msg.id,
-          weekPeriod,
-        })
-        .onConflictDoNothing();
+      if (isMysqlDatabaseUrl) {
+        const existing = await mysqlQuery<{ id: number }>(
+          `SELECT id FROM pd_discord_duty_events WHERE discord_message_id = ? LIMIT 1`,
+          [msg.id],
+        );
+        if (existing.length === 0) {
+          const nextId = await getNextMysqlId("pd_discord_duty_events");
+          await mysqlExecute(
+            `INSERT INTO pd_discord_duty_events
+              (id, license_id, officer_name, rank, event_type, event_at, discord_message_id, week_period, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+            [nextId, parsed.licenseId, parsed.officerName, parsed.rank, parsed.eventType, eventAt, msg.id, weekPeriod],
+          );
+        }
+      } else {
+        await db
+          .insert(discordDutyEventsTable)
+          .values({
+            licenseId: parsed.licenseId,
+            officerName: parsed.officerName,
+            rank: parsed.rank,
+            eventType: parsed.eventType,
+            eventAt,
+            discordMessageId: msg.id,
+            weekPeriod,
+          })
+          .onConflictDoNothing();
+      }
 
       if (!opts?.skipRecompute) {
         await recomputeDutyHours(parsed.licenseId, weekPeriod);
@@ -507,12 +662,16 @@ async function backfillHistory(channel: TextChannel) {
 // ── Recompute all ──────────────────────────────────────────────────────────
 
 export async function recomputeAllDutyHours(): Promise<{ pairs: number; updated: number }> {
-  const rows = await db
-    .selectDistinct({
-      licenseId: discordDutyEventsTable.licenseId,
-      weekPeriod: discordDutyEventsTable.weekPeriod,
-    })
-    .from(discordDutyEventsTable);
+  const rows = isMysqlDatabaseUrl
+    ? await mysqlQuery<{ licenseId: string; weekPeriod: string }>(
+        `SELECT DISTINCT license_id AS licenseId, week_period AS weekPeriod FROM pd_discord_duty_events`,
+      )
+    : await db
+        .selectDistinct({
+          licenseId: discordDutyEventsTable.licenseId,
+          weekPeriod: discordDutyEventsTable.weekPeriod,
+        })
+        .from(discordDutyEventsTable);
 
   let updated = 0;
   for (const { licenseId, weekPeriod } of rows) {
@@ -636,26 +795,64 @@ async function processFirMessage(msg: Message) {
   const threadId = msg.thread?.id ?? null;
 
   try {
-    await db.insert(pdFirTable).values({
-      discordMessageId:   msg.id,
-      complainantName:    parsed.complainantName,
-      complainantCid:     parsed.complainantCid,
-      complainantContact: parsed.complainantContact,
-      eventDescription:   parsed.eventDescription,
-      suspectDetails:     parsed.suspectDetails,
-      evidence:           parsed.evidence,
-      officerName:        parsed.officerName,
-      rawContent:         rawCombined.slice(0, 4000),
-      threadId,
-      threadReplies:      threadReplies.length > 0 ? threadReplies : null,
-      postedAt:           msg.createdAt,
-    }).onConflictDoUpdate({
-      target: pdFirTable.discordMessageId,
-      set: {
+    if (isMysqlDatabaseUrl) {
+      const existing = await mysqlQuery<{ id: number }>(
+        `SELECT id FROM pd_fir WHERE discord_message_id = ? LIMIT 1`,
+        [msg.id],
+      );
+      if (existing.length > 0) {
+        await mysqlExecute(
+          `UPDATE pd_fir
+           SET thread_id = ?, thread_replies = ?
+           WHERE discord_message_id = ?`,
+          [threadId, threadReplies.length > 0 ? JSON.stringify(threadReplies) : null, msg.id],
+        );
+      } else {
+        const nextId = await getNextMysqlId("pd_fir");
+        await mysqlExecute(
+          `INSERT INTO pd_fir
+            (id, discord_message_id, complainant_name, complainant_cid, complainant_contact, event_description,
+             suspect_details, evidence, officer_name, raw_content, thread_id, thread_replies, posted_at, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            nextId,
+            msg.id,
+            parsed.complainantName,
+            parsed.complainantCid,
+            parsed.complainantContact,
+            parsed.eventDescription,
+            parsed.suspectDetails,
+            parsed.evidence,
+            parsed.officerName,
+            rawCombined.slice(0, 4000),
+            threadId,
+            threadReplies.length > 0 ? JSON.stringify(threadReplies) : null,
+            msg.createdAt,
+          ],
+        );
+      }
+    } else {
+      await db.insert(pdFirTable).values({
+        discordMessageId:   msg.id,
+        complainantName:    parsed.complainantName,
+        complainantCid:     parsed.complainantCid,
+        complainantContact: parsed.complainantContact,
+        eventDescription:   parsed.eventDescription,
+        suspectDetails:     parsed.suspectDetails,
+        evidence:           parsed.evidence,
+        officerName:        parsed.officerName,
+        rawContent:         rawCombined.slice(0, 4000),
         threadId,
-        threadReplies: threadReplies.length > 0 ? threadReplies : null,
-      },
-    });
+        threadReplies:      threadReplies.length > 0 ? threadReplies : null,
+        postedAt:           msg.createdAt,
+      }).onConflictDoUpdate({
+        target: pdFirTable.discordMessageId,
+        set: {
+          threadId,
+          threadReplies: threadReplies.length > 0 ? threadReplies : null,
+        },
+      });
+    }
     broadcastFirEvent("new_fir");
   } catch (err) {
     logger.error({ err, messageId: msg.id }, "Error saving FIR");
@@ -684,11 +881,17 @@ async function fetchFirThreadReplies(msg: Message): Promise<FirThreadMessage[]> 
 
 async function updateFirThreadByThreadId(threadId: string): Promise<void> {
   try {
-    const [fir] = await db
-      .select({ id: pdFirTable.id, threadId: pdFirTable.threadId })
-      .from(pdFirTable)
-      .where(eq(pdFirTable.threadId, threadId))
-      .limit(1);
+    const fir = isMysqlDatabaseUrl
+      ? await mysqlQuery<{ id: number; thread_id: string | null }>(
+          `SELECT id, thread_id FROM pd_fir WHERE thread_id = ? LIMIT 1`,
+          [threadId],
+        ).then((rows) => rows[0] ?? null)
+      : await db
+          .select({ id: pdFirTable.id, threadId: pdFirTable.threadId })
+          .from(pdFirTable)
+          .where(eq(pdFirTable.threadId, threadId))
+          .limit(1)
+          .then((rows) => rows[0] ?? null);
     if (!fir) return;
 
     const thread = await (global as any).__discordClient?.channels.fetch(threadId).catch(() => null);
@@ -706,9 +909,16 @@ async function updateFirThreadByThreadId(threadId: string): Promise<void> {
         timestamp: m.createdAt.toISOString(),
       }));
 
-    await db.update(pdFirTable)
-      .set({ threadReplies: replies.length > 0 ? replies : null })
-      .where(eq(pdFirTable.threadId, threadId));
+    if (isMysqlDatabaseUrl) {
+      await mysqlExecute(
+        `UPDATE pd_fir SET thread_replies = ? WHERE thread_id = ?`,
+        [replies.length > 0 ? JSON.stringify(replies) : null, threadId],
+      );
+    } else {
+      await db.update(pdFirTable)
+        .set({ threadReplies: replies.length > 0 ? replies : null })
+        .where(eq(pdFirTable.threadId, threadId));
+    }
     broadcastFirEvent("thread_update");
   } catch (err) {
     logger.warn({ err, threadId }, "Could not update FIR thread replies");
@@ -743,21 +953,53 @@ async function processCitationMessage(msg: Message) {
   const parsed = parseCitation(combined);
 
   try {
-    await db.insert(pdCitationsTable).values({
-      discordMessageId: msg.id,
-      title:          parsed.title,
-      incident:       parsed.incident,
-      location:       parsed.location,
-      evidence:       parsed.evidence,
-      incidentReport: parsed.incidentReport,
-      suspectName:    parsed.suspectName,
-      suspectCid:     parsed.suspectCid,
-      suspectContact: parsed.suspectContact,
-      charges:        parsed.charges,
-      officerName:    parsed.officerName,
-      rawContent:     combined.slice(0, 4000),
-      postedAt:       msg.createdAt,
-    }).onConflictDoNothing();
+    if (isMysqlDatabaseUrl) {
+      const existing = await mysqlQuery<{ id: number }>(
+        `SELECT id FROM pd_citations WHERE discord_message_id = ? LIMIT 1`,
+        [msg.id],
+      );
+      if (existing.length === 0) {
+        const nextId = await getNextMysqlId("pd_citations");
+        await mysqlExecute(
+          `INSERT INTO pd_citations
+            (id, discord_message_id, title, incident, location, evidence, incident_report, suspect_name, suspect_cid,
+             suspect_contact, charges, officer_name, raw_content, posted_at, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            nextId,
+            msg.id,
+            parsed.title,
+            parsed.incident,
+            parsed.location,
+            parsed.evidence,
+            parsed.incidentReport,
+            parsed.suspectName,
+            parsed.suspectCid,
+            parsed.suspectContact,
+            parsed.charges,
+            parsed.officerName,
+            combined.slice(0, 4000),
+            msg.createdAt,
+          ],
+        );
+      }
+    } else {
+      await db.insert(pdCitationsTable).values({
+        discordMessageId: msg.id,
+        title:          parsed.title,
+        incident:       parsed.incident,
+        location:       parsed.location,
+        evidence:       parsed.evidence,
+        incidentReport: parsed.incidentReport,
+        suspectName:    parsed.suspectName,
+        suspectCid:     parsed.suspectCid,
+        suspectContact: parsed.suspectContact,
+        charges:        parsed.charges,
+        officerName:    parsed.officerName,
+        rawContent:     combined.slice(0, 4000),
+        postedAt:       msg.createdAt,
+      }).onConflictDoNothing();
+    }
   } catch (err) {
     logger.error({ err, messageId: msg.id }, "Error saving citation");
   }

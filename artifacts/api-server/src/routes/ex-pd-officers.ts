@@ -5,6 +5,7 @@ import { auditLog } from "../lib/audit.js";
 import { guard } from "../lib/auth-guard.js";
 import {
   getMysqlExPdOfficers,
+  getNextMysqlId,
   isMysqlDatabaseUrl,
   mysqlExecute,
   mysqlQuery,
@@ -61,12 +62,14 @@ router.post("/ex-pd-officers", async (req, res): Promise<void> => {
   if (!body.name) { res.status(400).json({ error: "name required" }); return; }
 
   if (isMysqlDatabaseUrl) {
+    const nextId = await getNextMysqlId("pd_ex_pd_officers");
     const result = await mysqlExecute(
       `INSERT INTO pd_ex_pd_officers
-        (call_sign, character_id, name, phone_no, division, rank, discord_username, discord_uid, rockstar_license_id,
+        (id, call_sign, character_id, name, phone_no, division, rank, discord_username, discord_uid, rockstar_license_id,
          steam_profile, steam_64_hex_id, steam_2_id, insurance, status, date_of_joining, last_promotion, air1, speed, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
+        nextId,
         body.callSign ?? null,
         body.characterId ?? null,
         body.name,
@@ -90,9 +93,9 @@ router.post("/ex-pd-officers", async (req, res): Promise<void> => {
     );
     const [row] = await mysqlQuery<Record<string, unknown>>(
       `SELECT * FROM pd_ex_pd_officers WHERE id = ? LIMIT 1`,
-      [result.insertId],
+      [nextId],
     );
-    await auditLog(req, "CREATE", "ex-pd-officer", Number(result.insertId), body.name, body);
+    await auditLog(req, "CREATE", "ex-pd-officer", nextId, body.name, body);
     res.json(row);
     return;
   }

@@ -54,7 +54,20 @@ export function installApiRequestShims(): void {
 
   const nativeFetch = window.fetch.bind(window);
   window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
-    return nativeFetch(rewriteRequestTarget(input as string | URL | Request), init);
+    const rewritten = rewriteRequestTarget(input as string | URL | Request);
+    const targetUrl =
+      typeof rewritten === "string"
+        ? rewritten
+        : rewritten instanceof URL
+          ? rewritten.toString()
+          : rewritten.url;
+
+    const shouldIncludeCredentials = targetUrl.includes("/api/");
+    const nextInit = shouldIncludeCredentials
+      ? { credentials: "include" as const, ...(init ?? {}) }
+      : init;
+
+    return nativeFetch(rewritten, nextInit);
   }) as typeof window.fetch;
 
   if (typeof window.EventSource === "function") {

@@ -4,11 +4,29 @@ import { eq, sql, notInArray, or, ilike, and } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
 import {
   getMysqlFtpMembers,
+  getMysqlOfficers,
   getMysqlQualificationEntries,
+  getNextMysqlId,
   isMysqlDatabaseUrl,
+  mysqlExecute,
+  mysqlQuery,
 } from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
+
+async function ensureMysqlQcFeedbackTable(): Promise<void> {
+  if (!isMysqlDatabaseUrl) return;
+  await mysqlExecute(
+    `CREATE TABLE IF NOT EXISTS pd_qc_feedback (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      qual_chart_id INT NOT NULL,
+      author_name VARCHAR(255) NOT NULL,
+      note TEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_pd_qc_feedback_qual_chart_id (qual_chart_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  );
+}
 
 const HC_RANK_ORDER: Record<string, number> = {
   "CHIEF": 1, "ASSISTANT CHIEF": 2, "SHERIFF": 2, "COLONEL": 2,
@@ -361,6 +379,37 @@ router.post("/qualification-chart", async (req, res): Promise<void> => {
     citationCount, firCount, lastPromotion, strikesMajor, strikesMinor,
     qualStatus, notes } = req.body;
   if (!name) { res.status(400).json({ error: "name required" }); return; }
+  if (isMysqlDatabaseUrl) {
+    const nextId = await getNextMysqlId("pd_qualification_chart");
+    await mysqlExecute(
+      `INSERT INTO pd_qualification_chart
+        (id, name, discord_uid, rank, department, days_in_rank, hours_in_rank, citation_count, fir_count,
+         last_promotion, strikes_major, strikes_minor, qual_status, notes, ftb_votes, hc_votes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        nextId,
+        name,
+        discordUid ?? null,
+        rank ?? null,
+        department ?? null,
+        daysInRank ?? 0,
+        hoursInRank ?? 0,
+        citationCount ?? 0,
+        firCount ?? 0,
+        lastPromotion ?? null,
+        strikesMajor ?? "0/4",
+        strikesMinor ?? "0/2",
+        qualStatus ?? null,
+        notes ?? null,
+        JSON.stringify({}),
+        JSON.stringify({}),
+      ],
+    );
+    const row = (await getMysqlQualificationEntries()).find((entry) => entry.id === nextId) ?? null;
+    await auditLog(req, "CREATE", "qual-entry", nextId, name, { rank, department, qualStatus });
+    res.status(201).json(row);
+    return;
+  }
   const [row] = await db.insert(qualificationChartTable).values({
     name, discordUid, rank, department, daysInRank, hoursInRank,
     citationCount: citationCount ?? 0, firCount: firCount ?? 0,
@@ -376,6 +425,37 @@ router.put("/qualification-chart/:id", async (req, res): Promise<void> => {
   const { name, discordUid, rank, department, hoursInRank,
     citationCount, firCount, lastPromotion, strikesMajor, strikesMinor,
     qualStatus, notes } = req.body;
+  if (isMysqlDatabaseUrl) {
+    const before = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    if (!before) { res.status(404).json({ error: "Not found" }); return; }
+    await mysqlExecute(
+      `UPDATE pd_qualification_chart
+       SET name = ?, discord_uid = ?, rank = ?, department = ?, hours_in_rank = ?, citation_count = ?, fir_count = ?,
+           last_promotion = ?, strikes_major = ?, strikes_minor = ?, qual_status = ?, notes = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [
+        name ?? before.name,
+        discordUid ?? before.discordUid,
+        rank ?? before.rank,
+        department ?? before.department,
+        hoursInRank ?? before.hoursInRank ?? 0,
+        citationCount ?? before.citationCount ?? 0,
+        firCount ?? before.firCount ?? 0,
+        lastPromotion ?? before.lastPromotion,
+        strikesMajor ?? before.strikesMajor,
+        strikesMinor ?? before.strikesMinor,
+        qualStatus ?? before.qualStatus,
+        notes ?? before.notes,
+        id,
+      ],
+    );
+    const row = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    await auditLog(req, "UPDATE", "qual-entry", id, name ?? before.name ?? null, {
+      rank, department, qualStatus, strikesMajor, strikesMinor, hoursInRank, citationCount, firCount, lastPromotion, notes,
+    });
+    res.json(row);
+    return;
+  }
   const [before] = await db.select().from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
   const [row] = await db.update(qualificationChartTable)
     .set({ name, discordUid, rank, department, hoursInRank,
@@ -409,6 +489,14 @@ router.put("/qualification-chart/:id", async (req, res): Promise<void> => {
 
 router.delete("/qualification-chart/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
+  if (isMysqlDatabaseUrl) {
+    const before = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    if (!before) { res.status(404).json({ error: "Not found" }); return; }
+    await mysqlExecute(`DELETE FROM pd_qualification_chart WHERE id = ?`, [id]);
+    await auditLog(req, "DELETE", "qual-entry", id, before.name ?? null, null);
+    res.status(204).end();
+    return;
+  }
   const [entry] = await db.select({ name: qualificationChartTable.name }).from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
   await db.delete(qualificationChartTable).where(eq(qualificationChartTable.id, id));
   await auditLog(req, "DELETE", "qual-entry", id, entry?.name ?? null, null);
@@ -441,6 +529,55 @@ router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> =
   const { voteType, voterName, value } = req.body;
   // voteType: "ftb" | "hc", voterName: string, value: "✓" | "✗" | "N/A" | ""
   if (!voteType || !voterName) { res.status(400).json({ error: "voteType and voterName required" }); return; }
+
+  if (isMysqlDatabaseUrl) {
+    if (!sessionUser.isOwner && !sessionUser.isSeniorStaff && !sessionUser.isStaff) {
+      const officers = await getMysqlOfficers();
+      const officer = officers.find((row) =>
+        row.discordUid === (sessionUser.id ?? "") || row.discordUsername === (sessionUser.username ?? ""),
+      );
+      const officerName = officer?.name ?? null;
+      if (!officerName || officerName !== voterName) {
+        res.status(403).json({ error: "You can only submit your own vote" });
+        return;
+      }
+    }
+
+    const current = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    if (!current) { res.status(404).json({ error: "Not found" }); return; }
+
+    if (voteType === "ftb") {
+      const updated = { ...(current.ftbVotes ?? {}), [voterName]: value ?? "" };
+      await mysqlExecute(
+        `UPDATE pd_qualification_chart SET ftb_votes = ?, updated_at = NOW() WHERE id = ?`,
+        [JSON.stringify(updated), id],
+      );
+      const row = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+      await auditLog(req, "VOTE", "qual-entry", id, current.name ?? null, {
+        voter: voterName,
+        column: "FTB",
+        old: (current.ftbVotes ?? {})[voterName] ?? "",
+        new: value ?? "",
+      });
+      res.json(row);
+      return;
+    }
+
+    const updated = { ...(current.hcVotes ?? {}), [voterName]: value ?? "" };
+    await mysqlExecute(
+      `UPDATE pd_qualification_chart SET hc_votes = ?, updated_at = NOW() WHERE id = ?`,
+      [JSON.stringify(updated), id],
+    );
+    const row = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    await auditLog(req, "VOTE", "qual-entry", id, current.name ?? null, {
+      voter: voterName,
+      column: "HC",
+      old: (current.hcVotes ?? {})[voterName] ?? "",
+      new: value ?? "",
+    });
+    res.json(row);
+    return;
+  }
 
   // Owners and Full Power admins can vote on behalf of anyone; others can only submit their own vote
   if (!sessionUser.isOwner && !sessionUser.isSeniorStaff && !sessionUser.isStaff) {
@@ -491,6 +628,23 @@ router.patch("/qualification-chart/:id/votes", async (req, res): Promise<void> =
 // GET /api/qualification-chart/:id/feedback — list all feedback for an entry
 router.get("/qualification-chart/:id/feedback", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
+  if (isMysqlDatabaseUrl) {
+    await ensureMysqlQcFeedbackTable();
+    const rows = await mysqlQuery<{
+      id: number;
+      author_name: string;
+      note: string;
+      created_at: string;
+    }>(
+      `SELECT id, author_name, note, created_at
+       FROM pd_qc_feedback
+       WHERE qual_chart_id = ?
+       ORDER BY created_at ASC, id ASC`,
+      [id],
+    );
+    res.json(rows);
+    return;
+  }
   const rows = await db.execute(sql`
     SELECT id, author_name, note, created_at
     FROM qc_feedback
@@ -507,6 +661,24 @@ router.post("/qualification-chart/:id/feedback", async (req, res): Promise<void>
   if (!authorName?.trim() || !note?.trim()) {
     res.status(400).json({ error: "authorName and note required" }); return;
   }
+  if (isMysqlDatabaseUrl) {
+    await ensureMysqlQcFeedbackTable();
+    const result = await mysqlExecute(
+      `INSERT INTO pd_qc_feedback (qual_chart_id, author_name, note) VALUES (?, ?, ?)`,
+      [id, authorName.trim(), note.trim()],
+    );
+    const rows = await mysqlQuery<{
+      id: number;
+      author_name: string;
+      note: string;
+      created_at: string;
+    }>(
+      `SELECT id, author_name, note, created_at FROM pd_qc_feedback WHERE id = ? LIMIT 1`,
+      [result.insertId],
+    );
+    res.json(rows[0] ?? null);
+    return;
+  }
   const [row] = (await db.execute(sql`
     INSERT INTO qc_feedback (qual_chart_id, author_name, note)
     VALUES (${id}, ${authorName.trim()}, ${note.trim()})
@@ -518,6 +690,12 @@ router.post("/qualification-chart/:id/feedback", async (req, res): Promise<void>
 // DELETE /api/qualification-chart/feedback/:feedbackId — delete a feedback entry
 router.delete("/qualification-chart/feedback/:feedbackId", async (req, res): Promise<void> => {
   const feedbackId = Number(req.params.feedbackId);
+  if (isMysqlDatabaseUrl) {
+    await ensureMysqlQcFeedbackTable();
+    await mysqlExecute(`DELETE FROM pd_qc_feedback WHERE id = ?`, [feedbackId]);
+    res.json({ ok: true });
+    return;
+  }
   await db.execute(sql`DELETE FROM qc_feedback WHERE id = ${feedbackId}`);
   res.json({ ok: true });
 });
@@ -526,6 +704,20 @@ router.delete("/qualification-chart/feedback/:feedbackId", async (req, res): Pro
 router.patch("/qualification-chart/:id/notes", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const { notes } = req.body;
+  if (isMysqlDatabaseUrl) {
+    const before = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    if (!before) { res.status(404).json({ error: "Not found" }); return; }
+    await mysqlExecute(
+      `UPDATE pd_qualification_chart SET notes = ?, updated_at = NOW() WHERE id = ?`,
+      [notes ?? null, id],
+    );
+    const row = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    await auditLog(req, "UPDATE", "qual-entry", id, before.name ?? null, {
+      notes: { old: before.notes, new: notes ?? null },
+    });
+    res.json(row);
+    return;
+  }
   const [before] = await db.select().from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
   if (!before) { res.status(404).json({ error: "Not found" }); return; }
   const [row] = await db.update(qualificationChartTable)
@@ -540,6 +732,20 @@ router.patch("/qualification-chart/:id/notes", async (req, res): Promise<void> =
 router.patch("/qualification-chart/:id/status", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   const { qualStatus } = req.body;
+  if (isMysqlDatabaseUrl) {
+    const before = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    if (!before) { res.status(404).json({ error: "Not found" }); return; }
+    await mysqlExecute(
+      `UPDATE pd_qualification_chart SET qual_status = ?, updated_at = NOW() WHERE id = ?`,
+      [qualStatus ?? null, id],
+    );
+    const row = (await getMysqlQualificationEntries()).find((entry) => entry.id === id) ?? null;
+    await auditLog(req, "UPDATE", "qual-entry", id, before.name ?? null, {
+      qualStatus: { old: before.qualStatus, new: qualStatus ?? null },
+    });
+    res.json(row);
+    return;
+  }
   const [before] = await db.select().from(qualificationChartTable).where(eq(qualificationChartTable.id, id)).limit(1);
   if (!before) { res.status(404).json({ error: "Not found" }); return; }
   const [row] = await db.update(qualificationChartTable)

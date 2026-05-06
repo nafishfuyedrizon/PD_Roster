@@ -7,6 +7,7 @@ import {
   getMysqlDutyAdjustments,
   getMysqlDutyEvents,
   getMysqlDutyLogs,
+  getNextMysqlId,
   getMysqlOfficers,
   getMysqlOfficersList,
   getMysqlPanelLogs,
@@ -63,6 +64,25 @@ function requireCanEdit(req: any, res: any): boolean {
 // ── Discord Channels ────────────────────────────────────────────────────────
 
 router.get("/admin/channels", async (_req, res): Promise<void> => {
+  if (isMysqlDatabaseUrl) {
+    const rows = await mysqlQuery<{
+      id: number;
+      channel_id: string | null;
+      channel_name: string | null;
+      is_active: number | boolean | null;
+      created_at: string | Date | null;
+    }>(
+      `SELECT * FROM pd_discord_channels ORDER BY created_at ASC, id ASC`,
+    );
+    res.json(rows.map((row) => ({
+      id: Number(row.id),
+      channelId: row.channel_id ?? "",
+      channelName: row.channel_name ?? "",
+      isActive: Boolean(row.is_active),
+      createdAt: row.created_at ? new Date(row.created_at) : new Date(0),
+    })));
+    return;
+  }
   const channels = await db.select().from(discordChannelsTable).orderBy(discordChannelsTable.createdAt);
   res.json(channels);
 });
@@ -76,6 +96,28 @@ router.post("/admin/channels", async (req, res): Promise<void> => {
   }
   const trimId = channelId.trim();
   const trimName = channelName.trim();
+  if (isMysqlDatabaseUrl) {
+    const existing = await mysqlQuery<{ id: number }>(
+      `SELECT id FROM pd_discord_channels WHERE channel_id = ? LIMIT 1`,
+      [trimId],
+    );
+    if (existing.length > 0) { res.status(409).json({ error: "Channel ID already exists" }); return; }
+    const nextId = await getNextMysqlId("pd_discord_channels");
+    await mysqlExecute(
+      `INSERT INTO pd_discord_channels (id, channel_id, channel_name, is_active, created_at)
+       VALUES (?, ?, ?, 1, NOW())`,
+      [nextId, trimId, trimName],
+    );
+    await auditLog(req, "CREATE", "discord-channel", nextId, trimName, { channelId: trimId });
+    res.status(201).json({
+      id: nextId,
+      channelId: trimId,
+      channelName: trimName,
+      isActive: true,
+      createdAt: new Date(),
+    });
+    return;
+  }
   const existing = await db.select().from(discordChannelsTable).where(eq(discordChannelsTable.channelId, trimId));
   if (existing.length > 0) { res.status(409).json({ error: "Channel ID already exists" }); return; }
   const [created] = await db.insert(discordChannelsTable).values({ channelId: trimId, channelName: trimName }).returning();
@@ -88,6 +130,29 @@ router.patch("/admin/channels/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   const { isActive } = req.body as { isActive?: boolean };
   if (typeof isActive !== "boolean") { res.status(400).json({ error: "isActive boolean required" }); return; }
+  if (isMysqlDatabaseUrl) {
+    await mysqlExecute(`UPDATE pd_discord_channels SET is_active = ? WHERE id = ?`, [isActive ? 1 : 0, id]);
+    const row = await mysqlQuery<{
+      id: number;
+      channel_id: string | null;
+      channel_name: string | null;
+      is_active: number | boolean | null;
+      created_at: string | Date | null;
+    }>(
+      `SELECT * FROM pd_discord_channels WHERE id = ? LIMIT 1`,
+      [id],
+    ).then((rows) => rows[0] ?? null);
+    if (!row) { res.status(404).json({ error: "Not found" }); return; }
+    await auditLog(req, "UPDATE", "discord-channel", id, row.channel_name ?? null, { isActive });
+    res.json({
+      id: Number(row.id),
+      channelId: row.channel_id ?? "",
+      channelName: row.channel_name ?? "",
+      isActive: Boolean(row.is_active),
+      createdAt: row.created_at ? new Date(row.created_at) : new Date(0),
+    });
+    return;
+  }
   const [updated] = await db.update(discordChannelsTable).set({ isActive }).where(eq(discordChannelsTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   await auditLog(req, "UPDATE", "discord-channel", id, updated.channelName ?? null, { isActive });
@@ -97,6 +162,16 @@ router.patch("/admin/channels/:id", async (req, res): Promise<void> => {
 router.delete("/admin/channels/:id", async (req, res): Promise<void> => {
   if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
+  if (isMysqlDatabaseUrl) {
+    const row = await mysqlQuery<{ channel_name: string | null }>(
+      `SELECT channel_name FROM pd_discord_channels WHERE id = ? LIMIT 1`,
+      [id],
+    ).then((rows) => rows[0] ?? null);
+    await mysqlExecute(`DELETE FROM pd_discord_channels WHERE id = ?`, [id]);
+    await auditLog(req, "DELETE", "discord-channel", id, row?.channel_name ?? null, null);
+    res.status(204).end();
+    return;
+  }
   const [ch] = await db.select().from(discordChannelsTable).where(eq(discordChannelsTable.id, id)).limit(1);
   await db.delete(discordChannelsTable).where(eq(discordChannelsTable.id, id));
   await auditLog(req, "DELETE", "discord-channel", id, ch?.channelName ?? null, null);
@@ -160,11 +235,13 @@ router.post("/admin/duty-logs", async (req, res): Promise<void> => {
   }
 
   if (isMysqlDatabaseUrl) {
+    const nextId = await getNextMysqlId("pd_duty_logs");
     const result = await mysqlExecute(
       `INSERT INTO pd_duty_logs
-        (log_date, start_time, end_time, cs_number, officer_name, rank, shift_type, duration, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, log_date, start_time, end_time, cs_number, officer_name, rank, shift_type, duration, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        nextId,
         logDate,
         req.body.startTime?.trim() || null,
         req.body.endTime?.trim() || null,
@@ -177,7 +254,7 @@ router.post("/admin/duty-logs", async (req, res): Promise<void> => {
       ],
     );
     res.status(201).json({
-      id: Number(result.insertId),
+      id: nextId,
       logDate,
       startTime: req.body.startTime?.trim() || null,
       endTime: req.body.endTime?.trim() || null,
@@ -387,11 +464,13 @@ router.post("/admin/duty-logs/import-discord", async (req, res): Promise<void> =
 
     await mysqlExecute(`DELETE FROM pd_duty_logs WHERE notes = 'discord'`);
     for (const log of newLogs) {
+      const nextId = await getNextMysqlId("pd_duty_logs");
       await mysqlExecute(
         `INSERT INTO pd_duty_logs
-          (log_date, start_time, end_time, cs_number, officer_name, rank, shift_type, duration, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (id, log_date, start_time, end_time, cs_number, officer_name, rank, shift_type, duration, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
+          nextId,
           log.logDate,
           log.startTime,
           log.endTime,
@@ -687,11 +766,13 @@ router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
   }
 
   if (isMysqlDatabaseUrl) {
+    const nextId = await getNextMysqlId("pd_duty_adjustments");
     const result = await mysqlExecute(
       `INSERT INTO pd_duty_adjustments
-        (officer_cs, officer_name, duty_month, duty_year, shift_type, adjustment_seconds, note)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (id, officer_cs, officer_name, duty_month, duty_year, shift_type, adjustment_seconds, note)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        nextId,
         officerCs.trim(),
         officerName?.trim() || null,
         dutyMonth.trim().toUpperCase(),
@@ -702,7 +783,7 @@ router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
       ],
     );
     res.status(201).json({
-      id: Number(result.insertId),
+      id: nextId,
       officerCs: officerCs.trim(),
       officerName: officerName?.trim() || null,
       dutyMonth: dutyMonth.trim().toUpperCase(),
@@ -784,42 +865,28 @@ router.post("/admin/staff-roles", async (req, res): Promise<void> => {
   if (!discordUid?.trim()) { res.status(400).json({ error: "discordUid required" }); return; }
 
   if (isMysqlDatabaseUrl) {
-    const [member] = await mysqlQuery<{
-      id: number;
-      name: string | null;
-      call_sign: string | null;
-      discord_id: string | null;
-    }>(
-      `SELECT id, name, call_sign, discord_id
-       FROM members
-       WHERE discord_id = ?
-       LIMIT 1`,
-      [discordUid.trim()],
-    );
-    if (!member) {
-      res.status(404).json({ error: "No linked member found for this Discord UID" });
-      return;
-    }
-    const existing = await mysqlQuery<{ id: number }>(
-      `SELECT id FROM staff_roles WHERE member_id = ? LIMIT 1`,
-      [member.id],
-    );
-    if (existing.length > 0) {
-      res.status(409).json({ error: "UID already exists" });
-      return;
-    }
+    const existing = (await getMysqlStaffRoles()).find((row) => row.discordUid === discordUid.trim());
+    if (existing) { res.status(409).json({ error: "UID already exists" }); return; }
+    const nextId = await getNextMysqlId("pd_staff_roles");
     const result = await mysqlExecute(
-      `INSERT INTO staff_roles (member_id, is_super_admin, is_senior_staff, is_staff, updated_at)
-       VALUES (?, 0, 0, 0, NOW())`,
-      [member.id],
+      `INSERT INTO pd_staff_roles
+        (id, discord_uid, display_name, is_super_admin, is_senior_staff, is_staff, is_trusted, added_by, created_at)
+       VALUES (?, ?, ?, 0, 0, 0, 0, ?, NOW())`,
+      [
+        nextId,
+        discordUid.trim(),
+        displayName?.trim() || null,
+        sessionUser?.displayName ?? "unknown",
+      ],
     );
     res.status(201).json({
-      id: Number(result.insertId),
+      id: nextId,
       discordUid: discordUid.trim(),
-      displayName: displayName?.trim() || member.name || member.call_sign || null,
+      displayName: displayName?.trim() || null,
       isSeniorStaff: false,
       isStaff: false,
       isSuperAdmin: false,
+      isTrusted: false,
       addedBy: sessionUser?.displayName ?? "unknown",
       createdAt: new Date(),
     });
@@ -853,6 +920,14 @@ router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
   if (isMysqlDatabaseUrl) {
     const assignments: string[] = [];
     const params: unknown[] = [];
+    if ("displayName" in updates) {
+      assignments.push("display_name = ?");
+      params.push((updates.displayName as string | null) ?? null);
+    }
+    if ("isSuperAdmin" in req.body) {
+      assignments.push("is_super_admin = ?");
+      params.push(req.body.isSuperAdmin ? 1 : 0);
+    }
     if ("isSeniorStaff" in updates) {
       assignments.push("is_senior_staff = ?");
       params.push(updates.isSeniorStaff ? 1 : 0);
@@ -861,9 +936,12 @@ router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
       assignments.push("is_staff = ?");
       params.push(updates.isStaff ? 1 : 0);
     }
-    assignments.push("updated_at = NOW()");
+    if ("isTrusted" in req.body) {
+      assignments.push("is_trusted = ?");
+      params.push(req.body.isTrusted ? 1 : 0);
+    }
     await mysqlExecute(
-      `UPDATE staff_roles SET ${assignments.join(", ")} WHERE id = ?`,
+      `UPDATE pd_staff_roles SET ${assignments.join(", ")} WHERE id = ?`,
       [...params, id],
     );
     const rows = await getMysqlStaffRoles();
@@ -881,7 +959,7 @@ router.delete("/admin/staff-roles/:id", async (req, res): Promise<void> => {
   if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
   if (isMysqlDatabaseUrl) {
-    await mysqlExecute(`DELETE FROM staff_roles WHERE id = ?`, [id]);
+    await mysqlExecute(`DELETE FROM pd_staff_roles WHERE id = ?`, [id]);
     res.status(204).end();
     return;
   }

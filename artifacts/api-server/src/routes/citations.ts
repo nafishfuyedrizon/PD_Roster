@@ -5,9 +5,11 @@ import { randomUUID } from "crypto";
 import {
   getMysqlCitations,
   getMysqlCitationStats,
+  getNextMysqlId,
   getMysqlSetting,
   isMysqlDatabaseUrl,
   mysqlExecute,
+  mysqlQuery,
   setMysqlSetting,
 } from "../lib/pd-mysql-read.js";
 
@@ -135,11 +137,13 @@ export async function syncFromGoogleSheet(): Promise<{ inserted: number; total: 
     if (isNaN(postedAt.getTime())) continue;
 
     if (isMysqlDatabaseUrl) {
+      const nextId = await getNextMysqlId("pd_citations");
       await mysqlExecute(
         `INSERT INTO pd_citations
-          (title, incident, location, evidence, incident_report, suspect_name, suspect_cid, suspect_contact, charges, officer_name, raw_content, posted_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          (id, title, incident, location, evidence, incident_report, suspect_name, suspect_cid, suspect_contact, charges, officer_name, raw_content, posted_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
         [
+          nextId,
           sanitize(row[1]),
           sanitize(row[2]),
           sanitize(row[3]),
@@ -307,6 +311,7 @@ router.post("/admin/citations/discord-forward", async (req, res): Promise<void> 
     res.status(400).json({ error: "Invalid Discord webhook URL" }); return;
   }
   if (url) { await setSetting("citation_discord_forward_url", url); }
+  else if (isMysqlDatabaseUrl) { await mysqlExecute(`DELETE FROM pd_site_settings WHERE \`key\` = ?`, ["citation_discord_forward_url"]); }
   else { await db.delete(siteSettingsTable).where(eq(siteSettingsTable.key, "citation_discord_forward_url")); }
   res.json({ ok: true });
 });
@@ -391,15 +396,47 @@ router.post("/citations/ingest", async (req, res): Promise<void> => {
     ? new Date(String(body.postedAt ?? body.posted_at ?? body.timestamp)) : new Date();
   const messageId = (body.messageId ?? body.message_id ?? body.id) as string | undefined;
 
-  const [inserted] = await db.insert(pdCitationsTable).values({
-    discordMessageId: messageId ?? null,
-    title: data.title ?? null, incident: data.incident ?? null,
-    location: data.location ?? null, evidence: data.evidence ?? null,
-    incidentReport: data.incidentReport ?? null, suspectName: data.suspectName ?? null,
-    suspectCid: data.suspectCid ?? null, suspectContact: data.suspectContact ?? null,
-    charges: data.charges ?? null, officerName: data.officerName ?? null,
-    rawContent: data.rawContent ?? null, postedAt,
-  }).onConflictDoNothing().returning();
+  let inserted: { id: number } | null = null;
+  if (isMysqlDatabaseUrl) {
+    const existing = messageId
+      ? await mysqlQuery<{ id: number }>(`SELECT id FROM pd_citations WHERE discord_message_id = ? LIMIT 1`, [messageId])
+      : [];
+    if (existing.length === 0) {
+      const nextId = await getNextMysqlId("pd_citations");
+      await mysqlExecute(
+        `INSERT INTO pd_citations
+          (id, discord_message_id, title, incident, location, evidence, incident_report, suspect_name, suspect_cid, suspect_contact, charges, officer_name, raw_content, posted_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          nextId,
+          messageId ?? null,
+          data.title ?? null,
+          data.incident ?? null,
+          data.location ?? null,
+          data.evidence ?? null,
+          data.incidentReport ?? null,
+          data.suspectName ?? null,
+          data.suspectCid ?? null,
+          data.suspectContact ?? null,
+          data.charges ?? null,
+          data.officerName ?? null,
+          data.rawContent ?? null,
+          postedAt.toISOString().slice(0, 19).replace("T", " "),
+        ],
+      );
+      inserted = { id: nextId };
+    }
+  } else {
+    [inserted] = await db.insert(pdCitationsTable).values({
+      discordMessageId: messageId ?? null,
+      title: data.title ?? null, incident: data.incident ?? null,
+      location: data.location ?? null, evidence: data.evidence ?? null,
+      incidentReport: data.incidentReport ?? null, suspectName: data.suspectName ?? null,
+      suspectCid: data.suspectCid ?? null, suspectContact: data.suspectContact ?? null,
+      charges: data.charges ?? null, officerName: data.officerName ?? null,
+      rawContent: data.rawContent ?? null, postedAt,
+    }).onConflictDoNothing().returning();
+  }
 
   const discordForwardUrl = await getSetting("citation_discord_forward_url");
   if (discordForwardUrl) await forwardToDiscord(discordForwardUrl, body);
@@ -416,24 +453,40 @@ router.delete("/citations/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id!, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  // Fetch citation details before deleting
-  const [citation] = await db.select({
-    id: pdCitationsTable.id,
-    incident: pdCitationsTable.incident,
-    officerName: pdCitationsTable.officerName,
-  }).from(pdCitationsTable).where(eq(pdCitationsTable.id, id)).limit(1);
+  let citation: { id: number; incident: string | null; officerName: string | null } | null = null;
+  if (isMysqlDatabaseUrl) {
+    citation = await mysqlQuery<{ id: number; incident: string | null; officer_name: string | null }>(
+      `SELECT id, incident, officer_name FROM pd_citations WHERE id = ? LIMIT 1`,
+      [id],
+    ).then((rows) => rows[0] ? ({ id: rows[0].id, incident: rows[0].incident, officerName: rows[0].officer_name }) : null);
+  } else {
+    [citation] = await db.select({
+      id: pdCitationsTable.id,
+      incident: pdCitationsTable.incident,
+      officerName: pdCitationsTable.officerName,
+    }).from(pdCitationsTable).where(eq(pdCitationsTable.id, id)).limit(1);
+  }
   if (!citation) { res.status(404).json({ error: "Not found" }); return; }
 
   // Log deletion (deletedBy = session officer name)
   const deletedBy = sessionUser.displayName ?? sessionUser.username ?? sessionUser.id ?? "Unknown";
-  await db.insert(citationDeletionLogsTable).values({
-    citationId: citation.id,
-    incident: citation.incident,
-    officerName: citation.officerName,
-    deletedBy,
-  });
-
-  await db.delete(pdCitationsTable).where(eq(pdCitationsTable.id, id));
+  if (isMysqlDatabaseUrl) {
+    const nextId = await getNextMysqlId("pd_citation_deletion_logs");
+    await mysqlExecute(
+      `INSERT INTO pd_citation_deletion_logs (id, citation_id, incident, officer_name, deleted_by, deleted_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [nextId, citation.id, citation.incident, citation.officerName, deletedBy],
+    );
+    await mysqlExecute(`DELETE FROM pd_citations WHERE id = ?`, [id]);
+  } else {
+    await db.insert(citationDeletionLogsTable).values({
+      citationId: citation.id,
+      incident: citation.incident,
+      officerName: citation.officerName,
+      deletedBy,
+    });
+    await db.delete(pdCitationsTable).where(eq(pdCitationsTable.id, id));
+  }
   res.json({ ok: true, deleted: citation });
 });
 
@@ -442,6 +495,32 @@ router.delete("/citations/:id", async (req, res): Promise<void> => {
 router.get("/citations/deletion-log", async (req, res): Promise<void> => {
   const officerName = (req.query.officerName as string | undefined)?.trim();
   if (!officerName) { res.status(400).json({ error: "officerName required" }); return; }
+  if (isMysqlDatabaseUrl) {
+    const rows = await mysqlQuery<{
+      id: number;
+      citation_id: number | null;
+      incident: string | null;
+      officer_name: string | null;
+      deleted_by: string | null;
+      deleted_at: string | Date | null;
+    }>(
+      `SELECT *
+       FROM pd_citation_deletion_logs
+       WHERE TRIM(REGEXP_REPLACE(officer_name, '\\\\s*\\\\[\\\\d+\\\\]$', '')) LIKE ?
+       ORDER BY deleted_at DESC, id DESC
+       LIMIT 50`,
+      [officerName],
+    );
+    res.json(rows.map((row) => ({
+      id: row.id,
+      citationId: row.citation_id,
+      incident: row.incident,
+      officerName: row.officer_name,
+      deletedBy: row.deleted_by,
+      deletedAt: row.deleted_at,
+    })));
+    return;
+  }
   const rows = await db.select()
     .from(citationDeletionLogsTable)
     .where(sql`REGEXP_REPLACE(${citationDeletionLogsTable.officerName}, '\\s*\\[\\d+\\]$', '') ILIKE ${officerName}`)
@@ -456,6 +535,39 @@ router.get("/citations/officer-breakdown", async (req, res) => {
   const name = (req.query.name as string | undefined)?.trim();
   const since = (req.query.since as string | undefined)?.trim();
   if (!name) { res.status(400).json({ error: "name required" }); return; }
+
+  if (isMysqlDatabaseUrl) {
+    const officerRow = await mysqlQuery<{ citizen_id: string | null }>(
+      `SELECT citizen_id FROM pd_officers WHERE name LIKE ? LIMIT 1`,
+      [name],
+    );
+    const citizenId = officerRow[0]?.citizen_id ?? null;
+    const params: unknown[] = [];
+    let where = `TRIM(REGEXP_REPLACE(officer_name, '\\\\s*\\\\[\\\\d+\\\\]$', '')) LIKE ?`;
+    params.push(name);
+    if (citizenId) {
+      where = `(${where} OR (officer_name REGEXP '\\\\[[0-9]+\\\\]' AND REGEXP_REPLACE(officer_name, '^.*\\\\[([0-9]+)\\\\].*$', '$1') = ?))`;
+      params.push(citizenId);
+    }
+    if (since) {
+      const [mm, dd, yyyy] = since.split("/");
+      if (mm && dd && yyyy) {
+        where += ` AND posted_at >= ?`;
+        params.push(`${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")} 00:00:00`);
+      }
+    }
+    const rows = await mysqlQuery(
+      `SELECT id, title, incident, location, suspect_name AS suspectName, suspect_cid AS suspectCid,
+              suspect_contact AS suspectContact, charges, incident_report AS incidentReport,
+              evidence, posted_at AS postedAt
+       FROM pd_citations
+       WHERE ${where}
+       ORDER BY posted_at DESC, id DESC`,
+      params,
+    );
+    res.json(rows);
+    return;
+  }
 
   // Look up citizen_id from officers table so we can match by [cid] even if name spelling differs
   const officerRow = await db.execute(
