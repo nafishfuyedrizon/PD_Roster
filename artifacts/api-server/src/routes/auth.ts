@@ -45,6 +45,37 @@ function getRedirectUri(req: Request) {
   return `${proto}://${host}/api/auth/discord/callback`;
 }
 
+function getFrontendBase(req: Request): string {
+  const explicitBase = [
+    process.env.FRONTEND_BASE_URL,
+    process.env.APP_BASE_URL,
+    process.env.PUBLIC_APP_URL,
+  ]
+    .find((value) => typeof value === "string" && value.trim())
+    ?.trim()
+    .replace(/\/+$/, "");
+  if (explicitBase) return explicitBase;
+
+  const origin = typeof req.headers.origin === "string" ? req.headers.origin : "";
+  if (origin) return origin.replace(/\/+$/, "");
+
+  const referer = typeof req.headers.referer === "string" ? req.headers.referer : "";
+  if (referer) {
+    try {
+      const url = new URL(referer);
+      return `${url.protocol}//${url.host}`;
+    } catch {}
+  }
+
+  return "";
+}
+
+function frontendUrl(req: Request, path: string): string {
+  const cleanedPath = path.startsWith("/") ? path : `/${path}`;
+  const base = getFrontendBase(req);
+  return base ? `${base}${cleanedPath}` : cleanedPath;
+}
+
 const STATE_SECRET = process.env.SESSION_SECRET || "fallback-dev-secret-change-in-prod";
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -90,7 +121,7 @@ router.get("/auth/dev-login", async (req: Request, res: Response) => {
     return;
   }
 
-  setSessionUser(req, {
+  const user = {
     id: DEV_LOGIN_ID,
     username: DEV_LOGIN_USERNAME,
     displayName: DEV_LOGIN_DISPLAY_NAME,
@@ -102,7 +133,9 @@ router.get("/auth/dev-login", async (req: Request, res: Response) => {
     isSeniorStaff: true,
     isStaff: true,
     isTrusted: true,
-  });
+  };
+
+  setSessionUser(req, user);
 
   try {
     await db.insert(adminLogsTable).values({
@@ -116,7 +149,21 @@ router.get("/auth/dev-login", async (req: Request, res: Response) => {
     });
   } catch {}
 
-  res.redirect("/shift-roster/dashboard");
+  const wantsJson =
+    req.query.mode === "json"
+    || (req.headers.accept ?? "").toLowerCase().includes("application/json");
+
+  req.session.save((err) => {
+    if (err) {
+      res.status(500).json({ error: "Failed to create local admin session." });
+      return;
+    }
+    if (wantsJson) {
+      res.json({ ok: true, user });
+      return;
+    }
+    res.redirect(frontendUrl(req, "/dashboard"));
+  });
 });
 
 router.get("/auth/discord", (req: Request, res: Response) => {
@@ -143,18 +190,18 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
   const { code, state, error } = req.query;
 
   if (error) {
-    res.redirect(`/shift-roster/?auth_error=${encodeURIComponent(String(error))}`);
+    res.redirect(frontendUrl(req, `/?auth_error=${encodeURIComponent(String(error))}`));
     return;
   }
 
   if (!state || !verifyState(String(state))) {
     console.warn("[auth] HMAC state verification failed. state:", state);
-    res.redirect("/shift-roster/?auth_error=invalid_state");
+    res.redirect(frontendUrl(req, "/?auth_error=invalid_state"));
     return;
   }
 
   if (!code) {
-    res.redirect("/shift-roster/?auth_error=no_code");
+    res.redirect(frontendUrl(req, "/?auth_error=no_code"));
     return;
   }
 
@@ -176,7 +223,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
       console.error("Discord token exchange failed:", errText);
-      res.redirect("/shift-roster/?auth_error=token_failed");
+      res.redirect(frontendUrl(req, "/?auth_error=token_failed"));
       return;
     }
 
@@ -193,7 +240,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     });
 
     if (!userRes.ok) {
-      res.redirect("/shift-roster/?auth_error=user_fetch_failed");
+      res.redirect(frontendUrl(req, "/?auth_error=user_fetch_failed"));
       return;
     }
 
@@ -285,7 +332,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       // Regular users must be guild members
       if (!botMemberData) {
         console.warn(`[auth] Guild check failed for user ${discordUser.id} — not a member or bot unavailable`);
-        res.redirect("/shift-roster/?auth_error=not_member");
+        res.redirect(frontendUrl(req, "/?auth_error=not_member"));
         return;
       }
       displayName = botMemberData.nick || discordUser.global_name || discordUser.username;
@@ -324,10 +371,16 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       });
     } catch (_) {}
 
-    res.redirect("/shift-roster/dashboard");
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        res.redirect(frontendUrl(req, "/?auth_error=session_save_failed"));
+        return;
+      }
+      res.redirect(frontendUrl(req, "/dashboard"));
+    });
   } catch (err) {
     console.error("Discord OAuth error:", err);
-    res.redirect("/shift-roster/?auth_error=server_error");
+    res.redirect(frontendUrl(req, "/?auth_error=server_error"));
   }
 });
 

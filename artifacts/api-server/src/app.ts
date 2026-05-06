@@ -13,6 +13,8 @@ const PgSession = connectPgSimple(session);
 const app: Express = express();
 const shouldUsePgSession =
   isPostgresDatabaseUrl && process.env.SESSION_STORE !== "memory";
+const isProduction = process.env.NODE_ENV === "production";
+const crossSiteCookies = isProduction;
 
 if (!shouldUsePgSession) {
   logger.warn(
@@ -63,8 +65,8 @@ app.use(
       : undefined,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: crossSiteCookies,
+      sameSite: crossSiteCookies ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
     },
   }),

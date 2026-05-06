@@ -39,6 +39,11 @@ function hasLocalAdminSession(): boolean {
   }
 }
 
+function getAppRootPath(): string {
+  if (typeof window === "undefined") return "/";
+  return window.location.pathname.startsWith("/shift-roster/") ? "/shift-roster/" : "/";
+}
+
 async function readJsonOrNull<T>(res: Response): Promise<T | null> {
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) {
@@ -88,21 +93,31 @@ export function useAuth() {
       window.localStorage.removeItem(LOCAL_ADMIN_KEY);
       setLocalAdmin(false);
       qc.clear();
-      window.location.href = "/shift-roster/";
+      window.location.href = getAppRootPath();
     },
   });
 
-  const loginLocal = () => {
+  const loginLocal = async () => {
+    const res = await fetch("/api/auth/dev-login?mode=json", {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      throw new Error("Local admin login failed.");
+    }
     window.localStorage.setItem(LOCAL_ADMIN_KEY, "1");
     setLocalAdmin(true);
     qc.setQueryData(["auth-me"], { user: localAdminUser });
   };
 
-  const logoutLocal = () => {
+  const logoutLocal = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } catch {}
     window.localStorage.removeItem(LOCAL_ADMIN_KEY);
     setLocalAdmin(false);
     qc.clear();
-    window.location.href = "/";
+    window.location.href = getAppRootPath();
   };
 
   const user = localAdmin ? localAdminUser : data?.user ?? null;
@@ -114,6 +129,12 @@ export function useAuth() {
     isConfigured: config?.configured ?? true,
     canUseLocalDevLogin: config?.localDevLogin ?? false,
     loginLocal,
-    logout: () => (localAdmin ? logoutLocal() : logoutMutation.mutate()),
+    logout: () => {
+      if (localAdmin) {
+        void logoutLocal();
+        return;
+      }
+      logoutMutation.mutate();
+    },
   };
 }

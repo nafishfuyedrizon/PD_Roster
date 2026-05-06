@@ -3,7 +3,12 @@ import { db, exPdOfficersTable } from "@workspace/db";
 import { eq, ilike, or, sql } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
 import { guard } from "../lib/auth-guard.js";
-import { getMysqlExPdOfficers, isMysqlDatabaseUrl } from "../lib/pd-mysql-read.js";
+import {
+  getMysqlExPdOfficers,
+  isMysqlDatabaseUrl,
+  mysqlExecute,
+  mysqlQuery,
+} from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
@@ -54,6 +59,44 @@ router.post("/ex-pd-officers", async (req, res): Promise<void> => {
   if (guard(req, res, 2)) return;
   const body = req.body;
   if (!body.name) { res.status(400).json({ error: "name required" }); return; }
+
+  if (isMysqlDatabaseUrl) {
+    const result = await mysqlExecute(
+      `INSERT INTO pd_ex_pd_officers
+        (call_sign, character_id, name, phone_no, division, rank, discord_username, discord_uid, rockstar_license_id,
+         steam_profile, steam_64_hex_id, steam_2_id, insurance, status, date_of_joining, last_promotion, air1, speed, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        body.callSign ?? null,
+        body.characterId ?? null,
+        body.name,
+        body.phoneNo ?? null,
+        body.division ?? null,
+        body.rank ?? null,
+        body.discordUsername ?? null,
+        body.discordUid ?? null,
+        body.rockstarLicenseId ?? null,
+        body.steamProfile ?? null,
+        body.steam64HexId ?? null,
+        body.steam2Id ?? null,
+        body.insurance ?? null,
+        body.status ?? null,
+        body.dateOfJoining ?? null,
+        body.lastPromotion ?? null,
+        body.air1 ? 1 : 0,
+        body.speed ? 1 : 0,
+        body.notes ?? null,
+      ],
+    );
+    const [row] = await mysqlQuery<Record<string, unknown>>(
+      `SELECT * FROM pd_ex_pd_officers WHERE id = ? LIMIT 1`,
+      [result.insertId],
+    );
+    await auditLog(req, "CREATE", "ex-pd-officer", Number(result.insertId), body.name, body);
+    res.json(row);
+    return;
+  }
+
   const [row] = await db.insert(exPdOfficersTable).values({
     callSign: body.callSign ?? null,
     characterId: body.characterId ?? null,
@@ -83,6 +126,45 @@ router.put("/ex-pd-officers/:id", async (req, res): Promise<void> => {
   if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const body = req.body;
+
+  if (isMysqlDatabaseUrl) {
+    await mysqlExecute(
+      `UPDATE pd_ex_pd_officers
+       SET call_sign = ?, character_id = ?, name = ?, phone_no = ?, division = ?, rank = ?, discord_username = ?,
+           discord_uid = ?, rockstar_license_id = ?, steam_profile = ?, steam_64_hex_id = ?, steam_2_id = ?, insurance = ?,
+           status = ?, date_of_joining = ?, last_promotion = ?, air1 = ?, speed = ?, notes = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [
+        body.callSign ?? null,
+        body.characterId ?? null,
+        body.name,
+        body.phoneNo ?? null,
+        body.division ?? null,
+        body.rank ?? null,
+        body.discordUsername ?? null,
+        body.discordUid ?? null,
+        body.rockstarLicenseId ?? null,
+        body.steamProfile ?? null,
+        body.steam64HexId ?? null,
+        body.steam2Id ?? null,
+        body.insurance ?? null,
+        body.status ?? null,
+        body.dateOfJoining ?? null,
+        body.lastPromotion ?? null,
+        body.air1 ? 1 : 0,
+        body.speed ? 1 : 0,
+        body.notes ?? null,
+        id,
+      ],
+    );
+    const rows = await getMysqlExPdOfficers({});
+    const row = rows.find((item) => item.id === id) ?? null;
+    if (!row) { res.status(404).json({ error: "not found" }); return; }
+    await auditLog(req, "UPDATE", "ex-pd-officer", row.id, row.name, body);
+    res.json(row);
+    return;
+  }
+
   const [row] = await db.update(exPdOfficersTable)
     .set({ ...body, updatedAt: new Date() })
     .where(eq(exPdOfficersTable.id, id))
@@ -95,6 +177,17 @@ router.put("/ex-pd-officers/:id", async (req, res): Promise<void> => {
 router.delete("/ex-pd-officers/:id", async (req, res): Promise<void> => {
   if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
+
+  if (isMysqlDatabaseUrl) {
+    const rows = await getMysqlExPdOfficers({});
+    const row = rows.find((item) => item.id === id) ?? null;
+    if (!row) { res.status(404).json({ error: "not found" }); return; }
+    await mysqlExecute(`DELETE FROM pd_ex_pd_officers WHERE id = ?`, [id]);
+    await auditLog(req, "DELETE", "ex-pd-officer", row.id, row.name, {});
+    res.json({ ok: true });
+    return;
+  }
+
   const [row] = await db.delete(exPdOfficersTable).where(eq(exPdOfficersTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "not found" }); return; }
   await auditLog(req, "DELETE", "ex-pd-officer", row.id, row.name, {});

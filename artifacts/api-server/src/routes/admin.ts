@@ -5,12 +5,15 @@ import { auditLog } from "../lib/audit.js";
 import {
   getMysqlAdminDutyLogs,
   getMysqlDutyAdjustments,
+  getMysqlDutyEvents,
   getMysqlDutyLogs,
   getMysqlOfficers,
   getMysqlOfficersList,
   getMysqlPanelLogs,
   getMysqlStaffRoles,
   isMysqlDatabaseUrl,
+  mysqlExecute,
+  mysqlQuery,
   searchMysqlOfficers,
 } from "../lib/pd-mysql-read.js";
 
@@ -155,6 +158,40 @@ router.post("/admin/duty-logs", async (req, res): Promise<void> => {
     res.status(400).json({ error: "logDate, csNumber, officerName, duration are required" });
     return;
   }
+
+  if (isMysqlDatabaseUrl) {
+    const result = await mysqlExecute(
+      `INSERT INTO pd_duty_logs
+        (log_date, start_time, end_time, cs_number, officer_name, rank, shift_type, duration, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        logDate,
+        req.body.startTime?.trim() || null,
+        req.body.endTime?.trim() || null,
+        csNumber.trim(),
+        officerName.trim(),
+        rank?.trim() ?? "",
+        shiftType ?? "Full",
+        duration.trim(),
+        notes?.trim() || null,
+      ],
+    );
+    res.status(201).json({
+      id: Number(result.insertId),
+      logDate,
+      startTime: req.body.startTime?.trim() || null,
+      endTime: req.body.endTime?.trim() || null,
+      csNumber: csNumber.trim(),
+      officerName: officerName.trim(),
+      rank: rank?.trim() ?? "",
+      shiftType: shiftType ?? "Full",
+      duration: duration.trim(),
+      notes: notes?.trim() || null,
+      createdAt: new Date(),
+    });
+    return;
+  }
+
   const [created] = await db.insert(pdDutyLogsTable).values({
     logDate,
     csNumber: csNumber.trim(),
@@ -177,6 +214,41 @@ router.put("/admin/duty-logs/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "logDate, csNumber, officerName, duration are required" });
     return;
   }
+
+  if (isMysqlDatabaseUrl) {
+    await mysqlExecute(
+      `UPDATE pd_duty_logs
+       SET log_date = ?, start_time = ?, end_time = ?, cs_number = ?, officer_name = ?, rank = ?, shift_type = ?, duration = ?, notes = ?
+       WHERE id = ?`,
+      [
+        logDate,
+        req.body.startTime?.trim() || null,
+        req.body.endTime?.trim() || null,
+        csNumber.trim(),
+        officerName.trim(),
+        rank?.trim() ?? "",
+        shiftType ?? "Full",
+        duration.trim(),
+        notes?.trim() || null,
+        id,
+      ],
+    );
+    res.json({
+      id,
+      logDate,
+      startTime: req.body.startTime?.trim() || null,
+      endTime: req.body.endTime?.trim() || null,
+      csNumber: csNumber.trim(),
+      officerName: officerName.trim(),
+      rank: rank?.trim() ?? "",
+      shiftType: shiftType ?? "Full",
+      duration: duration.trim(),
+      notes: notes?.trim() || null,
+      createdAt: new Date(),
+    });
+    return;
+  }
+
   const [updated] = await db.update(pdDutyLogsTable).set({
     logDate,
     csNumber: csNumber.trim(),
@@ -193,6 +265,11 @@ router.put("/admin/duty-logs/:id", async (req, res): Promise<void> => {
 router.delete("/admin/duty-logs/:id", async (req, res): Promise<void> => {
   if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
+  if (isMysqlDatabaseUrl) {
+    await mysqlExecute(`DELETE FROM pd_duty_logs WHERE id = ?`, [id]);
+    res.status(204).end();
+    return;
+  }
   await db.delete(pdDutyLogsTable).where(eq(pdDutyLogsTable.id, id));
   res.status(204).end();
 });
@@ -213,6 +290,125 @@ router.get("/admin/officers-list", async (_req, res): Promise<void> => {
 // ── Import Discord Events → Duty Logs ───────────────────────────────────────
 
 router.post("/admin/duty-logs/import-discord", async (req, res): Promise<void> => {
+  if (requireCanEdit(req, res)) return;
+
+  if (isMysqlDatabaseUrl) {
+    const [events, officers] = await Promise.all([
+      getMysqlDutyEvents(),
+      getMysqlOfficers(),
+    ]);
+
+    const licenseMap = new Map<string, (typeof officers)[number]>();
+    for (const officer of officers) {
+      if (officer.rockstarLicenseId) {
+        licenseMap.set(officer.rockstarLicenseId.replace(/^license:/, ""), officer);
+      }
+    }
+
+    function findByName(evName: string) {
+      const evNorm = norm(evName);
+      const evLeet = leetNorm(evName);
+      const evTokens = tokens(evName);
+      const evLeetTokens = evLeet.split(/[^a-z]+/).filter(Boolean);
+      const candidates: typeof officers = [];
+      for (const officer of officers) {
+        const rosterNorm = norm(officer.name ?? "");
+        const discordNorm = norm(officer.discordUsername ?? "");
+        const discordLeet = leetNorm(officer.discordUsername ?? "");
+        const rosterTokens = tokens(officer.name ?? "");
+        if (rosterNorm === evNorm) return officer;
+        if (
+          evLeet.length >= 3
+          && (discordNorm.includes(evLeet) || discordLeet.includes(evLeet) || evLeet.includes(discordNorm))
+        ) {
+          candidates.push(officer);
+          continue;
+        }
+        if (evNorm.length >= 3 && (discordNorm.includes(evNorm) || evNorm.includes(discordNorm))) {
+          candidates.push(officer);
+          continue;
+        }
+        const matched = [...evTokens, ...evLeetTokens].some((t) => {
+          if (t.length < 3) return false;
+          return discordNorm.includes(t) || discordLeet.includes(t) || rosterTokens[0] === t;
+        });
+        if (matched) candidates.push(officer);
+      }
+      return candidates.length === 1 ? candidates[0]! : null;
+    }
+
+    const byLicense = new Map<string, typeof events>();
+    for (const event of events) {
+      const list = byLicense.get(event.licenseId) ?? [];
+      list.push(event);
+      byLicense.set(event.licenseId, list);
+    }
+
+    const newLogs: Array<{
+      logDate: string;
+      startTime: string;
+      endTime: string;
+      csNumber: string;
+      officerName: string;
+      rank: string;
+      shiftType: string;
+      duration: string;
+      notes: string;
+    }> = [];
+
+    for (const [licenseId, evList] of byLicense) {
+      const officer = licenseMap.get(licenseId) ?? findByName(evList[0]?.officerName ?? "");
+      let pendingOn: (typeof evList)[number] | null = null;
+
+      for (const event of [...evList].sort((a, b) => a.eventAt.getTime() - b.eventAt.getTime())) {
+        if (event.eventType === "on") {
+          pendingOn = event;
+          continue;
+        }
+        if (event.eventType === "off" && pendingOn) {
+          const durationSecs = Math.floor((event.eventAt.getTime() - pendingOn.eventAt.getTime()) / 1000);
+          if (durationSecs > 30) {
+            newLogs.push({
+              logDate: pendingOn.eventAt.toISOString().slice(0, 10),
+              startTime: pendingOn.eventAt.toISOString().substring(11, 16),
+              endTime: event.eventAt.toISOString().substring(11, 16),
+              csNumber: officer?.callSign ?? "",
+              officerName: officer?.name ?? pendingOn.officerName,
+              rank: officer?.rank ?? pendingOn.rank ?? "",
+              shiftType: "Full",
+              duration: secsToHms(durationSecs),
+              notes: "discord",
+            });
+          }
+          pendingOn = null;
+        }
+      }
+    }
+
+    await mysqlExecute(`DELETE FROM pd_duty_logs WHERE notes = 'discord'`);
+    for (const log of newLogs) {
+      await mysqlExecute(
+        `INSERT INTO pd_duty_logs
+          (log_date, start_time, end_time, cs_number, officer_name, rank, shift_type, duration, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          log.logDate,
+          log.startTime,
+          log.endTime,
+          log.csNumber,
+          log.officerName,
+          log.rank,
+          log.shiftType,
+          log.duration,
+          log.notes,
+        ],
+      );
+    }
+
+    res.json({ imported: newLogs.length });
+    return;
+  }
+
   // 1. Fetch all events ordered by license + time
   const events = await db
     .select()
@@ -489,6 +685,36 @@ router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
   if (!officerCs?.trim() || !dutyMonth?.trim() || !dutyYear?.trim() || typeof adjustmentSeconds !== "number" || adjustmentSeconds === 0) {
     res.status(400).json({ error: "officerCs, dutyMonth, dutyYear, adjustmentSeconds (non-zero) required" }); return;
   }
+
+  if (isMysqlDatabaseUrl) {
+    const result = await mysqlExecute(
+      `INSERT INTO pd_duty_adjustments
+        (officer_cs, officer_name, duty_month, duty_year, shift_type, adjustment_seconds, note)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        officerCs.trim(),
+        officerName?.trim() || null,
+        dutyMonth.trim().toUpperCase(),
+        dutyYear.trim(),
+        shiftType?.trim() || "ALL",
+        adjustmentSeconds,
+        note?.trim() || null,
+      ],
+    );
+    res.status(201).json({
+      id: Number(result.insertId),
+      officerCs: officerCs.trim(),
+      officerName: officerName?.trim() || null,
+      dutyMonth: dutyMonth.trim().toUpperCase(),
+      dutyYear: dutyYear.trim(),
+      shiftType: shiftType?.trim() || "ALL",
+      adjustmentSeconds,
+      note: note?.trim() || null,
+      createdAt: new Date(),
+    });
+    return;
+  }
+
   const [created] = await db.insert(dutyAdjustmentsTable).values({
     officerCs: officerCs.trim(),
     officerName: officerName?.trim() || null,
@@ -505,6 +731,11 @@ router.post("/admin/duty-adjustments", async (req, res): Promise<void> => {
 router.delete("/admin/duty-adjustments/:id", async (req, res): Promise<void> => {
   if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
+  if (isMysqlDatabaseUrl) {
+    await mysqlExecute(`DELETE FROM pd_duty_adjustments WHERE id = ?`, [id]);
+    res.status(204).end();
+    return;
+  }
   const [adj] = await db.select().from(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id)).limit(1);
   await db.delete(dutyAdjustmentsTable).where(eq(dutyAdjustmentsTable.id, id));
   await auditLog(req, "DELETE", "duty-adjustment", id, adj?.officerName ?? adj?.officerCs ?? null, { adjustmentSeconds: adj?.adjustmentSeconds });
@@ -551,6 +782,50 @@ router.post("/admin/staff-roles", async (req, res): Promise<void> => {
   const sessionUser = (req.session as any)?.user;
   const { discordUid, displayName } = req.body;
   if (!discordUid?.trim()) { res.status(400).json({ error: "discordUid required" }); return; }
+
+  if (isMysqlDatabaseUrl) {
+    const [member] = await mysqlQuery<{
+      id: number;
+      name: string | null;
+      call_sign: string | null;
+      discord_id: string | null;
+    }>(
+      `SELECT id, name, call_sign, discord_id
+       FROM members
+       WHERE discord_id = ?
+       LIMIT 1`,
+      [discordUid.trim()],
+    );
+    if (!member) {
+      res.status(404).json({ error: "No linked member found for this Discord UID" });
+      return;
+    }
+    const existing = await mysqlQuery<{ id: number }>(
+      `SELECT id FROM staff_roles WHERE member_id = ? LIMIT 1`,
+      [member.id],
+    );
+    if (existing.length > 0) {
+      res.status(409).json({ error: "UID already exists" });
+      return;
+    }
+    const result = await mysqlExecute(
+      `INSERT INTO staff_roles (member_id, is_super_admin, is_senior_staff, is_staff, updated_at)
+       VALUES (?, 0, 0, 0, NOW())`,
+      [member.id],
+    );
+    res.status(201).json({
+      id: Number(result.insertId),
+      discordUid: discordUid.trim(),
+      displayName: displayName?.trim() || member.name || member.call_sign || null,
+      isSeniorStaff: false,
+      isStaff: false,
+      isSuperAdmin: false,
+      addedBy: sessionUser?.displayName ?? "unknown",
+      createdAt: new Date(),
+    });
+    return;
+  }
+
   try {
     const [row] = await db.insert(staffRolesTable).values({
       discordUid: discordUid.trim(),
@@ -574,6 +849,29 @@ router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
     if (k in req.body) updates[k] = req.body[k];
   }
   if (!Object.keys(updates).length) { res.status(400).json({ error: "Nothing to update" }); return; }
+
+  if (isMysqlDatabaseUrl) {
+    const assignments: string[] = [];
+    const params: unknown[] = [];
+    if ("isSeniorStaff" in updates) {
+      assignments.push("is_senior_staff = ?");
+      params.push(updates.isSeniorStaff ? 1 : 0);
+    }
+    if ("isStaff" in updates) {
+      assignments.push("is_staff = ?");
+      params.push(updates.isStaff ? 1 : 0);
+    }
+    assignments.push("updated_at = NOW()");
+    await mysqlExecute(
+      `UPDATE staff_roles SET ${assignments.join(", ")} WHERE id = ?`,
+      [...params, id],
+    );
+    const rows = await getMysqlStaffRoles();
+    const row = rows.find((item) => item.id === id) ?? null;
+    res.json(row);
+    return;
+  }
+
   const [row] = await db.update(staffRolesTable).set(updates as any).where(eq(staffRolesTable.id, id)).returning();
   await auditLog(req, "UPDATE", "staff-role", id, row?.displayName ?? null, updates);
   res.json(row);
@@ -582,6 +880,11 @@ router.patch("/admin/staff-roles/:id", async (req, res): Promise<void> => {
 router.delete("/admin/staff-roles/:id", async (req, res): Promise<void> => {
   if (requireCanEdit(req, res)) return;
   const id = parseInt(req.params.id, 10);
+  if (isMysqlDatabaseUrl) {
+    await mysqlExecute(`DELETE FROM staff_roles WHERE id = ?`, [id]);
+    res.status(204).end();
+    return;
+  }
   const [sr] = await db.select().from(staffRolesTable).where(eq(staffRolesTable.id, id)).limit(1);
   if (!sr) { res.status(404).json({ error: "Not found" }); return; }
   await db.delete(staffRolesTable).where(eq(staffRolesTable.id, id));
