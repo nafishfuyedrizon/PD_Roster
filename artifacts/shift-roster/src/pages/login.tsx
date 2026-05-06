@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const { isSignedIn, isLoaded, isConfigured, canUseLocalDevLogin } = useAuth();
+  const { isSignedIn, isLoaded, isConfigured, canUseLocalDevLogin, loginLocal } = useAuth();
   const [, setLocation] = useLocation();
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -81,12 +81,13 @@ export default function LoginPage() {
           </a>
 
           {canUseLocalDevLogin && (
-            <a
-              href="/api/auth/dev-login"
+            <button
+              type="button"
+              onClick={loginLocal}
               className="w-full flex items-center justify-center gap-3 py-3 px-5 rounded-xl font-bold text-sm tracking-widest uppercase transition-all bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/40 active:scale-95"
             >
               Enter with Local Admin
-            </a>
+            </button>
           )}
 
           <p className="text-[11px] text-slate-500 text-center font-mono">

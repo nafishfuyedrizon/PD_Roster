@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 export interface AuthUser {
   id: string;
@@ -14,6 +15,30 @@ export interface AuthUser {
   isTrusted: boolean;
 }
 
+const LOCAL_ADMIN_KEY = "pd_roster_local_admin";
+
+const localAdminUser: AuthUser = {
+  id: "local-admin",
+  username: "Local Admin",
+  displayName: "Local Admin",
+  avatar: "",
+  roles: ["Super Admin"],
+  guildId: "local",
+  isOwner: true,
+  isSuperAdmin: true,
+  isSeniorStaff: true,
+  isStaff: true,
+  isTrusted: true,
+};
+
+function hasLocalAdminSession(): boolean {
+  try {
+    return window.localStorage.getItem(LOCAL_ADMIN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 async function readJsonOrNull<T>(res: Response): Promise<T | null> {
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) {
@@ -24,10 +49,12 @@ async function readJsonOrNull<T>(res: Response): Promise<T | null> {
 
 export function useAuth() {
   const qc = useQueryClient();
+  const [localAdmin, setLocalAdmin] = useState(hasLocalAdminSession);
 
   const { data, isLoading } = useQuery<{ user: AuthUser } | null>({
     queryKey: ["auth-me"],
     queryFn: async () => {
+      if (hasLocalAdminSession()) return { user: localAdminUser };
       const res = await fetch("/api/auth/me", { credentials: "include" });
       if (res.status === 401) return null;
       if (!res.ok) return null;
@@ -42,11 +69,11 @@ export function useAuth() {
     queryKey: ["auth-config"],
     queryFn: async () => {
       const res = await fetch("/api/auth/config");
-      if (!res.ok) return { configured: false, localDevLogin: false };
+      if (!res.ok) return { configured: false, localDevLogin: true };
       return (
         (await readJsonOrNull<{ configured: boolean; localDevLogin?: boolean }>(res)) ?? {
           configured: false,
-          localDevLogin: false,
+          localDevLogin: true,
         }
       );
     },
@@ -58,17 +85,35 @@ export function useAuth() {
     mutationFn: () =>
       fetch("/api/auth/logout", { method: "POST", credentials: "include" }).then((r) => r.json()),
     onSuccess: () => {
+      window.localStorage.removeItem(LOCAL_ADMIN_KEY);
+      setLocalAdmin(false);
       qc.clear();
       window.location.href = "/shift-roster/";
     },
   });
 
+  const loginLocal = () => {
+    window.localStorage.setItem(LOCAL_ADMIN_KEY, "1");
+    setLocalAdmin(true);
+    qc.setQueryData(["auth-me"], { user: localAdminUser });
+  };
+
+  const logoutLocal = () => {
+    window.localStorage.removeItem(LOCAL_ADMIN_KEY);
+    setLocalAdmin(false);
+    qc.clear();
+    window.location.href = "/";
+  };
+
+  const user = localAdmin ? localAdminUser : data?.user ?? null;
+
   return {
-    user: data?.user ?? null,
-    isLoaded: !isLoading,
-    isSignedIn: !!data?.user,
+    user,
+    isLoaded: localAdmin || !isLoading,
+    isSignedIn: !!user,
     isConfigured: config?.configured ?? true,
     canUseLocalDevLogin: config?.localDevLogin ?? false,
-    logout: () => logoutMutation.mutate(),
+    loginLocal,
+    logout: () => (localAdmin ? logoutLocal() : logoutMutation.mutate()),
   };
 }
