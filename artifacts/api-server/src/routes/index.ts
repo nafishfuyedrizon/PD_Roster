@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { isPostgresDatabaseUrl } from "@workspace/db";
 import healthRouter from "./health";
 import rosterRouter from "./roster";
 import emsRouter from "./ems";
@@ -17,8 +18,13 @@ import fivemRouter from "./fivem";
 import ftoDocsRouter from "./fto-docs";
 import deptStatsRouter from "./dept-stats";
 
-// Start Google Sheet auto-sync on boot
-startSheetAutoSync();
+// Start Google Sheet auto-sync only when the primary API database is ready.
+if (
+  isPostgresDatabaseUrl &&
+  process.env.START_CITATION_SHEET_SYNC !== "false"
+) {
+  startSheetAutoSync();
+}
 
 const router: IRouter = Router();
 

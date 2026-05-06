@@ -1,4 +1,4 @@
-import { pool } from "@workspace/db";
+import { isPostgresDatabaseUrl, databaseConfigMessage, pool } from "@workspace/db";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -24,7 +24,13 @@ function val(v: unknown): unknown {
   return v;
 }
 
-type DbClient = Awaited<ReturnType<typeof pool.connect>>;
+type DbClient = {
+  query<T extends Record<string, unknown> = Record<string, unknown>>(
+    queryText: string,
+    values?: unknown[],
+  ): Promise<{ rows: T[]; rowCount: number | null }>;
+  release(): void;
+};
 
 async function tableExists(client: DbClient, table: string): Promise<boolean> {
   const r = await client.query(
@@ -44,7 +50,7 @@ async function tableExists(client: DbClient, table: string): Promise<boolean> {
 }
 
 async function tableCount(client: DbClient, table: string): Promise<number> {
-  const r = await client.query(`SELECT COUNT(*) FROM "${table}"`);
+  const r = await client.query<{ count: string }>(`SELECT COUNT(*) FROM "${table}"`);
   return parseInt(r.rows[0].count, 10);
 }
 
@@ -296,6 +302,13 @@ async function ensurePdRegistrarTables(client: DbClient): Promise<void> {
 
 export async function seedDatabase(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
+  if (!isPostgresDatabaseUrl) {
+    logger.warn(
+      { reason: databaseConfigMessage },
+      "Skipping PostgreSQL seed because DATABASE_URL is not PostgreSQL",
+    );
+    return;
+  }
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   // seed-data.json lives at artifacts/api-server/seed-data.json
