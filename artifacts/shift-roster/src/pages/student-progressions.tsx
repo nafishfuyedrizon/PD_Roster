@@ -443,8 +443,10 @@ export default function StudentProgressionsPage() {
   const [filterStatus, setFilterStatus] = useState("All");
 
   function getPublicProgressionsUrl() {
-    const baseUrl = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
-    const publicPath = `${baseUrl}/public/progressions`.replace(/\/{2,}/g, "/");
+    const currentPath = window.location.pathname.replace(/\/+$/, "");
+    const publicPath = currentPath.endsWith("/student-progressions")
+      ? currentPath.replace(/\/student-progressions$/, "/public/progressions")
+      : "/public/progressions";
     return `${window.location.origin}${publicPath}`;
   }
 
