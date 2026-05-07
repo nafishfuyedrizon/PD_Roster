@@ -628,6 +628,22 @@ async function forEachMessageSince(
     }
 
     const oldest = sorted[0];
+    const newest = sorted[sorted.length - 1];
+    logger.info(
+      {
+        channelId: channel.id,
+        batch: i + 1,
+        batchSize: sorted.length,
+        scanned,
+        processed,
+        inWindow: inWindow.length,
+        oldestAt: oldest?.createdAt?.toISOString() ?? null,
+        newestAt: newest?.createdAt?.toISOString() ?? null,
+        cutoffAt: cutoff.toISOString(),
+      },
+      "Backfill batch progress",
+    );
+
     if (!oldest) break;
     if (oldest.createdAt < cutoff) {
       reachedCutoff = true;
