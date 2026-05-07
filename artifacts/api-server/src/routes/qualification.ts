@@ -6,6 +6,7 @@ import {
   getMysqlFtpMembers,
   getMysqlOfficers,
   getMysqlQualificationEntries,
+  getMysqlStudentProgressions,
   getNextMysqlId,
   isMysqlDatabaseUrl,
   mysqlExecute,
@@ -51,6 +52,59 @@ function rankOrder(rank: string): number {
  * and preserves existing vote values.
  */
 export async function syncVotersToQualChart(): Promise<void> {
+  if (isMysqlDatabaseUrl) {
+    const [officers, qualRows] = await Promise.all([
+      getMysqlOfficers(),
+      getMysqlQualificationEntries(),
+    ]);
+
+    const ftpOfficers = officers.filter((officer) => officer.ftp);
+    const mgmtOfficers = officers.filter((officer) => officer.isManagement);
+
+    const ftbVoters = ftpOfficers
+      .filter((officer) => rankOrder(officer.rank ?? "") > 3)
+      .map((officer) => officer.name ?? "")
+      .filter(Boolean);
+
+    const hcFromFtp = ftpOfficers
+      .filter((officer) => rankOrder(officer.rank ?? "") <= 3)
+      .map((officer) => officer.name ?? "")
+      .filter(Boolean);
+    const hcFromMgmt = mgmtOfficers
+      .filter((officer) => rankOrder(officer.rank ?? "") <= 3)
+      .map((officer) => officer.name ?? "")
+      .filter(Boolean);
+    const hcVoters = [...new Set([...hcFromFtp, ...hcFromMgmt])];
+
+    for (const row of qualRows) {
+      const curFtb = (row.ftbVotes ?? {}) as Record<string, string>;
+      const curHc = (row.hcVotes ?? {}) as Record<string, string>;
+
+      const newFtb: Record<string, string> = {};
+      for (const voter of ftbVoters) newFtb[voter] = curFtb[voter] ?? "";
+
+      const newHc: Record<string, string> = {};
+      for (const voter of hcVoters) newHc[voter] = curHc[voter] ?? "";
+
+      const ftbChanged = JSON.stringify(newFtb) !== JSON.stringify(curFtb);
+      const hcChanged = JSON.stringify(newHc) !== JSON.stringify(curHc);
+
+      if (ftbChanged || hcChanged) {
+        await mysqlExecute(
+          `UPDATE pd_qualification_chart
+           SET ftb_votes = ?, hc_votes = ?, updated_at = NOW()
+           WHERE id = ?`,
+          [
+            JSON.stringify(newFtb),
+            JSON.stringify(newHc),
+            row.id,
+          ],
+        );
+      }
+    }
+    return;
+  }
+
   const [ftpOfficers, mgmtOfficers, qualRows] = await Promise.all([
     db.select({ name: officersTable.name, rank: officersTable.rank })
       .from(officersTable).where(eq(officersTable.ftp, true)),
@@ -107,6 +161,69 @@ function todayMDY(): string {
 /** Auto-insert any roster officers that are not yet in the qual chart.
  *  PTA officers are only included if they are confirmed Solo Cadets. */
 async function syncRosterToQualChart(): Promise<void> {
+  if (isMysqlDatabaseUrl) {
+    const [existing, allOfficers, cadets] = await Promise.all([
+      getMysqlQualificationEntries(),
+      getMysqlOfficers(),
+      getMysqlStudentProgressions(),
+    ]);
+
+    const existingNames = new Set(existing.map((row) => row.name).filter(Boolean));
+    const soloBadges = new Set(
+      cadets
+        .filter((cadet) => cadet.currentPhase === "Solo Cadet")
+        .map((cadet) => cadet.badgeNumber)
+        .filter(Boolean),
+    );
+
+    const eligibleOfficers = allOfficers.filter((officer) => {
+      if (officer.department !== "PTA") return true;
+      return soloBadges.has(officer.callSign ?? "");
+    });
+
+    for (const officer of eligibleOfficers) {
+      if (!officer.name || existingNames.has(officer.name)) continue;
+      const nextId = await getNextMysqlId("pd_qualification_chart");
+      await mysqlExecute(
+        `INSERT INTO pd_qualification_chart
+          (id, name, discord_uid, rank, department, days_in_rank, hours_in_rank, citation_count, fir_count,
+           last_promotion, strikes_major, strikes_minor, qual_status, notes, ftb_votes, hc_votes, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [
+          nextId,
+          officer.name,
+          officer.discordUid ?? null,
+          officer.rank ?? null,
+          officer.department ?? null,
+          0,
+          0,
+          0,
+          0,
+          officer.lastPromotion ?? null,
+          officer.strikesMajor ?? "0/4",
+          officer.strikesMinor ?? "0/2",
+          null,
+          null,
+          JSON.stringify({}),
+          JSON.stringify({}),
+        ],
+      );
+    }
+
+    for (const entry of existing) {
+      if (!entry.name || entry.lastPromotion) continue;
+      const officer = allOfficers.find((row) => row.name === entry.name);
+      if (!officer?.lastPromotion) continue;
+      await mysqlExecute(
+        `UPDATE pd_qualification_chart
+         SET last_promotion = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [officer.lastPromotion, entry.id],
+      );
+    }
+    return;
+  }
+
   // Get all names already in qual chart (with their lastPromotion)
   const existing = await db
     .select({ name: qualificationChartTable.name, lastPromotion: qualificationChartTable.lastPromotion })
@@ -166,6 +283,7 @@ async function syncRosterToQualChart(): Promise<void> {
 
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
   if (isMysqlDatabaseUrl) {
+    await Promise.all([syncRosterToQualChart(), syncVotersToQualChart()]);
     res.json(await getMysqlQualificationEntries());
     return;
   }

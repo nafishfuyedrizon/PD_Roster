@@ -24,8 +24,11 @@ import {
 import {
   getMysqlDutyAdjustments,
   getMysqlDutyLogs,
+  getNextMysqlId,
   getMysqlOfficers,
   isMysqlDatabaseUrl,
+  mysqlExecute,
+  mysqlQuery,
 } from "../lib/pd-mysql-read.js";
 
 function todayMDY(): string {
@@ -36,6 +39,92 @@ function todayMDY(): string {
 }
 
 const router: IRouter = Router();
+
+const MYSQL_OFFICER_FIELD_MAP: Record<string, string> = {
+  callSign: "call_sign",
+  citizenId: "citizen_id",
+  name: "name",
+  phoneNumber: "phone_number",
+  department: "department",
+  rank: "rank",
+  division: "division",
+  status: "status",
+  timezone: "timezone",
+  dateOfJoining: "date_of_joining",
+  lastPromotion: "last_promotion",
+  pilot: "pilot",
+  mdt: "mdt",
+  seu: "seu",
+  smg: "smg",
+  rifle: "rifle",
+  shotgun: "shotgun",
+  rifleTierII: "rifle_tier_ii",
+  ftp: "ftp",
+  isManagement: "is_management",
+  strikesMajor: "strikes_major",
+  strikesMinor: "strikes_minor",
+  discordUsername: "discord_username",
+  discordUid: "discord_uid",
+  discordId: "discord_id",
+  rockstarLicenseId: "rockstar_license_id",
+  fivemName: "fivem_name",
+  dutyHours: "duty_hours",
+  completionStatus: "completion_status",
+  appointedFto: "appointed_fto",
+  weekPeriod: "week_period",
+};
+
+function normalizeMysqlValue(value: unknown): unknown {
+  if (typeof value === "boolean") return value ? 1 : 0;
+  return value;
+}
+
+function filterMysqlUpdates(data: Record<string, unknown>) {
+  return Object.entries(data)
+    .filter(([key, value]) => key in MYSQL_OFFICER_FIELD_MAP && value !== undefined)
+    .map(([key, value]) => ({
+      column: MYSQL_OFFICER_FIELD_MAP[key]!,
+      value: normalizeMysqlValue(value),
+    }));
+}
+
+async function getMysqlOfficerById(id: number) {
+  return (await getMysqlOfficers()).find((row) => row.id === id) ?? null;
+}
+
+async function ensureMysqlQualificationEntry(officer: Awaited<ReturnType<typeof getMysqlOfficerById>>) {
+  if (!officer?.name) return;
+  const existing = await mysqlQuery<{ id: number }>(
+    `SELECT id FROM pd_qualification_chart WHERE name = ? LIMIT 1`,
+    [officer.name],
+  );
+  if (existing[0]) return;
+  const nextId = await getNextMysqlId("pd_qualification_chart");
+  await mysqlExecute(
+    `INSERT INTO pd_qualification_chart
+      (id, name, discord_uid, rank, department, days_in_rank, hours_in_rank, citation_count, fir_count,
+       last_promotion, strikes_major, strikes_minor, qual_status, notes, ftb_votes, hc_votes, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+    [
+      nextId,
+      officer.name,
+      officer.discordUid ?? null,
+      officer.rank ?? null,
+      officer.department ?? null,
+      0,
+      0,
+      0,
+      0,
+      officer.lastPromotion ?? null,
+      officer.strikesMajor ?? "0/4",
+      officer.strikesMinor ?? "0/2",
+      null,
+      null,
+      JSON.stringify({}),
+      JSON.stringify({}),
+    ],
+  );
+}
 
 router.get("/roster", async (req, res): Promise<void> => {
   const parsed = ListOfficersQueryParams.safeParse(req.query);
@@ -82,6 +171,67 @@ router.post("/roster", async (req, res): Promise<void> => {
   const parsed = CreateOfficerBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  if (isMysqlDatabaseUrl) {
+    const nextId = await getNextMysqlId("pd_officers");
+    const data = parsed.data;
+    await mysqlExecute(
+      `INSERT INTO pd_officers
+        (id, call_sign, citizen_id, name, phone_number, department, rank, division, status, timezone,
+         date_of_joining, last_promotion, pilot, mdt, seu, smg, rifle, shotgun, rifle_tier_ii,
+         ftp, is_management, strikes_major, strikes_minor, discord_username, discord_uid, discord_id,
+         rockstar_license_id, fivem_name, duty_hours, completion_status, appointed_fto, week_period, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        nextId,
+        data.callSign,
+        data.citizenId ?? null,
+        data.name ?? null,
+        data.phoneNumber ?? null,
+        data.department,
+        data.rank,
+        data.division ?? null,
+        data.status,
+        data.timezone ?? null,
+        data.dateOfJoining ?? null,
+        data.lastPromotion ?? null,
+        data.pilot ? 1 : 0,
+        data.mdt ? 1 : 0,
+        data.seu ? 1 : 0,
+        data.smg ? 1 : 0,
+        data.rifle ? 1 : 0,
+        data.shotgun ? 1 : 0,
+        data.rifleTierII ? 1 : 0,
+        data.ftp ? 1 : 0,
+        data.isManagement ? 1 : 0,
+        data.strikesMajor ?? "0/4",
+        data.strikesMinor ?? "0/2",
+        data.discordUsername ?? null,
+        data.discordUid ?? null,
+        data.discordId,
+        data.rockstarLicenseId ?? null,
+        data.fivemName ?? null,
+        data.dutyHours ?? null,
+        data.completionStatus ?? null,
+        data.appointedFto ?? null,
+        data.weekPeriod,
+      ],
+    );
+
+    const officer = await getMysqlOfficerById(nextId);
+    await ensureMysqlQualificationEntry(officer);
+
+    if (officer?.department === "PTA") {
+      await syncStudentProgressionsWithRoster();
+    }
+    if (officer && (officer.ftp || officer.isManagement)) {
+      await syncVotersToQualChart();
+    }
+
+    await auditLog(req, "CREATE", "officer", nextId, officer?.name ?? officer?.callSign ?? data.callSign, null);
+    res.status(201).json(GetOfficerResponse.parse(officer));
     return;
   }
 
@@ -400,6 +550,202 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
   // Read extra fields not in the Zod schema (e.g. exitDate from Make Ex PD dialog)
   const exitDate: string | undefined = typeof req.body.exitDate === "string" ? req.body.exitDate : undefined;
 
+  if (isMysqlDatabaseUrl) {
+    const existing = await getMysqlOfficerById(params.data.id);
+    if (!existing) {
+      res.status(404).json({ error: "Officer not found" });
+      return;
+    }
+
+    const updates = filterMysqlUpdates(parsed.data as Record<string, unknown>);
+    if (updates.length > 0) {
+      const setClause = `${updates.map((entry) => `${entry.column} = ?`).join(", ")}`;
+      await mysqlExecute(
+        `UPDATE pd_officers SET ${setClause} WHERE id = ?`,
+        [...updates.map((entry) => entry.value), params.data.id],
+      );
+    }
+
+    const officer = await getMysqlOfficerById(params.data.id);
+    if (!officer) {
+      res.status(404).json({ error: "Officer not found" });
+      return;
+    }
+
+    const oldCs = existing.callSign ?? "";
+    const newCs = officer.callSign ?? oldCs;
+    if (oldCs) {
+      await mysqlExecute(
+        `UPDATE pd_duty_hour_totals
+         SET cs_number = ?, name = ?, rank = ?, status = ?
+         WHERE cs_number = ?`,
+        [newCs, officer.name ?? "", officer.rank ?? "", officer.status ?? "Active", oldCs],
+      );
+      await mysqlExecute(
+        `UPDATE pd_duty_logs
+         SET cs_number = ?, officer_name = ?, rank = ?
+         WHERE cs_number = ?`,
+        [newCs, officer.name ?? "", officer.rank ?? "", oldCs],
+      );
+      await mysqlExecute(
+        `UPDATE pd_duty_adjustments
+         SET officer_cs = ?, officer_name = ?
+         WHERE officer_cs = ?`,
+        [newCs, officer.name ?? null, oldCs],
+      );
+    }
+
+    if (existing.name) {
+      await mysqlExecute(
+        `UPDATE pd_discord_duty_events
+         SET officer_name = ?, rank = ?
+         WHERE officer_name = ?`,
+        [officer.name ?? existing.name, officer.rank ?? "", existing.name],
+      );
+    }
+
+    const rankChanged = existing.rank !== officer.rank && !!officer.rank;
+    const nameChanged = existing.name !== officer.name && !!officer.name;
+    const promotionDateChanged = !rankChanged && existing.lastPromotion !== officer.lastPromotion && officer.lastPromotion !== undefined;
+    const deptChanged = existing.department !== officer.department && !!officer.department;
+    const strikesMajorChanged = existing.strikesMajor !== officer.strikesMajor && officer.strikesMajor !== undefined;
+    const strikesMinorChanged = existing.strikesMinor !== officer.strikesMinor && officer.strikesMinor !== undefined;
+    const discordUidChanged = existing.discordUid !== officer.discordUid && officer.discordUid !== undefined;
+
+    if (officer.name) {
+      const qualIdRows = await mysqlQuery<{ id: number }>(
+        `SELECT id FROM pd_qualification_chart WHERE name = ? LIMIT 1`,
+        [nameChanged ? existing.name ?? officer.name : officer.name],
+      );
+
+      const qualFields: string[] = [];
+      const qualValues: unknown[] = [];
+      if (nameChanged) { qualFields.push("name = ?"); qualValues.push(officer.name); }
+      if (deptChanged) { qualFields.push("department = ?"); qualValues.push(officer.department ?? null); }
+      if (strikesMajorChanged) { qualFields.push("strikes_major = ?"); qualValues.push(officer.strikesMajor ?? "0/4"); }
+      if (strikesMinorChanged) { qualFields.push("strikes_minor = ?"); qualValues.push(officer.strikesMinor ?? "0/2"); }
+      if (discordUidChanged) { qualFields.push("discord_uid = ?"); qualValues.push(officer.discordUid ?? null); }
+      if (rankChanged) {
+        qualFields.push("rank = ?");
+        qualValues.push(officer.rank ?? null);
+        qualFields.push("last_promotion = ?");
+        qualValues.push(todayMDY());
+        qualFields.push("days_in_rank = ?");
+        qualValues.push(0);
+        qualFields.push("ftb_votes = ?");
+        qualValues.push(JSON.stringify({}));
+        qualFields.push("hc_votes = ?");
+        qualValues.push(JSON.stringify({}));
+        qualFields.push("qual_status = ?");
+        qualValues.push(null);
+      } else if (promotionDateChanged) {
+        qualFields.push("last_promotion = ?");
+        qualValues.push(officer.lastPromotion ?? null);
+        qualFields.push("days_in_rank = ?");
+        qualValues.push(0);
+      }
+
+      if (qualIdRows[0] && qualFields.length > 0) {
+        await mysqlExecute(
+          `UPDATE pd_qualification_chart
+           SET ${qualFields.join(", ")}, updated_at = NOW()
+           WHERE id = ?`,
+          [...qualValues, qualIdRows[0].id],
+        );
+      } else if (!qualIdRows[0] && (rankChanged || promotionDateChanged || deptChanged || nameChanged || strikesMajorChanged || strikesMinorChanged || discordUidChanged)) {
+        await ensureMysqlQualificationEntry(officer);
+      }
+    }
+
+    if ("ftp" in parsed.data || "isManagement" in parsed.data) {
+      await syncVotersToQualChart();
+    }
+
+    if (deptChanged && (existing.department === "PTA" || officer.department === "PTA")) {
+      await syncStudentProgressionsWithRoster();
+    }
+
+    const TRACKED = ["name","rank","status","callSign","division","department","dateOfJoining","lastPromotion","strikesMajor","strikesMinor","discordUsername","discordUid"] as const;
+    const diff: Record<string, { old: unknown; new: unknown }> = {};
+    for (const key of TRACKED) {
+      const oldVal = (existing as any)[key];
+      const newVal = (officer as any)[key];
+      if (oldVal !== newVal) diff[key] = { old: oldVal, new: newVal };
+    }
+    if (Object.keys(diff).length > 0) {
+      await auditLog(req, "UPDATE", "officer", officer.id, officer.name ?? officer.callSign, diff);
+    }
+
+    const EXIT_STATUSES = ["DISCHARGED", "FIRED", "REMOVED", "TERMINATED", "RESIGNED"];
+    const statusChanged = existing.status !== officer.status;
+    const isExitStatus = !!(officer.status && EXIT_STATUSES.includes(officer.status));
+
+    if (statusChanged && isExitStatus) {
+      let ftpNotes: string | null = null;
+      const studentRows = officer.name
+        ? await mysqlQuery<{ id: number; current_phase: string | null }>(
+            `SELECT id, current_phase
+             FROM pd_student_progressions
+             WHERE ${officer.callSign ? `(badge_number = ? OR name = ?)` : `name = ?`}
+             LIMIT 1`,
+            officer.callSign ? [officer.callSign, officer.name] : [officer.name],
+          )
+        : [];
+      const studentRow = studentRows[0] ?? null;
+      if (studentRow) {
+        const phase = studentRow.current_phase?.trim() || "Phase 1";
+        const rank = officer.rank ?? "CADET";
+        ftpNotes = `FTP: ${rank} (${phase})`;
+      }
+
+      const ftpPart = officer.ftp ? "FTP: Yes" : "FTP: No";
+      const ftoPart = officer.appointedFto ? `FTO: ${officer.appointedFto}` : null;
+      const baseParts = [ftpPart, ftoPart].filter(Boolean) as string[];
+      const notesValue = ftpNotes ? [...baseParts, ftpNotes].join(" | ") : baseParts.join(" | ");
+
+      if (officer.name) {
+        const nextExId = await getNextMysqlId("pd_ex_pd_officers");
+        await mysqlExecute(
+          `INSERT INTO pd_ex_pd_officers
+            (id, call_sign, character_id, name, phone_no, division, rank, discord_username, discord_uid,
+             rockstar_license_id, status, exit_date, date_of_joining, last_promotion, air1, speed, notes, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          [
+            nextExId,
+            officer.callSign ?? null,
+            officer.citizenId ?? null,
+            officer.name,
+            officer.phoneNumber ?? null,
+            officer.department ?? null,
+            officer.rank ?? null,
+            officer.discordUsername ?? null,
+            officer.discordUid ?? officer.discordId ?? null,
+            officer.rockstarLicenseId ?? null,
+            officer.status ?? null,
+            exitDate ?? null,
+            officer.dateOfJoining ?? null,
+            officer.lastPromotion ?? null,
+            officer.pilot ? 1 : 0,
+            officer.seu ? 1 : 0,
+            notesValue || null,
+          ],
+        );
+        await mysqlExecute(`DELETE FROM pd_qualification_chart WHERE name = ?`, [officer.name]);
+      }
+
+      if (studentRow) {
+        await mysqlExecute(`DELETE FROM pd_student_progressions WHERE id = ?`, [studentRow.id]);
+      }
+
+      await mysqlExecute(`DELETE FROM pd_officers WHERE id = ?`, [officer.id]);
+      res.json(UpdateOfficerResponse.parse({ ...officer, _removed: true }));
+      return;
+    }
+
+    res.json(UpdateOfficerResponse.parse(officer));
+    return;
+  }
+
   // Fetch current record so we know the old callSign before any update
   const [existing] = await db.select().from(officersTable).where(eq(officersTable.id, params.data.id));
   if (!existing) {
@@ -607,6 +953,18 @@ router.delete("/roster/:id", async (req, res): Promise<void> => {
   const params = DeleteOfficerParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  if (isMysqlDatabaseUrl) {
+    const officer = await getMysqlOfficerById(params.data.id);
+    if (!officer) {
+      res.status(404).json({ error: "Officer not found" });
+      return;
+    }
+    await mysqlExecute(`DELETE FROM pd_officers WHERE id = ?`, [params.data.id]);
+    await auditLog(req, "DELETE", "officer", officer.id, officer.name ?? officer.callSign, null);
+    res.sendStatus(204);
     return;
   }
 

@@ -49,6 +49,7 @@ export async function mysqlExecute(
 }
 
 const NEXT_ID_TABLES = new Set([
+  "pd_officers",
   "pd_duty_logs",
   "pd_duty_adjustments",
   "pd_fto_doc_items",
