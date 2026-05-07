@@ -3,6 +3,7 @@ import { db, qualificationChartTable, officersTable, studentProgressionsTable } 
 import { eq, sql, notInArray, or, ilike, and } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
 import {
+  getMysqlAdminDutyLogs,
   getMysqlDutyAdjustments,
   getMysqlDutyEvents,
   getMysqlFtpMembers,
@@ -212,6 +213,18 @@ function getOverlapSeconds(start: Date, end: Date, since: Date): number {
   return Math.max(0, Math.floor((overlapEnd - overlapStart) / 1000));
 }
 
+function parseDurationToSeconds(duration: string | null | undefined): number {
+  if (!duration) return 0;
+  const parts = duration.trim().split(":").map((part) => Number(part));
+  if (parts.length === 3) {
+    return Math.max(0, ((parts[0] ?? 0) * 3600) + ((parts[1] ?? 0) * 60) + (parts[2] ?? 0));
+  }
+  if (parts.length === 2) {
+    return Math.max(0, ((parts[0] ?? 0) * 3600) + ((parts[1] ?? 0) * 60));
+  }
+  return 0;
+}
+
 function monthNameToNumber(value: string | null | undefined): number | null {
   if (!value) return null;
   const months = [
@@ -348,12 +361,13 @@ async function syncRosterToQualChart(): Promise<void> {
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
   if (isMysqlDatabaseUrl) {
     await Promise.all([syncRosterToQualChart(), syncVotersToQualChart()]);
-    const [entries, allOfficers, cadets, dutyEvents, adjustments] = await Promise.all([
+    const [entries, allOfficers, cadets, dutyEvents, adjustments, dutyLogs] = await Promise.all([
       getMysqlQualificationEntries(),
       getMysqlOfficers(),
       getMysqlStudentProgressions(),
       getMysqlDutyEvents(),
       getMysqlDutyAdjustments(),
+      getMysqlAdminDutyLogs({}),
     ]);
 
     const soloBadges = new Set(
@@ -383,12 +397,27 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       const since = parseMdyDate(lastPromotion || joiningDate);
       let hoursInRank = entry?.hoursInRank ?? 0;
 
-      if (since && officer.rockstarLicenseId) {
-        const sessions = getDutySessions(dutyEventsByLicense.get(officer.rockstarLicenseId) ?? []);
-        const dutySeconds = sessions.reduce(
-          (sum, session) => sum + getOverlapSeconds(session.start, session.end, since),
-          0,
-        );
+      if (since) {
+        const dutyLogSeconds = dutyLogs
+          .filter((log) => {
+            if (log.csNumber !== officer.callSign && log.officerName !== officer.name) {
+              return false;
+            }
+            if (!log.logDate) return false;
+            const logDate = new Date(`${log.logDate}T00:00:00`);
+            logDate.setHours(0, 0, 0, 0);
+            return logDate >= since;
+          })
+          .reduce((sum, log) => sum + parseDurationToSeconds(log.duration), 0);
+
+        const eventSeconds = officer.rockstarLicenseId
+          ? getDutySessions(dutyEventsByLicense.get(officer.rockstarLicenseId) ?? []).reduce(
+              (sum, session) => sum + getOverlapSeconds(session.start, session.end, since),
+              0,
+            )
+          : 0;
+
+        const dutySeconds = Math.max(dutyLogSeconds, eventSeconds);
         const adjustmentSeconds = adjustments
           .filter((adjustment) => {
             if (adjustment.officerCs !== officer.callSign && adjustment.officerName !== officer.name) {

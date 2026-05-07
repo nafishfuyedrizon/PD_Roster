@@ -262,6 +262,31 @@ async function upsertDutyLog(
   }
 }
 
+async function deleteDutyLog(
+  callSign: string,
+  weekPeriod: string,
+  shiftType: string,
+): Promise<void> {
+  if (isMysqlDatabaseUrl) {
+    await mysqlExecute(
+      `DELETE FROM pd_duty_hour_totals
+       WHERE cs_number = ? AND week_period = ? AND shift_type = ?`,
+      [callSign, weekPeriod, shiftType],
+    );
+    return;
+  }
+
+  await db
+    .delete(emsDutyLogsTable)
+    .where(
+      and(
+        eq(emsDutyLogsTable.csNumber, callSign),
+        eq(emsDutyLogsTable.weekPeriod, weekPeriod),
+        eq(emsDutyLogsTable.shiftType, shiftType),
+      ),
+    );
+}
+
 // ── Duty-hour recompute ────────────────────────────────────────────────────
 
 async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
@@ -407,7 +432,12 @@ async function recomputeDutyHours(licenseId: string, weekPeriod: string) {
 
   await upsertDutyLog(cs, name, rank, status, weekPeriod, "ALL", secsToHms(totalSecs));
   for (const st of Object.keys(SHIFT_WINDOWS)) {
-    await upsertDutyLog(cs, name, rank, status, weekPeriod, st, secsToHms(shiftSecs[st]!));
+    const secs = Math.max(0, shiftSecs[st] ?? 0);
+    if (secs > 0) {
+      await upsertDutyLog(cs, name, rank, status, weekPeriod, st, secsToHms(secs));
+    } else {
+      await deleteDutyLog(cs, weekPeriod, st);
+    }
   }
 
   // ── Sync individual sessions to pd_duty_logs ──────────────────────────────

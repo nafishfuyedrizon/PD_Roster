@@ -39,6 +39,10 @@ function parseHms(h: string | null | undefined): number {
   return 0;
 }
 
+function hasPositiveDuty(h: string | null | undefined): boolean {
+  return parseHms(h) > 0;
+}
+
 function secondsToHms(secs: number): string {
   if (secs < 0) secs = 0;
   if (secs === 0) return "00:00:00";
@@ -280,7 +284,7 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
       : {};
 
   // Active personnel = PD officers that are Active and have at least one duty log
-  const logCsSet = new Set(allLogs.map((l) => l.csNumber));
+  const logCsSet = new Set(allLogs.filter((l) => hasPositiveDuty(l.dutyHours)).map((l) => l.csNumber));
   Object.keys(liveWeekSecsByCs).forEach((cs) => logCsSet.add(cs));
   const activePersonnel = allPdOfficersForStats.filter(
     (o) => o.status === "Active" && logCsSet.has(o.callSign)
