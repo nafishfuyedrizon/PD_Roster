@@ -883,9 +883,9 @@ interface ParsedFir {
 
 function parseFir(text: string): ParsedFir {
   return {
-    complainantName:    field(text, "Complainant'?s? Name", "Complainant Name"),
-    complainantCid:     field(text, "Complainant'?s? CID", "Complainant CID"),
-    complainantContact: field(text, "Complainant'?s? Contact", "Contact"),
+    complainantName:    field(text, "Complainant'?s? Name", "Complainant Name", "Complainant"),
+    complainantCid:     field(text, "Complainant'?s? CID", "Complainant CID", "CID"),
+    complainantContact: field(text, "Complainant'?s? Contact", "Complainant Contact", "Contact"),
     eventDescription:   field(text, "Description of Event", "Event Description", "Description"),
     suspectDetails:     field(text, "Details of Suspect'?s?", "Suspect Details", "Suspect"),
     evidence:           field(text, "Evidence \\(images, links, or attachments\\).*?", "Evidence"),
