@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface AuthUser {
   id: string;
@@ -54,12 +54,53 @@ async function readJsonOrNull<T>(res: Response): Promise<T | null> {
 
 export function useAuth() {
   const qc = useQueryClient();
-  const [localAdmin, setLocalAdmin] = useState(hasLocalAdminSession);
+  const [localAdmin, setLocalAdmin] = useState(false);
+  const [restoringLocalAdmin, setRestoringLocalAdmin] = useState(hasLocalAdminSession);
+
+  useEffect(() => {
+    if (!hasLocalAdminSession()) {
+      setRestoringLocalAdmin(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/auth/dev-login?mode=json", {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!res.ok) {
+          throw new Error("Local admin restore failed.");
+        }
+
+        window.localStorage.setItem(LOCAL_ADMIN_KEY, "1");
+        if (cancelled) return;
+        setLocalAdmin(true);
+        qc.setQueryData(["auth-me"], { user: localAdminUser });
+      } catch {
+        window.localStorage.removeItem(LOCAL_ADMIN_KEY);
+        if (cancelled) return;
+        setLocalAdmin(false);
+        qc.setQueryData(["auth-me"], null);
+      } finally {
+        if (cancelled) return;
+        setRestoringLocalAdmin(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [qc]);
 
   const { data, isLoading } = useQuery<{ user: AuthUser } | null>({
     queryKey: ["auth-me"],
+    enabled: !restoringLocalAdmin,
     queryFn: async () => {
-      if (hasLocalAdminSession()) return { user: localAdminUser };
+      if (localAdmin) return { user: localAdminUser };
       const res = await fetch("/api/auth/me", { credentials: "include" });
       if (res.status === 401) return null;
       if (!res.ok) return null;
@@ -124,7 +165,7 @@ export function useAuth() {
 
   return {
     user,
-    isLoaded: localAdmin || !isLoading,
+    isLoaded: !restoringLocalAdmin && (localAdmin || !isLoading),
     isSignedIn: !!user,
     isConfigured: config?.configured ?? true,
     canUseLocalDevLogin: config?.localDevLogin ?? false,
