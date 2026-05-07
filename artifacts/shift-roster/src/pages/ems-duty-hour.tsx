@@ -33,6 +33,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Clock, TrendingUp, Users, Trophy, Search, Shield, Calendar, Hash, ChevronRight, Settings, Pencil, Trash2, Plus, Copy, Check } from "lucide-react";
 
 interface OfficerDutyDetail {
@@ -114,6 +115,7 @@ function HourSelect({ value, onChange, placeholder }: { value: number | undefine
 
 function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const { data: configs = [], isLoading } = useShiftConfigs();
   const [editing, setEditing] = useState<ShiftConfig | null>(null);
   const [adding, setAdding] = useState(false);
@@ -129,8 +131,9 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
     const autoSub = shiftSub(form.startHour ?? 0, form.endHour ?? 0);
     const payload = { ...form, sub: autoSub };
     try {
+      let res: Response;
       if (adding) {
-        await fetch("/api/pd/shift-configs", {
+        res = await fetch("/api/pd/shift-configs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -140,14 +143,28 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
         const body = form.key && form.key !== editing.key
           ? { ...payload, newKey: form.key }
           : payload;
-        await fetch(`/api/pd/shift-configs/${editing.key}`, {
+        res = await fetch(`/api/pd/shift-configs/${editing.key}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
+      } else {
+        return;
+      }
+
+      if (!res!.ok) {
+        const error = await res!.json().catch(() => ({}));
+        throw new Error((error as { error?: string }).error ?? "Failed to save shift");
       }
       qc.invalidateQueries({ queryKey: ["shift-configs"] });
+      toast({ title: adding ? "Shift added" : "Shift updated" });
       closeForm();
+    } catch (error) {
+      toast({
+        title: "Shift save failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -155,8 +172,21 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
 
   async function remove(key: string) {
     if (!confirm("Delete this shift?")) return;
-    await fetch(`/api/pd/shift-configs/${key}`, { method: "DELETE" });
-    qc.invalidateQueries({ queryKey: ["shift-configs"] });
+    try {
+      const res = await fetch(`/api/pd/shift-configs/${key}`, { method: "DELETE" });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error((error as { error?: string }).error ?? "Failed to delete shift");
+      }
+      qc.invalidateQueries({ queryKey: ["shift-configs"] });
+      toast({ title: "Shift deleted" });
+    } catch (error) {
+      toast({
+        title: "Shift delete failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
   }
 
   const showForm = adding || !!editing;

@@ -24,6 +24,7 @@ import {
   getMysqlOfficers,
   getMysqlShiftConfigs,
   isMysqlDatabaseUrl,
+  mysqlExecute,
 } from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
@@ -585,6 +586,7 @@ router.get("/ems/shift-configs", async (_req, res): Promise<void> => {
 });
 
 router.post("/ems/shift-configs", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const { key, label, sub, icon, startHour, endHour, sortOrder } = req.body as {
     key: string; label: string; sub?: string; icon?: string; startHour: number; endHour: number; sortOrder?: number;
   };
@@ -592,8 +594,29 @@ router.post("/ems/shift-configs", async (req, res): Promise<void> => {
     res.status(400).json({ error: "key, label, startHour, endHour required" });
     return;
   }
+  const cleanKey = key.toUpperCase().replace(/\s+/g, "_");
+  if (isMysqlDatabaseUrl) {
+    try {
+      await mysqlExecute(
+        `INSERT INTO pd_shift_configs
+          (\`key\`, label, sub, icon, start_hour, end_hour, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [cleanKey, label, sub ?? "", icon ?? "●", startHour, endHour, sortOrder ?? 99],
+      );
+      const row = (await getMysqlShiftConfigs()).find((item) => item.key === cleanKey) ?? null;
+      res.status(201).json(row);
+      return;
+    } catch (err: any) {
+      const message = String(err?.message ?? "");
+      if (message.toLowerCase().includes("duplicate")) {
+        res.status(409).json({ error: "Shift key already exists" });
+        return;
+      }
+      throw err;
+    }
+  }
   const [row] = await db.insert(shiftConfigsTable).values({
-    key: key.toUpperCase().replace(/\s+/g, "_"),
+    key: cleanKey,
     label, sub: sub ?? "", icon: icon ?? "●",
     startHour, endHour, sortOrder: sortOrder ?? 99,
   }).returning();
@@ -601,10 +624,47 @@ router.post("/ems/shift-configs", async (req, res): Promise<void> => {
 });
 
 router.put("/ems/shift-configs/:key", async (req, res): Promise<void> => {
+  if (guard(req, res, 2)) return;
   const { key } = req.params;
   const { newKey, label, sub, icon, startHour, endHour, sortOrder } = req.body as {
     newKey?: string; label?: string; sub?: string; icon?: string; startHour?: number; endHour?: number; sortOrder?: number;
   };
+
+  if (isMysqlDatabaseUrl) {
+    const rows = await getMysqlShiftConfigs();
+    const base = rows.find((row) => row.key === key);
+    if (!base) {
+      res.status(404).json({ error: "Shift not found" });
+      return;
+    }
+
+    const finalKey = (newKey ?? key).toUpperCase().replace(/\s+/g, "_");
+    const finalLabel = label ?? base.label;
+    const finalSub = sub ?? base.sub;
+    const finalIcon = icon ?? base.icon;
+    const finalStartHour = startHour ?? base.startHour;
+    const finalEndHour = endHour ?? base.endHour;
+    const finalSortOrder = sortOrder ?? base.sortOrder;
+
+    if (finalKey !== key) {
+      const duplicate = rows.find((row) => row.key === finalKey);
+      if (duplicate) {
+        res.status(409).json({ error: "Shift key already exists" });
+        return;
+      }
+    }
+
+    await mysqlExecute(
+      `UPDATE pd_shift_configs
+       SET \`key\` = ?, label = ?, sub = ?, icon = ?, start_hour = ?, end_hour = ?, sort_order = ?
+       WHERE \`key\` = ?`,
+      [finalKey, finalLabel, finalSub, finalIcon, finalStartHour, finalEndHour, finalSortOrder, key],
+    );
+
+    const row = (await getMysqlShiftConfigs()).find((item) => item.key === finalKey) ?? null;
+    res.json(row);
+    return;
+  }
 
   // Fetch current row first
   const existing = await db.select().from(shiftConfigsTable).where(eq(shiftConfigsTable.key, key));
@@ -643,7 +703,17 @@ router.put("/ems/shift-configs/:key", async (req, res): Promise<void> => {
 });
 
 router.delete("/ems/shift-configs/:key", async (req, res): Promise<void> => {
+  if (guard(req, res, 3)) return;
   const { key } = req.params;
+  if (isMysqlDatabaseUrl) {
+    const result = await mysqlExecute(`DELETE FROM pd_shift_configs WHERE \`key\` = ?`, [key]);
+    if ((result.affectedRows ?? 0) === 0) {
+      res.status(404).json({ error: "Shift not found" });
+      return;
+    }
+    res.sendStatus(204);
+    return;
+  }
   const [row] = await db.delete(shiftConfigsTable).where(eq(shiftConfigsTable.key, key)).returning();
   if (!row) { res.status(404).json({ error: "Shift not found" }); return; }
   res.sendStatus(204);
