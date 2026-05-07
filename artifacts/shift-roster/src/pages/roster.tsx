@@ -41,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Plus, Pencil, Trash2, Shield, SearchX, Check, X, LayoutGrid, ArrowUp, UserMinus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { refreshPdViews } from "@/lib/pd-refresh";
 
 const RANK_ORDER: Record<string, number> = {
   "CHIEF": 1,
@@ -199,24 +200,17 @@ export default function RosterPage() {
   const updateOfficer = useUpdateOfficer();
   const deleteOfficer = useDeleteOfficer();
 
-  function invalidateAll() {
-    queryClient.invalidateQueries({ queryKey: getListOfficersQueryKey() });
-    queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/pd/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/pd/breakdown"] });
-    queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    queryClient.invalidateQueries({ queryKey: ["profile"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
+  async function invalidateAll() {
+    await queryClient.invalidateQueries({ queryKey: getListOfficersQueryKey() });
+    await refreshPdViews(queryClient);
   }
 
   const handleCreate = (data: any) => {
     createOfficer.mutate(
       { data },
       {
-        onSuccess: () => {
-          invalidateAll();
+        onSuccess: async () => {
+          await invalidateAll();
           setIsCreateOpen(false);
           toast({ title: "Officer added" });
         },
@@ -248,8 +242,8 @@ export default function RosterPage() {
         } as any,
       },
       {
-        onSuccess: () => {
-          invalidateAll();
+        onSuccess: async () => {
+          await invalidateAll();
           setExPdOfficer(null);
           toast({
             title: "Officer moved to Ex-PD",
@@ -269,8 +263,8 @@ export default function RosterPage() {
     updateOfficer.mutate(
       { id: editOfficer.id, data },
       {
-        onSuccess: () => {
-          invalidateAll();
+        onSuccess: async () => {
+          await invalidateAll();
           setEditOfficer(null);
           if (isExitStatus) {
             toast({
@@ -290,8 +284,8 @@ export default function RosterPage() {
     deleteOfficer.mutate(
       { id },
       {
-        onSuccess: () => {
-          invalidateAll();
+        onSuccess: async () => {
+          await invalidateAll();
           toast({ title: "Officer removed" });
         },
       }

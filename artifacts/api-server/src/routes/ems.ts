@@ -39,6 +39,7 @@ function parseHms(h: string | null | undefined): number {
 }
 
 function secondsToHms(secs: number): string {
+  if (secs < 0) secs = 0;
   if (secs === 0) return "00:00:00";
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
@@ -247,7 +248,7 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
     }
   }
 
-  const monthlyTotalSecs = Object.values(pdLogSecs).reduce((a, b) => a + b, 0);
+  const monthlyTotalSecs = Math.max(0, Object.values(pdLogSecs).reduce((a, b) => a + b, 0));
 
   // Top performers this week — PD officers only (aggregate across selected shifts)
   const weekLogSecs: Record<string, number> = {};
@@ -264,13 +265,13 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
     }
   }
   const weeklyTopPerformers = Object.entries(weekLogSecs)
-    .map(([cs, secs]) => ({ csNumber: cs, name: pdMap[cs]!.name, rank: pdMap[cs]!.rank, totalSecs: secs }))
+    .map(([cs, secs]) => ({ csNumber: cs, name: pdMap[cs]!.name, rank: pdMap[cs]!.rank, totalSecs: Math.max(0, secs) }))
     .sort((a, b) => b.totalSecs - a.totalSecs)
     .map((p, i) => ({ ...p, totalHours: secondsToHms(p.totalSecs), position: i + 1 }));
 
   // Top performers monthly — PD officers only
   const monthlyTopPerformers = Object.entries(pdLogSecs)
-    .map(([cs, secs]) => ({ csNumber: cs, name: pdMap[cs]!.name, rank: pdMap[cs]!.rank, totalSecs: secs }))
+    .map(([cs, secs]) => ({ csNumber: cs, name: pdMap[cs]!.name, rank: pdMap[cs]!.rank, totalSecs: Math.max(0, secs) }))
     .sort((a, b) => b.totalSecs - a.totalSecs)
     .map((p, i) => ({ ...p, totalHours: secondsToHms(p.totalSecs), position: i + 1 }));
 

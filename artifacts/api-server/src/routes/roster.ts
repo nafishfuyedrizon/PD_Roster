@@ -5,6 +5,7 @@ import { syncVotersToQualChart } from "./qualification.js";
 import { syncStudentProgressionsWithRoster } from "./student-progressions.js";
 import { auditLog } from "../lib/audit.js";
 import { guard } from "../lib/auth-guard.js";
+import { recomputeAllDutyHours } from "../lib/discord-bot.js";
 import {
   ListOfficersQueryParams,
   ListOfficersResponse,
@@ -126,6 +127,14 @@ async function ensureMysqlQualificationEntry(officer: Awaited<ReturnType<typeof 
   );
 }
 
+async function safeRecomputeDutyHours(): Promise<void> {
+  try {
+    await recomputeAllDutyHours();
+  } catch (error) {
+    console.error("[roster] duty recompute failed", error);
+  }
+}
+
 router.get("/roster", async (req, res): Promise<void> => {
   const parsed = ListOfficersQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -229,6 +238,7 @@ router.post("/roster", async (req, res): Promise<void> => {
     if (officer && (officer.ftp || officer.isManagement)) {
       await syncVotersToQualChart();
     }
+    await safeRecomputeDutyHours();
 
     await auditLog(req, "CREATE", "officer", nextId, officer?.name ?? officer?.callSign ?? data.callSign, null);
     res.status(201).json(GetOfficerResponse.parse(officer));
@@ -663,6 +673,10 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
 
     if (deptChanged && (existing.department === "PTA" || officer.department === "PTA")) {
       await syncStudentProgressionsWithRoster();
+    }
+
+    if (oldCs !== newCs || nameChanged || discordUidChanged || existing.discordId !== officer.discordId) {
+      await safeRecomputeDutyHours();
     }
 
     const TRACKED = ["name","rank","status","callSign","division","department","dateOfJoining","lastPromotion","strikesMajor","strikesMinor","discordUsername","discordUid"] as const;

@@ -34,6 +34,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { refreshPdViews } from "@/lib/pd-refresh";
 import { Clock, TrendingUp, Users, Trophy, Search, Shield, Calendar, Hash, ChevronRight, Settings, Pencil, Trash2, Plus, Copy, Check } from "lucide-react";
 
 interface OfficerDutyDetail {
@@ -156,7 +157,8 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
         const error = await res!.json().catch(() => ({}));
         throw new Error((error as { error?: string }).error ?? "Failed to save shift");
       }
-      qc.invalidateQueries({ queryKey: ["shift-configs"] });
+      await qc.invalidateQueries({ queryKey: ["shift-configs"] });
+      await refreshPdViews(qc);
       toast({ title: adding ? "Shift added" : "Shift updated" });
       closeForm();
     } catch (error) {
@@ -178,7 +180,8 @@ function ShiftConfigModal({ open, onClose }: { open: boolean; onClose: () => voi
         const error = await res.json().catch(() => ({}));
         throw new Error((error as { error?: string }).error ?? "Failed to delete shift");
       }
-      qc.invalidateQueries({ queryKey: ["shift-configs"] });
+      await qc.invalidateQueries({ queryKey: ["shift-configs"] });
+      await refreshPdViews(qc);
       toast({ title: "Shift deleted" });
     } catch (error) {
       toast({
@@ -469,12 +472,7 @@ export default function PdDutyHourPage() {
 
   useEffect(() => {
     const id = setInterval(() => {
-      qcMain.invalidateQueries({ queryKey: ["/api/pd/stats"] });
-      qcMain.invalidateQueries({ queryKey: ["/api/pd/breakdown"] });
-      qcMain.invalidateQueries({ queryKey: ["/api/roster/stats"] });
-      qcMain.invalidateQueries({ queryKey: ["officer-duty"] });
-      qcMain.invalidateQueries({ queryKey: ["shift-configs"] });
-      qcMain.invalidateQueries({ queryKey: ["dashboard"] });
+      void refreshPdViews(qcMain);
     }, 30_000);
     return () => clearInterval(id);
   }, [qcMain]);

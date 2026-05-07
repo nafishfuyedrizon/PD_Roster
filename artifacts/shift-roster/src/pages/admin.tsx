@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Settings, Trash2, ChevronLeft, ChevronRight, Clock, Minus, Plus, Bot, RefreshCw, CheckSquare2, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { refreshPdViews } from "@/lib/pd-refresh";
 
 interface AdjOfficer {
   cs: string;
@@ -214,13 +215,7 @@ export default function AdminPage() {
       return res.json();
     },
     onSuccess: (_data, { officer, sign }) => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/pd/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/pd/breakdown"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
-      queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void refreshPdViews(queryClient);
       setAdjInputs((prev) => ({ ...prev, [officer.cs]: "" }));
       setAdjNotes((prev) => ({ ...prev, [officer.cs]: "" }));
       const shiftCount = selectedShifts.size;
@@ -242,13 +237,7 @@ export default function AdminPage() {
       await fetch(`/api/admin/duty-adjustments/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "duty-adjustments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/pd/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/pd/breakdown"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/roster/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/roster/week-periods"] });
-      queryClient.invalidateQueries({ queryKey: ["officer-duty"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void refreshPdViews(queryClient);
       toast({ title: "Adjustment removed" });
     },
   });
