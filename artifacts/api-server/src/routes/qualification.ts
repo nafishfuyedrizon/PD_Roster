@@ -235,6 +235,16 @@ function monthNameToNumber(value: string | null | undefined): number | null {
   return index >= 0 ? index + 1 : null;
 }
 
+function normalizeOfficerLookupName(value: string | null | undefined): string {
+  return (value ?? "").replace(/\s*\[\d+\]\s*$/u, "").trim().toLowerCase();
+}
+
+function extractBracketCitizenId(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = value.match(/\[(\d+)\]/u);
+  return match?.[1] ?? null;
+}
+
 /** Auto-insert any roster officers that are not yet in the qual chart.
  *  PTA officers are only included if they are confirmed Solo Cadets. */
 async function syncRosterToQualChart(): Promise<void> {
@@ -370,6 +380,21 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       getMysqlAdminDutyLogs({}),
     ]);
 
+    const [citationRows, acceptedFirRows] = await Promise.all([
+      mysqlQuery<{ officer_name: string | null; posted_at: unknown }>(
+        `SELECT officer_name, posted_at
+         FROM pd_citations
+         WHERE officer_name IS NOT NULL AND officer_name <> ''`,
+      ),
+      mysqlQuery<{ officer_name: string | null; accepted_at: unknown }>(
+        `SELECT officer_name, accepted_at
+         FROM pd_fir
+         WHERE status = 'accepted'
+           AND officer_name IS NOT NULL
+           AND officer_name <> ''`,
+      ),
+    ]);
+
     const soloBadges = new Set(
       cadets
         .filter((cadet) => cadet.currentPhase === "Solo Cadet")
@@ -381,6 +406,19 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       return soloBadges.has(officer.callSign ?? "");
     });
     const entryByName = new Map(entries.map((entry) => [entry.name, entry]));
+    const citationAutoCountMap = new Map<string, number>();
+    const acceptedFirCountMap = new Map<string, number>();
+    const officerMetaByName = new Map(
+      eligibleOfficers
+        .filter((officer) => officer.name)
+        .map((officer) => [
+          officer.name!,
+          {
+            citizenId: officer.citizenId ?? null,
+            sinceDate: parseMdyDate(officer.lastPromotion ?? officer.dateOfJoining ?? null),
+          },
+        ]),
+    );
 
     const dutyEventsByLicense = new Map<string, Array<{ eventType: string; eventAt: Date }>>();
     for (const event of dutyEvents) {
@@ -388,6 +426,37 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       const bucket = dutyEventsByLicense.get(event.licenseId) ?? [];
       bucket.push({ eventType: event.eventType, eventAt: event.eventAt });
       dutyEventsByLicense.set(event.licenseId, bucket);
+    }
+
+    for (const row of citationRows) {
+      const sourceName = row.officer_name ?? "";
+      const normalized = normalizeOfficerLookupName(sourceName);
+      const embeddedCitizenId = extractBracketCitizenId(sourceName);
+      const postedAt = row.posted_at ? new Date(row.posted_at as any) : null;
+      if (postedAt && Number.isNaN(postedAt.getTime())) continue;
+
+      const officer = eligibleOfficers.find((candidate) => {
+        if (!candidate.name) return false;
+        if (embeddedCitizenId && candidate.citizenId) {
+          return candidate.citizenId === embeddedCitizenId;
+        }
+        return normalizeOfficerLookupName(candidate.name) === normalized;
+      });
+      if (!officer?.name) continue;
+      const sinceDate = officerMetaByName.get(officer.name)?.sinceDate ?? null;
+      if (sinceDate && postedAt && postedAt < sinceDate) continue;
+      citationAutoCountMap.set(officer.name, (citationAutoCountMap.get(officer.name) ?? 0) + 1);
+    }
+
+    for (const row of acceptedFirRows) {
+      const officerName = row.officer_name?.trim();
+      if (!officerName) continue;
+      const meta = officerMetaByName.get(officerName);
+      if (!meta) continue;
+      const acceptedAt = row.accepted_at ? new Date(row.accepted_at as any) : null;
+      if (acceptedAt && Number.isNaN(acceptedAt.getTime())) continue;
+      if (meta.sinceDate && acceptedAt && acceptedAt < meta.sinceDate) continue;
+      acceptedFirCountMap.set(officerName, (acceptedFirCountMap.get(officerName) ?? 0) + 1);
     }
 
     const rows = eligibleOfficers.map((officer) => {
@@ -435,6 +504,9 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
         hoursInRank = Math.max(0, (dutySeconds + adjustmentSeconds) / 3600);
       }
 
+      const autoCitations = citationAutoCountMap.get(officer.name ?? "") ?? 0;
+      const manualCitationAdjustment = entry?.citationCount ?? 0;
+
       return {
         ...(entry ?? {
           id: 0,
@@ -458,6 +530,9 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
         joiningDate,
         daysInRank: getExclusiveDaysInRank(lastPromotion, joiningDate),
         hoursInRank,
+        citationAutoCount: autoCitations,
+        citationCount: autoCitations + manualCitationAdjustment,
+        acceptedFirCount: acceptedFirCountMap.get(officer.name ?? "") ?? 0,
         rosterLinked: true,
       };
     });

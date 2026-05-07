@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Message, Collection, TextChannel, ChannelType } from "discord.js";
+import { Client, GatewayIntentBits, Message, Collection, TextChannel, ChannelType, Partials, type MessageReaction, type User } from "discord.js";
 import { broadcastFirEvent } from "../routes/fir";
 import { db } from "@workspace/db";
 import {
@@ -894,8 +894,26 @@ function parseFir(text: string): ParsedFir {
 }
 
 function isFirMessage(text: string): boolean {
-  return /new fir submission|fir submission/i.test(text) ||
-    (/complainant/i.test(text) && /description of event/i.test(text));
+  const normalized = stripDiscordMarkdown(text).toLowerCase();
+  return /pd\s*fir|new fir submission|fir submission/.test(normalized) ||
+    (
+      normalized.includes("complainant") &&
+      (
+        normalized.includes("description of event") ||
+        normalized.includes("description:") ||
+        normalized.includes("suspect details") ||
+        normalized.includes("cid:")
+      )
+    );
+}
+
+function getFirStatusFromReactions(msg: Message): "accepted" | "rejected" | null {
+  const names = [...msg.reactions.cache.values()]
+    .map((reaction) => reaction.emoji.name ?? "")
+    .filter(Boolean);
+  if (names.some((name) => ["✅", "☑️", "✔️"].includes(name))) return "accepted";
+  if (names.some((name) => ["❌", "🚫", "⛔"].includes(name))) return "rejected";
+  return null;
 }
 
 function stripDiscordMarkdown(text: string): string {
@@ -930,24 +948,85 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
 
   const threadReplies = await fetchFirThreadReplies(msg);
   const threadId = msg.thread?.id ?? null;
+  const reactionStatus = getFirStatusFromReactions(msg);
 
   try {
     const serializedReplies = threadReplies.length > 0 ? JSON.stringify(threadReplies) : null;
     if (isMysqlDatabaseUrl) {
-      const existing = await mysqlQuery<{ id: number; thread_id: string | null; thread_replies: string | null }>(
-        `SELECT id, thread_id, thread_replies FROM pd_fir WHERE discord_message_id = ? LIMIT 1`,
+      const existing = await mysqlQuery<{
+        id: number;
+        thread_id: string | null;
+        thread_replies: string | null;
+        complainant_name: string | null;
+        complainant_cid: string | null;
+        complainant_contact: string | null;
+        event_description: string | null;
+        suspect_details: string | null;
+        evidence: string | null;
+        officer_name: string | null;
+        raw_content: string | null;
+        status: string | null;
+        accepted_at: unknown;
+      }>(
+        `SELECT id, thread_id, thread_replies, complainant_name, complainant_cid, complainant_contact,
+                event_description, suspect_details, evidence, officer_name, raw_content, status, accepted_at
+         FROM pd_fir WHERE discord_message_id = ? LIMIT 1`,
         [msg.id],
       );
       if (existing.length > 0) {
         const current = existing[0]!;
-        if ((current.thread_id ?? null) === threadId && (current.thread_replies ?? null) === serializedReplies) {
+        const nextStatus = reactionStatus ?? current.status ?? "pending";
+        const parsedUnchanged =
+          (current.complainant_name ?? null) === (parsed.complainantName ?? null) &&
+          (current.complainant_cid ?? null) === (parsed.complainantCid ?? null) &&
+          (current.complainant_contact ?? null) === (parsed.complainantContact ?? null) &&
+          (current.event_description ?? null) === (parsed.eventDescription ?? null) &&
+          (current.suspect_details ?? null) === (parsed.suspectDetails ?? null) &&
+          (current.evidence ?? null) === (parsed.evidence ?? null) &&
+          (current.raw_content ?? null) === rawCombined.slice(0, 4000);
+        if (
+          (current.thread_id ?? null) === threadId &&
+          (current.thread_replies ?? null) === serializedReplies &&
+          parsedUnchanged &&
+          (current.status ?? "pending") === nextStatus
+        ) {
           return "skipped";
         }
         await mysqlExecute(
           `UPDATE pd_fir
-           SET thread_id = ?, thread_replies = ?
+           SET complainant_name = ?,
+               complainant_cid = ?,
+               complainant_contact = ?,
+               event_description = ?,
+               suspect_details = ?,
+               evidence = ?,
+               officer_name = COALESCE(officer_name, ?),
+               raw_content = ?,
+               thread_id = ?,
+               thread_replies = ?,
+               status = ?,
+               accepted_at = CASE
+                 WHEN ? = 'accepted' AND accepted_at IS NULL THEN NOW()
+                 WHEN ? <> 'accepted' THEN NULL
+                 ELSE accepted_at
+               END
            WHERE discord_message_id = ?`,
-          [threadId, serializedReplies, msg.id],
+          [
+            parsed.complainantName,
+            parsed.complainantCid,
+            parsed.complainantContact,
+            parsed.eventDescription,
+            parsed.suspectDetails,
+            parsed.evidence,
+            parsed.officerName,
+            rawCombined.slice(0, 4000),
+            threadId,
+            serializedReplies,
+            nextStatus,
+            nextStatus,
+            nextStatus,
+            msg.id,
+          ],
         );
         broadcastFirEvent("thread_update");
         return "updated";
@@ -956,8 +1035,8 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
         await mysqlExecute(
           `INSERT INTO pd_fir
             (id, discord_message_id, complainant_name, complainant_cid, complainant_contact, event_description,
-             suspect_details, evidence, officer_name, raw_content, thread_id, thread_replies, posted_at, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+             suspect_details, evidence, officer_name, raw_content, thread_id, thread_replies, status, accepted_at, posted_at, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
           [
             nextId,
             msg.id,
@@ -971,6 +1050,8 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
             rawCombined.slice(0, 4000),
             threadId,
             serializedReplies,
+            reactionStatus ?? "pending",
+            reactionStatus === "accepted" ? msg.createdAt : null,
             msg.createdAt,
           ],
         );
@@ -979,7 +1060,21 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
       }
     } else {
       const existing = await db
-        .select({ id: pdFirTable.id, threadId: pdFirTable.threadId, threadReplies: pdFirTable.threadReplies })
+        .select({
+          id: pdFirTable.id,
+          threadId: pdFirTable.threadId,
+          threadReplies: pdFirTable.threadReplies,
+          complainantName: pdFirTable.complainantName,
+          complainantCid: pdFirTable.complainantCid,
+          complainantContact: pdFirTable.complainantContact,
+          eventDescription: pdFirTable.eventDescription,
+          suspectDetails: pdFirTable.suspectDetails,
+          evidence: pdFirTable.evidence,
+          officerName: pdFirTable.officerName,
+          rawContent: pdFirTable.rawContent,
+          status: pdFirTable.status,
+          acceptedAt: pdFirTable.acceptedAt,
+        })
         .from(pdFirTable)
         .where(eq(pdFirTable.discordMessageId, msg.id))
         .limit(1)
@@ -987,13 +1082,34 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
 
       if (existing) {
         const currentReplies = existing.threadReplies ? JSON.stringify(existing.threadReplies) : null;
-        if ((existing.threadId ?? null) === threadId && currentReplies === serializedReplies) {
+        const nextStatus = reactionStatus ?? existing.status ?? "pending";
+        const nextOfficerName = existing.officerName ?? parsed.officerName ?? null;
+        const parsedUnchanged =
+          (existing.complainantName ?? null) === (parsed.complainantName ?? null) &&
+          (existing.complainantCid ?? null) === (parsed.complainantCid ?? null) &&
+          (existing.complainantContact ?? null) === (parsed.complainantContact ?? null) &&
+          (existing.eventDescription ?? null) === (parsed.eventDescription ?? null) &&
+          (existing.suspectDetails ?? null) === (parsed.suspectDetails ?? null) &&
+          (existing.evidence ?? null) === (parsed.evidence ?? null) &&
+          (existing.rawContent ?? null) === rawCombined.slice(0, 4000) &&
+          (existing.officerName ?? null) === nextOfficerName;
+        if ((existing.threadId ?? null) === threadId && currentReplies === serializedReplies && parsedUnchanged && (existing.status ?? "pending") === nextStatus) {
           return "skipped";
         }
         await db.update(pdFirTable)
           .set({
+            complainantName: parsed.complainantName,
+            complainantCid: parsed.complainantCid,
+            complainantContact: parsed.complainantContact,
+            eventDescription: parsed.eventDescription,
+            suspectDetails: parsed.suspectDetails,
+            evidence: parsed.evidence,
+            officerName: nextOfficerName,
+            rawContent: rawCombined.slice(0, 4000),
             threadId,
             threadReplies: threadReplies.length > 0 ? threadReplies : null,
+            status: nextStatus,
+            acceptedAt: nextStatus === "accepted" ? (existing.acceptedAt ?? new Date()) : null,
           })
           .where(eq(pdFirTable.id, existing.id));
         broadcastFirEvent("thread_update");
@@ -1012,6 +1128,8 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
         rawContent:         rawCombined.slice(0, 4000),
         threadId,
         threadReplies:      threadReplies.length > 0 ? threadReplies : null,
+        status:             reactionStatus ?? "pending",
+        acceptedAt:         reactionStatus === "accepted" ? msg.createdAt : null,
         postedAt:           msg.createdAt,
       });
       broadcastFirEvent("new_fir");
@@ -1302,8 +1420,10 @@ export async function startDiscordBot() {
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.GuildMessageReactions,
       GatewayIntentBits.MessageContent,
     ],
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction],
   });
 
   client.once("clientReady", async () => {
@@ -1378,6 +1498,30 @@ export async function startDiscordBot() {
       !msg.author.bot
     ) {
       await updateFirThreadByThreadId(msg.channelId);
+    }
+  });
+
+  client.on("messageReactionAdd", async (reaction: MessageReaction, _user: User) => {
+    try {
+      if (reaction.partial) await reaction.fetch();
+      const message = reaction.message.partial ? await reaction.message.fetch() : reaction.message;
+      if (FIR_CHANNEL_ID && message.channelId === FIR_CHANNEL_ID) {
+        await processFirMessage(message as Message);
+      }
+    } catch (err) {
+      logger.warn({ err }, "Could not sync FIR reaction add");
+    }
+  });
+
+  client.on("messageReactionRemove", async (reaction: MessageReaction, _user: User) => {
+    try {
+      if (reaction.partial) await reaction.fetch();
+      const message = reaction.message.partial ? await reaction.message.fetch() : reaction.message;
+      if (FIR_CHANNEL_ID && message.channelId === FIR_CHANNEL_ID) {
+        await processFirMessage(message as Message);
+      }
+    } catch (err) {
+      logger.warn({ err }, "Could not sync FIR reaction remove");
     }
   });
 

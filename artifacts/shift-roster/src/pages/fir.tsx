@@ -835,7 +835,11 @@ export default function FirPage() {
               <FirCard
                 key={fir.id}
                 fir={fir}
-                onStatusChange={() => qc.invalidateQueries({ queryKey: ["/api/fir"] })}
+                onStatusChange={() => {
+                  qc.invalidateQueries({ queryKey: ["/api/fir"] });
+                  qc.invalidateQueries({ queryKey: ["/api/fir/stats"] });
+                  qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
+                }}
               />
             ))}
           </div>
