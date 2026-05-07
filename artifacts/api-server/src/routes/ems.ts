@@ -26,6 +26,7 @@ import {
   isMysqlDatabaseUrl,
   mysqlExecute,
 } from "../lib/pd-mysql-read.js";
+import { recomputeAllDutyHours } from "../lib/discord-bot.js";
 
 const router: IRouter = Router();
 
@@ -45,6 +46,62 @@ function secondsToHms(secs: number): string {
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+async function ensureMysqlLegacyShiftConfigTable(): Promise<void> {
+  await mysqlExecute(
+    `CREATE TABLE IF NOT EXISTS shift_config (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      shift_name VARCHAR(255) NOT NULL UNIQUE,
+      display_name VARCHAR(255) NULL,
+      start_hour INT NOT NULL,
+      end_hour INT NOT NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  );
+}
+
+async function upsertMysqlLegacyShiftConfig(params: {
+  shiftName: string;
+  displayName: string;
+  startHour: number;
+  endHour: number;
+  previousShiftName?: string | null;
+}): Promise<void> {
+  await ensureMysqlLegacyShiftConfigTable();
+  const previous = params.previousShiftName?.trim();
+  if (previous && previous !== params.shiftName) {
+    await mysqlExecute(`DELETE FROM shift_config WHERE shift_name = ?`, [previous]);
+  }
+  await mysqlExecute(
+    `INSERT INTO shift_config (shift_name, display_name, start_hour, end_hour, updated_at)
+     VALUES (?, ?, ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE
+       display_name = VALUES(display_name),
+       start_hour = VALUES(start_hour),
+       end_hour = VALUES(end_hour),
+       updated_at = NOW()`,
+    [params.shiftName, params.displayName, params.startHour, params.endHour],
+  );
+}
+
+async function deleteMysqlLegacyShiftConfig(params: {
+  shiftName?: string | null;
+  displayName?: string | null;
+}): Promise<void> {
+  await ensureMysqlLegacyShiftConfigTable();
+  const clauses: string[] = [];
+  const values: string[] = [];
+  if (params.shiftName) {
+    clauses.push(`shift_name = ?`);
+    values.push(params.shiftName);
+  }
+  if (params.displayName) {
+    clauses.push(`display_name = ?`);
+    values.push(params.displayName);
+  }
+  if (clauses.length === 0) return;
+  await mysqlExecute(`DELETE FROM shift_config WHERE ${clauses.join(" OR ")}`, values);
 }
 
 // Sort key for week periods that handles year boundaries correctly.
@@ -604,6 +661,13 @@ router.post("/ems/shift-configs", async (req, res): Promise<void> => {
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [cleanKey, label, sub ?? "", icon ?? "●", startHour, endHour, sortOrder ?? 99],
       );
+      await upsertMysqlLegacyShiftConfig({
+        shiftName: label,
+        displayName: cleanKey,
+        startHour,
+        endHour,
+      });
+      await recomputeAllDutyHours();
       const row = (await getMysqlShiftConfigs()).find((item) => item.key === cleanKey) ?? null;
       res.status(201).json(row);
       return;
@@ -661,6 +725,14 @@ router.put("/ems/shift-configs/:key", async (req, res): Promise<void> => {
        WHERE \`key\` = ?`,
       [finalKey, finalLabel, finalSub, finalIcon, finalStartHour, finalEndHour, finalSortOrder, key],
     );
+    await upsertMysqlLegacyShiftConfig({
+      shiftName: finalLabel,
+      displayName: finalKey,
+      startHour: finalStartHour,
+      endHour: finalEndHour,
+      previousShiftName: base.label,
+    });
+    await recomputeAllDutyHours();
 
     const row = (await getMysqlShiftConfigs()).find((item) => item.key === finalKey) ?? null;
     res.json(row);
@@ -707,11 +779,17 @@ router.delete("/ems/shift-configs/:key", async (req, res): Promise<void> => {
   if (guard(req, res, 3)) return;
   const { key } = req.params;
   if (isMysqlDatabaseUrl) {
+    const base = (await getMysqlShiftConfigs()).find((row) => row.key === key) ?? null;
     const result = await mysqlExecute(`DELETE FROM pd_shift_configs WHERE \`key\` = ?`, [key]);
     if ((result.affectedRows ?? 0) === 0) {
       res.status(404).json({ error: "Shift not found" });
       return;
     }
+    await deleteMysqlLegacyShiftConfig({
+      shiftName: base?.label ?? null,
+      displayName: key,
+    });
+    await recomputeAllDutyHours();
     res.sendStatus(204);
     return;
   }

@@ -621,6 +621,9 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
     const strikesMajorChanged = existing.strikesMajor !== officer.strikesMajor && officer.strikesMajor !== undefined;
     const strikesMinorChanged = existing.strikesMinor !== officer.strikesMinor && officer.strikesMinor !== undefined;
     const discordUidChanged = existing.discordUid !== officer.discordUid && officer.discordUid !== undefined;
+    const licenseChanged =
+      existing.rockstarLicenseId !== officer.rockstarLicenseId &&
+      officer.rockstarLicenseId !== undefined;
 
     if (officer.name) {
       const qualIdRows = await mysqlQuery<{ id: number }>(
@@ -675,11 +678,11 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
       await syncStudentProgressionsWithRoster();
     }
 
-    if (oldCs !== newCs || nameChanged || discordUidChanged || existing.discordId !== officer.discordId) {
+    if (oldCs !== newCs || nameChanged || discordUidChanged || existing.discordId !== officer.discordId || licenseChanged) {
       await safeRecomputeDutyHours();
     }
 
-    const TRACKED = ["name","rank","status","callSign","division","department","dateOfJoining","lastPromotion","strikesMajor","strikesMinor","discordUsername","discordUid"] as const;
+    const TRACKED = ["name","rank","status","callSign","division","department","dateOfJoining","lastPromotion","strikesMajor","strikesMinor","discordUsername","discordUid","rockstarLicenseId"] as const;
     const diff: Record<string, { old: unknown; new: unknown }> = {};
     for (const key of TRACKED) {
       const oldVal = (existing as any)[key];

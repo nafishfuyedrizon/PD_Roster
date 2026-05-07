@@ -31,7 +31,17 @@ function calcDaysInRank(
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const diff = Math.floor((today.getTime() - fromDate.getTime()) / 86_400_000);
-  return diff >= 0 ? diff : 0;
+  if (diff < 0) return 0;
+  return diff > 0 ? diff - 1 : 0;
+}
+
+function formatHourValue(hours: number | null): string | null {
+  if (hours == null || Number.isNaN(Number(hours))) return null;
+  const totalSeconds = Math.max(0, Math.round(Number(hours) * 3600));
+  const hh = Math.floor(totalSeconds / 3600);
+  const mm = Math.floor((totalSeconds % 3600) / 60);
+  const ss = totalSeconds % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
 }
 
 type QualEntry = {
@@ -1517,7 +1527,7 @@ export default function QualificationPage() {
                       <td className="px-4 py-3 text-center">
                         <span className="font-mono font-semibold text-foreground">
                           {(() => {
-                            const d = calcDaysInRank(e.lastPromotion, e.joiningDate);
+                            const d = e.daysInRank ?? calcDaysInRank(e.lastPromotion, e.joiningDate);
                             if (d == null) return <span className="text-muted-foreground/40">—</span>;
                             const fromJoining = !e.lastPromotion && !!e.joiningDate;
                             return (
@@ -1531,7 +1541,7 @@ export default function QualificationPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="font-mono font-semibold text-primary">
-                          {e.hoursInRank != null ? Number(e.hoursInRank).toFixed(2) : <span className="text-muted-foreground/40">—</span>}
+                          {formatHourValue(e.hoursInRank) ?? <span className="text-muted-foreground/40">—</span>}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">

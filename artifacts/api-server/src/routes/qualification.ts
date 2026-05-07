@@ -3,6 +3,8 @@ import { db, qualificationChartTable, officersTable, studentProgressionsTable } 
 import { eq, sql, notInArray, or, ilike, and } from "drizzle-orm";
 import { auditLog } from "../lib/audit.js";
 import {
+  getMysqlDutyAdjustments,
+  getMysqlDutyEvents,
   getMysqlFtpMembers,
   getMysqlOfficers,
   getMysqlQualificationEntries,
@@ -158,6 +160,68 @@ function todayMDY(): string {
   return `${mm}/${dd}/${d.getFullYear()}`;
 }
 
+function parseMdyDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const parts = value.split("/").map(Number);
+  if (parts.length !== 3) return null;
+  const [mm, dd, yyyy] = parts;
+  if (!mm || !dd || !yyyy) return null;
+  const date = new Date(yyyy, mm - 1, dd);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function getExclusiveDaysInRank(
+  lastPromotion: string | null | undefined,
+  joiningDate: string | null | undefined,
+): number | null {
+  const since = parseMdyDate(lastPromotion || joiningDate || null);
+  if (!since) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.floor((today.getTime() - since.getTime()) / 86_400_000);
+  if (diff < 0) return 0;
+  return diff > 0 ? diff - 1 : 0;
+}
+
+function getDutySessions(events: Array<{ eventType: string; eventAt: Date }>) {
+  const sorted = [...events].sort((a, b) => a.eventAt.getTime() - b.eventAt.getTime());
+  const sessions: Array<{ start: Date; end: Date }> = [];
+  let lastOn: Date | null = null;
+  const now = new Date();
+  for (const event of sorted) {
+    if (event.eventType === "on") {
+      lastOn = event.eventAt;
+      continue;
+    }
+    if (event.eventType === "off" && lastOn && event.eventAt > lastOn) {
+      sessions.push({ start: lastOn, end: event.eventAt });
+      lastOn = null;
+    }
+  }
+  if (lastOn && now > lastOn) {
+    sessions.push({ start: lastOn, end: now });
+  }
+  return sessions;
+}
+
+function getOverlapSeconds(start: Date, end: Date, since: Date): number {
+  const overlapStart = Math.max(start.getTime(), since.getTime());
+  const overlapEnd = Math.max(overlapStart, end.getTime());
+  return Math.max(0, Math.floor((overlapEnd - overlapStart) / 1000));
+}
+
+function monthNameToNumber(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const months = [
+    "JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
+    "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER",
+  ];
+  const index = months.indexOf(value.toUpperCase());
+  return index >= 0 ? index + 1 : null;
+}
+
 /** Auto-insert any roster officers that are not yet in the qual chart.
  *  PTA officers are only included if they are confirmed Solo Cadets. */
 async function syncRosterToQualChart(): Promise<void> {
@@ -284,7 +348,100 @@ async function syncRosterToQualChart(): Promise<void> {
 router.get("/qualification-chart", async (_req, res): Promise<void> => {
   if (isMysqlDatabaseUrl) {
     await Promise.all([syncRosterToQualChart(), syncVotersToQualChart()]);
-    res.json(await getMysqlQualificationEntries());
+    const [entries, allOfficers, cadets, dutyEvents, adjustments] = await Promise.all([
+      getMysqlQualificationEntries(),
+      getMysqlOfficers(),
+      getMysqlStudentProgressions(),
+      getMysqlDutyEvents(),
+      getMysqlDutyAdjustments(),
+    ]);
+
+    const soloBadges = new Set(
+      cadets
+        .filter((cadet) => cadet.currentPhase === "Solo Cadet")
+        .map((cadet) => cadet.badgeNumber)
+        .filter(Boolean),
+    );
+    const eligibleOfficers = allOfficers.filter((officer) => {
+      if (officer.department !== "PTA") return true;
+      return soloBadges.has(officer.callSign ?? "");
+    });
+    const entryByName = new Map(entries.map((entry) => [entry.name, entry]));
+
+    const dutyEventsByLicense = new Map<string, Array<{ eventType: string; eventAt: Date }>>();
+    for (const event of dutyEvents) {
+      if (!event.licenseId) continue;
+      const bucket = dutyEventsByLicense.get(event.licenseId) ?? [];
+      bucket.push({ eventType: event.eventType, eventAt: event.eventAt });
+      dutyEventsByLicense.set(event.licenseId, bucket);
+    }
+
+    const rows = eligibleOfficers.map((officer) => {
+      const entry = entryByName.get(officer.name ?? "") ?? null;
+      const lastPromotion = officer.lastPromotion ?? entry?.lastPromotion ?? null;
+      const joiningDate = officer.dateOfJoining ?? entry?.joiningDate ?? null;
+      const since = parseMdyDate(lastPromotion || joiningDate);
+      let hoursInRank = entry?.hoursInRank ?? 0;
+
+      if (since && officer.rockstarLicenseId) {
+        const sessions = getDutySessions(dutyEventsByLicense.get(officer.rockstarLicenseId) ?? []);
+        const dutySeconds = sessions.reduce(
+          (sum, session) => sum + getOverlapSeconds(session.start, session.end, since),
+          0,
+        );
+        const adjustmentSeconds = adjustments
+          .filter((adjustment) => {
+            if (adjustment.officerCs !== officer.callSign && adjustment.officerName !== officer.name) {
+              return false;
+            }
+            const monthNumber = monthNameToNumber(adjustment.dutyMonth);
+            const yearNumber = Number(adjustment.dutyYear);
+            if (!monthNumber || !Number.isFinite(yearNumber)) return false;
+            const adjustmentDate = new Date(yearNumber, monthNumber - 1, 1);
+            adjustmentDate.setHours(0, 0, 0, 0);
+            return adjustmentDate >= since;
+          })
+          .reduce((sum, adjustment) => sum + Number(adjustment.adjustmentSeconds ?? 0), 0);
+
+        hoursInRank = Math.max(0, (dutySeconds + adjustmentSeconds) / 3600);
+      }
+
+      return {
+        ...(entry ?? {
+          id: 0,
+          citationCount: 0,
+          citationAutoCount: 0,
+          firCount: 0,
+          acceptedFirCount: 0,
+          strikesMajor: "0/4",
+          strikesMinor: "0/2",
+          qualStatus: null,
+          notes: null,
+          ftbVotes: {},
+          hcVotes: {},
+          rosterLinked: true,
+        }),
+        name: officer.name ?? entry?.name ?? "",
+        discordUid: officer.discordUid ?? entry?.discordUid ?? null,
+        rank: officer.rank ?? entry?.rank ?? null,
+        department: officer.department ?? entry?.department ?? null,
+        lastPromotion,
+        joiningDate,
+        daysInRank: getExclusiveDaysInRank(lastPromotion, joiningDate),
+        hoursInRank,
+        rosterLinked: true,
+      };
+    });
+
+    res.json(rows.sort((a, b) => {
+      if ((a.department ?? "") !== (b.department ?? "")) {
+        return (a.department ?? "").localeCompare(b.department ?? "");
+      }
+      if ((a.rank ?? "") !== (b.rank ?? "")) {
+        return rankOrder(a.rank ?? "") - rankOrder(b.rank ?? "");
+      }
+      return a.name.localeCompare(b.name);
+    }));
     return;
   }
   // Ensure all roster officers have a qual chart entry, and voter columns are in sync
