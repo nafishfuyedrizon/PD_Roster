@@ -604,11 +604,26 @@ function getBackfillCutoffDate(months = BACKFILL_MONTHS): Date {
 async function forEachMessageSince(
   channel: TextChannel,
   cutoff: Date,
-  handler: (msg: Message) => Promise<void>,
-): Promise<{ scanned: number; processed: number; reachedCutoff: boolean }> {
+  handler: (msg: Message) => Promise<{
+    matched?: boolean;
+    inserted?: number;
+    updated?: number;
+    skipped?: number;
+  } | void>,
+): Promise<{
+  scanned: number;
+  processed: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  reachedCutoff: boolean;
+}> {
   let before: string | undefined;
   let scanned = 0;
   let processed = 0;
+  let inserted = 0;
+  let updated = 0;
+  let skipped = 0;
   let reachedCutoff = false;
 
   for (let i = 0; i < MAX_BACKFILL_BATCHES; i++) {
@@ -623,8 +638,11 @@ async function forEachMessageSince(
 
     scanned += sorted.length;
     for (const msg of inWindow) {
-      await handler(msg);
-      processed++;
+      const result = await handler(msg);
+      if (result?.matched) processed++;
+      inserted += result?.inserted ?? 0;
+      updated += result?.updated ?? 0;
+      skipped += result?.skipped ?? 0;
     }
 
     const oldest = sorted[0];
@@ -636,6 +654,9 @@ async function forEachMessageSince(
         batchSize: sorted.length,
         scanned,
         processed,
+        inserted,
+        updated,
+        skipped,
         inWindow: inWindow.length,
         oldestAt: oldest?.createdAt?.toISOString() ?? null,
         newestAt: newest?.createdAt?.toISOString() ?? null,
@@ -654,7 +675,7 @@ async function forEachMessageSince(
     if (msgs.size < 100) break;
   }
 
-  return { scanned, processed, reachedCutoff };
+  return { scanned, processed, inserted, updated, skipped, reachedCutoff };
 }
 
 async function backfillHistory(channel: TextChannel) {
@@ -662,17 +683,22 @@ async function backfillHistory(channel: TextChannel) {
   logger.info({ channelId: channel.id, backfillMonths: BACKFILL_MONTHS, cutoffAt: cutoff.toISOString() }, "Starting history backfill");
   const dirtyPairs = new Set<string>();
 
-  const { scanned, processed, reachedCutoff } = await forEachMessageSince(
+  const { scanned, processed, inserted, skipped, reachedCutoff } = await forEachMessageSince(
     channel,
     cutoff,
     async (msg) => {
       const pair = await processMessage(msg, { skipRecompute: true });
-      if (pair) dirtyPairs.add(`${pair.licenseId}::${pair.weekPeriod}`);
+      if (!pair) return { matched: false };
+      if (pair.inserted) {
+        dirtyPairs.add(`${pair.licenseId}::${pair.weekPeriod}`);
+        return { matched: true, inserted: 1 };
+      }
+      return { matched: true, skipped: 1 };
     },
   );
 
   // Now do a single batch recompute for all affected pairs — no mid-flight flickering
-  logger.info({ scanned, processed, pairs: dirtyPairs.size, reachedCutoff }, "Events stored, starting batch recompute");
+  logger.info({ scanned, processed, inserted, skipped, pairs: dirtyPairs.size, reachedCutoff }, "Events stored, starting batch recompute");
   for (const key of dirtyPairs) {
     const [licenseId, weekPeriod] = key.split("::");
     if (licenseId && weekPeriod) {
@@ -680,8 +706,8 @@ async function backfillHistory(channel: TextChannel) {
     }
   }
 
-  logger.info({ scanned, processed, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff }, "History backfill complete");
-  await botLog("SYNC", "duty-hours", "History Backfill", { scanned, processed, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff });
+  logger.info({ scanned, processed, inserted, skipped, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff }, "History backfill complete");
+  await botLog("SYNC", "duty-hours", "History Backfill", { scanned, processed, inserted, skipped, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff });
 }
 
 async function reconcileRecentDutyMessages(channel: TextChannel) {
@@ -852,7 +878,7 @@ function stripDiscordMarkdown(text: string): string {
     .trim();
 }
 
-async function processFirMessage(msg: Message): Promise<boolean> {
+async function processFirMessage(msg: Message): Promise<"inserted" | "updated" | "skipped" | "ignored"> {
   const allTexts: string[] = [];
   if (msg.content) allTexts.push(msg.content);
   for (const embed of msg.embeds) {
@@ -865,31 +891,36 @@ async function processFirMessage(msg: Message): Promise<boolean> {
 
   const rawCombined = allTexts.join("\n");
   const combined = stripDiscordMarkdown(rawCombined);
-  if (!isFirMessage(combined)) return false;
+  if (!isFirMessage(combined)) return "ignored";
 
   const parsed = parseFir(combined);
 
   const hasData = !!(parsed.complainantName || parsed.complainantCid || parsed.eventDescription || parsed.suspectDetails);
-  if (!hasData) return false;
+  if (!hasData) return "ignored";
 
   const threadReplies = await fetchFirThreadReplies(msg);
   const threadId = msg.thread?.id ?? null;
 
   try {
-    let changed = false;
+    const serializedReplies = threadReplies.length > 0 ? JSON.stringify(threadReplies) : null;
     if (isMysqlDatabaseUrl) {
-      const existing = await mysqlQuery<{ id: number }>(
-        `SELECT id FROM pd_fir WHERE discord_message_id = ? LIMIT 1`,
+      const existing = await mysqlQuery<{ id: number; thread_id: string | null; thread_replies: string | null }>(
+        `SELECT id, thread_id, thread_replies FROM pd_fir WHERE discord_message_id = ? LIMIT 1`,
         [msg.id],
       );
       if (existing.length > 0) {
+        const current = existing[0]!;
+        if ((current.thread_id ?? null) === threadId && (current.thread_replies ?? null) === serializedReplies) {
+          return "skipped";
+        }
         await mysqlExecute(
           `UPDATE pd_fir
            SET thread_id = ?, thread_replies = ?
            WHERE discord_message_id = ?`,
-          [threadId, threadReplies.length > 0 ? JSON.stringify(threadReplies) : null, msg.id],
+          [threadId, serializedReplies, msg.id],
         );
-        changed = true;
+        broadcastFirEvent("thread_update");
+        return "updated";
       } else {
         const nextId = await getNextMysqlId("pd_fir");
         await mysqlExecute(
@@ -909,13 +940,36 @@ async function processFirMessage(msg: Message): Promise<boolean> {
             parsed.officerName,
             rawCombined.slice(0, 4000),
             threadId,
-            threadReplies.length > 0 ? JSON.stringify(threadReplies) : null,
+            serializedReplies,
             msg.createdAt,
           ],
         );
-        changed = true;
+        broadcastFirEvent("new_fir");
+        return "inserted";
       }
     } else {
+      const existing = await db
+        .select({ id: pdFirTable.id, threadId: pdFirTable.threadId, threadReplies: pdFirTable.threadReplies })
+        .from(pdFirTable)
+        .where(eq(pdFirTable.discordMessageId, msg.id))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+
+      if (existing) {
+        const currentReplies = existing.threadReplies ? JSON.stringify(existing.threadReplies) : null;
+        if ((existing.threadId ?? null) === threadId && currentReplies === serializedReplies) {
+          return "skipped";
+        }
+        await db.update(pdFirTable)
+          .set({
+            threadId,
+            threadReplies: threadReplies.length > 0 ? threadReplies : null,
+          })
+          .where(eq(pdFirTable.id, existing.id));
+        broadcastFirEvent("thread_update");
+        return "updated";
+      }
+
       await db.insert(pdFirTable).values({
         discordMessageId:   msg.id,
         complainantName:    parsed.complainantName,
@@ -929,21 +983,14 @@ async function processFirMessage(msg: Message): Promise<boolean> {
         threadId,
         threadReplies:      threadReplies.length > 0 ? threadReplies : null,
         postedAt:           msg.createdAt,
-      }).onConflictDoUpdate({
-        target: pdFirTable.discordMessageId,
-        set: {
-          threadId,
-          threadReplies: threadReplies.length > 0 ? threadReplies : null,
-        },
       });
-      changed = true;
+      broadcastFirEvent("new_fir");
+      return "inserted";
     }
-    broadcastFirEvent("new_fir");
-    return changed;
   } catch (err) {
     logger.error({ err, messageId: msg.id }, "Error saving FIR");
   }
-  return false;
+  return "ignored";
 }
 
 async function fetchFirThreadReplies(msg: Message): Promise<FirThreadMessage[]> {
@@ -1016,14 +1063,18 @@ async function backfillFir(channel: TextChannel) {
   const cutoff = getBackfillCutoffDate();
   logger.info({ channelId: channel.id, backfillMonths: BACKFILL_MONTHS, cutoffAt: cutoff.toISOString() }, "Starting FIR backfill");
   const result = await forEachMessageSince(channel, cutoff, async (msg) => {
-    await processFirMessage(msg);
+    const state = await processFirMessage(msg);
+    if (state === "inserted") return { matched: true, inserted: 1 };
+    if (state === "updated") return { matched: true, updated: 1 };
+    if (state === "skipped") return { matched: true, skipped: 1 };
+    return { matched: false };
   });
 
   logger.info({ channelId: channel.id, ...result, backfillMonths: BACKFILL_MONTHS }, "FIR backfill complete");
   await botLog("SYNC", "fir", "FIR Backfill", { ...result, backfillMonths: BACKFILL_MONTHS });
 }
 
-async function processCitationMessage(msg: Message): Promise<boolean> {
+async function processCitationMessage(msg: Message): Promise<"inserted" | "skipped" | "ignored"> {
   const allTexts: string[] = [];
   if (msg.content) allTexts.push(msg.content);
   for (const embed of msg.embeds) {
@@ -1035,7 +1086,7 @@ async function processCitationMessage(msg: Message): Promise<boolean> {
   }
 
   const combined = allTexts.join("\n");
-  if (!isCitationMessage(combined)) return false;
+  if (!isCitationMessage(combined)) return "ignored";
 
   const parsed = parseCitation(combined);
 
@@ -1073,6 +1124,15 @@ async function processCitationMessage(msg: Message): Promise<boolean> {
         inserted = true;
       }
     } else {
+      const existing = await db
+        .select({ id: pdCitationsTable.id })
+        .from(pdCitationsTable)
+        .where(eq(pdCitationsTable.discordMessageId, msg.id))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+      if (existing) {
+        return "skipped";
+      }
       await db.insert(pdCitationsTable).values({
         discordMessageId: msg.id,
         title:          parsed.title,
@@ -1087,21 +1147,24 @@ async function processCitationMessage(msg: Message): Promise<boolean> {
         officerName:    parsed.officerName,
         rawContent:     combined.slice(0, 4000),
         postedAt:       msg.createdAt,
-      }).onConflictDoNothing();
+      });
       inserted = true;
     }
-    return inserted;
+    return inserted ? "inserted" : "skipped";
   } catch (err) {
     logger.error({ err, messageId: msg.id }, "Error saving citation");
   }
-  return false;
+  return "ignored";
 }
 
 async function backfillCitations(channel: TextChannel) {
   const cutoff = getBackfillCutoffDate();
   logger.info({ channelId: channel.id, backfillMonths: BACKFILL_MONTHS, cutoffAt: cutoff.toISOString() }, "Starting citation backfill");
   const result = await forEachMessageSince(channel, cutoff, async (msg) => {
-    await processCitationMessage(msg);
+    const state = await processCitationMessage(msg);
+    if (state === "inserted") return { matched: true, inserted: 1 };
+    if (state === "skipped") return { matched: true, skipped: 1 };
+    return { matched: false };
   });
 
   logger.info({ channelId: channel.id, ...result, backfillMonths: BACKFILL_MONTHS }, "Citation backfill complete");
@@ -1112,15 +1175,19 @@ async function reconcileRecentCitationMessages(channel: TextChannel) {
   const msgs = await channel.messages.fetch({ limit: SECONDARY_RECENT_RESCAN_LIMIT });
   const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
   let inserted = 0;
+  let skipped = 0;
 
   for (const msg of sorted) {
-    if (await processCitationMessage(msg)) {
+    const state = await processCitationMessage(msg);
+    if (state === "inserted") {
       inserted++;
+    } else if (state === "skipped") {
+      skipped++;
     }
   }
 
   logger.info(
-    { scanned: sorted.length, inserted, intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: SECONDARY_RECENT_RESCAN_LIMIT },
+    { scanned: sorted.length, inserted, skipped, intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: SECONDARY_RECENT_RESCAN_LIMIT },
     "Recent citation reconcile complete",
   );
 }
@@ -1128,16 +1195,19 @@ async function reconcileRecentCitationMessages(channel: TextChannel) {
 async function reconcileRecentFirMessages(channel: TextChannel) {
   const msgs = await channel.messages.fetch({ limit: SECONDARY_RECENT_RESCAN_LIMIT });
   const sorted = [...msgs.values()].sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-  let changed = 0;
+  let inserted = 0;
+  let updated = 0;
+  let skipped = 0;
 
   for (const msg of sorted) {
-    if (await processFirMessage(msg)) {
-      changed++;
-    }
+    const state = await processFirMessage(msg);
+    if (state === "inserted") inserted++;
+    else if (state === "updated") updated++;
+    else if (state === "skipped") skipped++;
   }
 
   logger.info(
-    { scanned: sorted.length, changed, intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: SECONDARY_RECENT_RESCAN_LIMIT },
+    { scanned: sorted.length, inserted, updated, skipped, intervalMs: RECENT_RESCAN_INTERVAL_MS, recentScanLimit: SECONDARY_RECENT_RESCAN_LIMIT },
     "Recent FIR reconcile complete",
   );
 }
