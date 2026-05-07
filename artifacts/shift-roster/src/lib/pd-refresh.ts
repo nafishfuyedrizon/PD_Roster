@@ -9,7 +9,12 @@ function isPdDataQuery(query: Query): boolean {
   return typeof first === "string" && (
     first.startsWith("/api/pd/") ||
     first.startsWith("/api/roster") ||
-    first.startsWith("/api/qualification-chart")
+    first.startsWith("/api/qualification-chart") ||
+    first.startsWith("/api/dept-stats") ||
+    first.startsWith("/api/student-progressions") ||
+    first.startsWith("/api/fto-docs") ||
+    first.startsWith("/api/citations") ||
+    first.startsWith("/api/fir")
   );
 }
 

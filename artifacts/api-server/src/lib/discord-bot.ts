@@ -1036,7 +1036,7 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
           `INSERT INTO pd_fir
             (id, discord_message_id, complainant_name, complainant_cid, complainant_contact, event_description,
              suspect_details, evidence, officer_name, raw_content, thread_id, thread_replies, status, accepted_at, posted_at, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             nextId,
             msg.id,
@@ -1053,6 +1053,7 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
             reactionStatus ?? "pending",
             reactionStatus === "accepted" ? msg.createdAt : null,
             msg.createdAt,
+            new Date(),
           ],
         );
         broadcastFirEvent("new_fir");

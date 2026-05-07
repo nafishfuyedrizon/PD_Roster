@@ -6,8 +6,6 @@ import { Input } from "@/components/ui/input";
 import { GraduationCap, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Lock, Unlock, Link } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const TOTAL = 43;
-
 type Cadet = {
   id: number;
   badgeNumber?: string;
@@ -69,12 +67,12 @@ const CLASSROOM: CheckboxGroup = {
   fields: ["mdt", "advanceTraining"],
 };
 const PHASE2_GROUPS: CheckboxGroup[] = [
-  { label: "Negotiations", fields: ["negPri", "negSec", "negTer", "negPar"] },
+  { label: "10-90 Negotiations", fields: ["negPri", "negSec", "negTer", "negPar"] },
   { label: "10-90 Incident", fields: ["incPri", "incSec", "incTer", "incPar"] },
-  { label: "10-90 Evidence", fields: ["eviPri", "eviSec", "eviTer", "eviPar"] },
-  { label: "Suspect Proc.", fields: ["susPri", "susSec", "susTer", "susPar"] },
-  { label: "10-80 Drive", fields: ["drvPri", "drvSec", "drvTer", "drvPar", "drvSolo"] },
-  { label: "10-11", fields: ["t11Pri", "t11Sec", "t11Ter", "t11Par", "t11Solo"] },
+  { label: "10-90 Evidences", fields: ["eviPri", "eviSec", "eviTer", "eviPar"] },
+  { label: "Suspect Processing", fields: ["susPri", "susSec", "susTer", "susPar"] },
+  { label: "10-80 Drive & Comms", fields: ["drvPri", "drvSec", "drvTer", "drvPar"] },
+  { label: "10-11", fields: ["t11Pri", "t11Sec", "t11Ter", "t11Par"] },
   { label: "PIT", fields: ["pit", "pitSec", "pitTer", "pitPar"] },
   { label: "911 Calls", fields: ["calls911"] },
 ];

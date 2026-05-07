@@ -238,7 +238,7 @@ router.post("/roster", async (req, res): Promise<void> => {
     if (officer && (officer.ftp || officer.isManagement)) {
       await syncVotersToQualChart();
     }
-    await safeRecomputeDutyHours();
+    void safeRecomputeDutyHours();
 
     await auditLog(req, "CREATE", "officer", nextId, officer?.name ?? officer?.callSign ?? data.callSign, null);
     res.status(201).json(GetOfficerResponse.parse(officer));
@@ -679,7 +679,7 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
     }
 
     if (oldCs !== newCs || nameChanged || discordUidChanged || existing.discordId !== officer.discordId || licenseChanged) {
-      await safeRecomputeDutyHours();
+      void safeRecomputeDutyHours();
     }
 
     const TRACKED = ["name","rank","status","callSign","division","department","dateOfJoining","lastPromotion","strikesMajor","strikesMinor","discordUsername","discordUid","rockstarLicenseId"] as const;

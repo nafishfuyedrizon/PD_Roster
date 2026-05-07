@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
 import { db, pdCitationsTable, pdFirTable, emsDutyLogsTable, officersTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import {
+  getMysqlDutyLogs,
+  getMysqlOfficers,
+  isMysqlDatabaseUrl,
+  mysqlQuery,
+} from "../lib/pd-mysql-read.js";
 
 const router: IRouter = Router();
 
@@ -73,6 +79,166 @@ router.get("/dept-stats", async (req, res): Promise<void> => {
   const mm = mmStr ?? String(new Date().getUTCMonth() + 1).padStart(2, "0");
 
   const DEPTS = ["BCSO", "SASP", "SAHP", "PTA"];
+
+  if (isMysqlDatabaseUrl) {
+    const officers = await getMysqlOfficers();
+
+    const csToDept: Record<string, string> = {};
+    const nameToDept: Record<string, string> = {};
+    const deptOfficerCount: Record<string, number> = {};
+    const deptActiveCount: Record<string, number> = {};
+
+    for (const officer of officers) {
+      const dept = officer.department;
+      if (!dept || !DEPTS.includes(dept)) continue;
+      deptOfficerCount[dept] = (deptOfficerCount[dept] ?? 0) + 1;
+      if (officer.status === "Active") deptActiveCount[dept] = (deptActiveCount[dept] ?? 0) + 1;
+      if (officer.callSign) csToDept[officer.callSign] = dept;
+      if (officer.name) nameToDept[officer.name.toLowerCase()] = dept;
+    }
+
+    const lookupDeptByName = buildFuzzyLookup(nameToDept);
+
+    const citationRows = await mysqlQuery<{ officer_name: string | null; cnt: number | string }>(
+      `SELECT officer_name, COUNT(*) AS cnt
+       FROM pd_citations
+       WHERE DATE_FORMAT(posted_at, '%Y-%m') = ?
+       GROUP BY officer_name`,
+      [month],
+    );
+
+    const deptCitations: Record<string, number> = {};
+    const deptCitationTopOfficers: Record<string, { name: string; count: number }[]> = {};
+
+    for (const citation of citationRows) {
+      const key = extractName(citation.officer_name);
+      const dept = lookupDeptByName(key);
+      if (!dept) continue;
+      const count = Number(citation.cnt ?? 0);
+      deptCitations[dept] = (deptCitations[dept] ?? 0) + count;
+      if (!deptCitationTopOfficers[dept]) deptCitationTopOfficers[dept] = [];
+      const displayName = citation.officer_name?.replace(/\s*\[.*?\]\s*$/, "").trim() ?? "";
+      deptCitationTopOfficers[dept].push({ name: displayName, count });
+    }
+
+    const firRows = await mysqlQuery<{ officer_name: string | null; cnt: number | string }>(
+      `SELECT officer_name, COUNT(*) AS cnt
+       FROM pd_fir
+       WHERE DATE_FORMAT(posted_at, '%Y-%m') = ?
+       GROUP BY officer_name`,
+      [month],
+    );
+
+    const deptFir: Record<string, number> = {};
+    const deptFirTopOfficers: Record<string, { name: string; count: number }[]> = {};
+
+    for (const fir of firRows) {
+      const key = extractName(fir.officer_name);
+      const dept = lookupDeptByName(key);
+      if (!dept) continue;
+      const count = Number(fir.cnt ?? 0);
+      deptFir[dept] = (deptFir[dept] ?? 0) + count;
+      if (!deptFirTopOfficers[dept]) deptFirTopOfficers[dept] = [];
+      deptFirTopOfficers[dept].push({ name: fir.officer_name?.trim() ?? "", count });
+    }
+
+    const allDutyRows = await getMysqlDutyLogs();
+    const dutyRows = allDutyRows.filter((row) =>
+      row.weekPeriod?.slice(0, 2) === mm &&
+      String(row.dutyYear ?? year) === year,
+    );
+
+    const deptDutySecsByWeek: Record<string, Record<string, number>> = {};
+    const allWeekPeriods = new Set<string>();
+    const weeklyOfficerBuckets = new Map<string, { dept: string; weekPeriod: string; hasAll: boolean; secs: number }>();
+
+    for (const row of dutyRows) {
+      const dept = csToDept[row.csNumber];
+      if (!dept || !DEPTS.includes(dept) || !row.weekPeriod) continue;
+      const bucketKey = `${dept}::${row.weekPeriod}::${row.csNumber}`;
+      const rowSecs = parseHms(row.dutyHours);
+      const existing = weeklyOfficerBuckets.get(bucketKey);
+      if (row.shiftType === "ALL") {
+        weeklyOfficerBuckets.set(bucketKey, {
+          dept,
+          weekPeriod: row.weekPeriod,
+          hasAll: true,
+          secs: rowSecs,
+        });
+        continue;
+      }
+      if (existing?.hasAll) continue;
+      weeklyOfficerBuckets.set(bucketKey, {
+        dept,
+        weekPeriod: row.weekPeriod,
+        hasAll: false,
+        secs: (existing?.secs ?? 0) + rowSecs,
+      });
+    }
+
+    for (const bucket of weeklyOfficerBuckets.values()) {
+      if (!deptDutySecsByWeek[bucket.dept]) deptDutySecsByWeek[bucket.dept] = {};
+      deptDutySecsByWeek[bucket.dept][bucket.weekPeriod] =
+        (deptDutySecsByWeek[bucket.dept][bucket.weekPeriod] ?? 0) + bucket.secs;
+      allWeekPeriods.add(bucket.weekPeriod);
+    }
+
+    const sortedWeeks = [...allWeekPeriods].sort();
+    const deptData: Record<string, {
+      officerCount: number;
+      activeCount: number;
+      citations: number;
+      fir: number;
+      totalDutyHours: string;
+      totalDutySecs: number;
+      weeklyHours: { weekPeriod: string; hours: string; secs: number }[];
+      citationTopOfficers: { name: string; count: number }[];
+      firTopOfficers: { name: string; count: number }[];
+    }> = {};
+
+    for (const dept of DEPTS) {
+      const weeklyHours = sortedWeeks.map((weekPeriod) => {
+        const secs = deptDutySecsByWeek[dept]?.[weekPeriod] ?? 0;
+        return { weekPeriod, hours: secsToHms(secs), secs };
+      });
+      const totalDutySecs = weeklyHours.reduce((sum, item) => sum + item.secs, 0);
+      deptData[dept] = {
+        officerCount: deptOfficerCount[dept] ?? 0,
+        activeCount: deptActiveCount[dept] ?? 0,
+        citations: deptCitations[dept] ?? 0,
+        fir: deptFir[dept] ?? 0,
+        totalDutyHours: secsToHms(totalDutySecs),
+        totalDutySecs,
+        weeklyHours,
+        citationTopOfficers: (deptCitationTopOfficers[dept] ?? []).sort((a, b) => b.count - a.count).slice(0, 5),
+        firTopOfficers: (deptFirTopOfficers[dept] ?? []).sort((a, b) => b.count - a.count).slice(0, 5),
+      };
+    }
+
+    const monthSet = new Set<string>();
+    for (const row of allDutyRows) {
+      const monthPrefix = (row.weekPeriod ?? "").slice(0, 2);
+      const dutyYear = row.dutyYear ?? String(new Date().getUTCFullYear());
+      if (monthPrefix && dutyYear) monthSet.add(`${dutyYear}-${monthPrefix}`);
+    }
+    for (const row of firRows) {
+      if (month) monthSet.add(month);
+      if (row.cnt) break;
+    }
+    for (const row of citationRows) {
+      if (month) monthSet.add(month);
+      if (row.cnt) break;
+    }
+
+    res.json({
+      month,
+      departments: DEPTS,
+      weekPeriods: sortedWeeks,
+      availableMonths: [...monthSet].sort().reverse().slice(0, 6),
+      data: deptData,
+    });
+    return;
+  }
 
   // ── Officers lookup ───────────────────────────────────────────────────────
   const officers = await db.select({

@@ -209,10 +209,10 @@ export default function RosterPage() {
     createOfficer.mutate(
       { data },
       {
-        onSuccess: async () => {
-          await invalidateAll();
+        onSuccess: () => {
           setIsCreateOpen(false);
           toast({ title: "Officer added" });
+          void invalidateAll();
         },
       }
     );
@@ -242,13 +242,13 @@ export default function RosterPage() {
         } as any,
       },
       {
-        onSuccess: async () => {
-          await invalidateAll();
+        onSuccess: () => {
           setExPdOfficer(null);
           toast({
             title: "Officer moved to Ex-PD",
             description: `${o.name ?? o.callSign} has been removed from Roster & QC and added to Ex-PD Officers.`,
           });
+          void invalidateAll();
         },
         onError: (err: any) => {
           toast({ title: "Error", description: err?.message ?? "Something went wrong.", variant: "destructive" });
@@ -263,8 +263,7 @@ export default function RosterPage() {
     updateOfficer.mutate(
       { id: editOfficer.id, data },
       {
-        onSuccess: async () => {
-          await invalidateAll();
+        onSuccess: () => {
           setEditOfficer(null);
           if (isExitStatus) {
             toast({
@@ -274,6 +273,7 @@ export default function RosterPage() {
           } else {
             toast({ title: "Officer updated" });
           }
+          void invalidateAll();
         },
       }
     );
@@ -284,9 +284,9 @@ export default function RosterPage() {
     deleteOfficer.mutate(
       { id },
       {
-        onSuccess: async () => {
-          await invalidateAll();
+        onSuccess: () => {
           toast({ title: "Officer removed" });
+          void invalidateAll();
         },
       }
     );
@@ -478,10 +478,10 @@ export default function RosterPage() {
                     className="hover:bg-secondary/20 transition-colors text-xs"
                     data-testid={`row-officer-${o.id}`}
                   >
-                    <TableCell className="sticky left-0 bg-card font-mono font-bold text-primary z-20 py-2">
+                    <TableCell className="sticky left-0 bg-card font-mono font-bold tabular-nums text-primary z-20 py-2 min-w-[80px] w-[80px] whitespace-nowrap">
                       {o.callSign}
                     </TableCell>
-                    <TableCell className="sticky left-[80px] bg-card font-mono text-muted-foreground z-20 py-2">
+                    <TableCell className="sticky left-[80px] bg-card font-mono tabular-nums text-muted-foreground z-20 py-2 min-w-[55px] w-[55px] whitespace-nowrap">
                       {o.citizenId ?? "—"}
                     </TableCell>
                     <TableCell className="sticky left-[135px] bg-card font-semibold text-foreground z-20 py-2 whitespace-nowrap border-r border-border">
