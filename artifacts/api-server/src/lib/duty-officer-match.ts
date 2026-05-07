@@ -162,32 +162,49 @@ export function getCurrentOpenDutySessions(
   now = new Date(),
   maxOpenDutyHours = DEFAULT_MAX_OPEN_DUTY_HOURS,
 ): OpenDutySession[] {
-  const latestByLicense = new Map<string, DutyEventLike>();
-  for (const event of events) {
-    const rawLicenseId = normalizeLicenseId(event.licenseId);
-    if (!rawLicenseId || latestByLicense.has(rawLicenseId)) continue;
-    latestByLicense.set(rawLicenseId, event);
-  }
-
   const currentWeekStart = getCurrentWeekStart(now);
   const claimedOfficerIds = new Set<number>();
   const maxOpenDutySecs = Math.max(3600, Math.floor(maxOpenDutyHours * 3600));
+  const futureToleranceMs = 5 * 60 * 1000;
   const sessions: OpenDutySession[] = [];
+  const eventsByLicense = new Map<string, DutyEventLike[]>();
 
-  for (const event of latestByLicense.values()) {
-    if (event.eventType !== "on") continue;
+  for (const event of events) {
+    const rawLicenseId = normalizeLicenseId(event.licenseId);
+    if (!rawLicenseId) continue;
+    if (event.eventAt.getTime() > now.getTime() + futureToleranceMs) continue;
+    const list = eventsByLicense.get(rawLicenseId) ?? [];
+    list.push(event);
+    eventsByLicense.set(rawLicenseId, list);
+  }
+
+  for (const [licenseId, licenseEvents] of eventsByLicense.entries()) {
+    const sortedEvents = [...licenseEvents].sort((a, b) => a.eventAt.getTime() - b.eventAt.getTime());
+    let latestOpenEvent: DutyEventLike | null = null;
+
+    for (const event of sortedEvents) {
+      if (event.eventType === "on") {
+        latestOpenEvent = event;
+      } else if (event.eventType === "off") {
+        latestOpenEvent = null;
+      }
+    }
+
+    if (!latestOpenEvent) continue;
 
     const officer = findOfficerByDutyIdentity(
-      event.licenseId,
-      event.officerName,
+      licenseId,
+      latestOpenEvent.officerName,
       officers,
       claimedOfficerIds,
     );
 
-    if (!officer?.callSign) continue;
+    if (!officer) continue;
 
     const overlapStart =
-      event.eventAt.getTime() > currentWeekStart.getTime() ? event.eventAt : currentWeekStart;
+      latestOpenEvent.eventAt.getTime() > currentWeekStart.getTime()
+        ? latestOpenEvent.eventAt
+        : currentWeekStart;
     const elapsedSecs = Math.max(
       0,
       Math.floor((now.getTime() - overlapStart.getTime()) / 1000),
@@ -198,7 +215,7 @@ export function getCurrentOpenDutySessions(
     claimedOfficerIds.add(officer.id);
     sessions.push({
       officer,
-      event,
+      event: latestOpenEvent,
       elapsedSecs,
       overlapStart,
     });

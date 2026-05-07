@@ -57,6 +57,7 @@ const MAX_BACKFILL_BATCHES = Math.max(1, Number.parseInt(process.env.PD_REGISTRA
 const RECENT_RESCAN_LIMIT = Math.max(1, Math.min(100, Number.parseInt(process.env.PD_REGISTRAR_RECENT_RESCAN_LIMIT ?? "100", 10) || 100));
 const RECENT_RESCAN_INTERVAL_MS = Math.max(5000, Number.parseInt(process.env.PD_REGISTRAR_RECENT_RESCAN_INTERVAL_MS ?? "30000", 10) || 30000);
 const SECONDARY_RECENT_RESCAN_LIMIT = Math.max(1, Math.min(10, Number.parseInt(process.env.PD_REGISTRAR_SECONDARY_RESCAN_LIMIT ?? "10", 10) || 10));
+const ENABLE_FIR_REACTION_SYNC = process.env.PD_FIR_REACTION_SYNC === "true";
 let dutySyncEnabled = true;
 
 function isSafePdDutyChannelName(name: string | null | undefined): boolean {
@@ -842,7 +843,7 @@ interface ParsedCitation {
 
 function field(text: string, ...keys: string[]): string | null {
   for (const key of keys) {
-    const re = new RegExp(`${key}\\s*:([\\s\\S]*?)(?=\\n[A-Z][a-zA-Z ']+\\s*:|$)`, "i");
+    const re = new RegExp(`(?:^|\\n)\\s*${key}\\s*:([\\s\\S]*?)(?=\\n\\s*[A-Z][a-zA-Z0-9 '&()/-]+\\s*:|$)`, "i");
     const m = re.exec(text);
     if (m) return m[1]!.trim() || null;
   }
@@ -908,6 +909,7 @@ function isFirMessage(text: string): boolean {
 }
 
 function getFirStatusFromReactions(msg: Message): "accepted" | "rejected" | null {
+  if (!ENABLE_FIR_REACTION_SYNC) return null;
   const names = [...msg.reactions.cache.values()]
     .map((reaction) => reaction.emoji.name ?? "")
     .filter(Boolean);
@@ -1504,6 +1506,7 @@ export async function startDiscordBot() {
 
   client.on("messageReactionAdd", async (reaction: MessageReaction, _user: User) => {
     try {
+      if (!ENABLE_FIR_REACTION_SYNC) return;
       if (reaction.partial) await reaction.fetch();
       const message = reaction.message.partial ? await reaction.message.fetch() : reaction.message;
       if (FIR_CHANNEL_ID && message.channelId === FIR_CHANNEL_ID) {
@@ -1516,6 +1519,7 @@ export async function startDiscordBot() {
 
   client.on("messageReactionRemove", async (reaction: MessageReaction, _user: User) => {
     try {
+      if (!ENABLE_FIR_REACTION_SYNC) return;
       if (reaction.partial) await reaction.fetch();
       const message = reaction.message.partial ? await reaction.message.fetch() : reaction.message;
       if (FIR_CHANNEL_ID && message.channelId === FIR_CHANNEL_ID) {
