@@ -233,10 +233,14 @@ router.post("/roster", async (req, res): Promise<void> => {
     await ensureMysqlQualificationEntry(officer);
 
     if (officer?.department === "PTA") {
-      await syncStudentProgressionsWithRoster();
+      void syncStudentProgressionsWithRoster().catch((error) => {
+        console.error("[roster] student progression sync failed after create", error);
+      });
     }
     if (officer && (officer.ftp || officer.isManagement)) {
-      await syncVotersToQualChart();
+      void syncVotersToQualChart().catch((error) => {
+        console.error("[roster] qualification voter sync failed after create", error);
+      });
     }
     void safeRecomputeDutyHours();
 
@@ -276,7 +280,9 @@ router.post("/roster", async (req, res): Promise<void> => {
 
   // Auto-sync Student Progressions if new officer joins PTA
   if (officer.department === "PTA") {
-    await syncStudentProgressionsWithRoster();
+    void syncStudentProgressionsWithRoster().catch((error) => {
+      console.error("[roster] student progression sync failed after create", error);
+    });
   }
 
   await auditLog(req, "CREATE", "officer", officer.id, officer.name ?? officer.callSign, null);
@@ -671,11 +677,15 @@ router.put("/roster/:id", async (req, res): Promise<void> => {
     }
 
     if ("ftp" in parsed.data || "isManagement" in parsed.data) {
-      await syncVotersToQualChart();
+      void syncVotersToQualChart().catch((error) => {
+        console.error("[roster] qualification voter sync failed after update", error);
+      });
     }
 
     if (deptChanged && (existing.department === "PTA" || officer.department === "PTA")) {
-      await syncStudentProgressionsWithRoster();
+      void syncStudentProgressionsWithRoster().catch((error) => {
+        console.error("[roster] student progression sync failed after update", error);
+      });
     }
 
     if (oldCs !== newCs || nameChanged || discordUidChanged || existing.discordId !== officer.discordId || licenseChanged) {

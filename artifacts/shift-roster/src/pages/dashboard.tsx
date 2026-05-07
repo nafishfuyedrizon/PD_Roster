@@ -199,17 +199,7 @@ export default function DashboardPage() {
   }
 
   const maxRankCount = Math.max(...(data?.rankDistribution.map((r) => r.count) ?? [1]));
-  const fallbackLiveOnDuty: LiveOfficer[] = (fivemData?.players ?? [])
-    .filter((player) => player.officer && player.onDuty && player.dutySince)
-    .map((player) => ({
-      licenseId: player.license ?? `server-${player.serverId}`,
-      csNumber: player.officer?.callSign ?? null,
-      name: player.officer?.name ?? player.fivemName,
-      rank: player.officer?.rank ?? "Unknown",
-      onSince: player.dutySince!,
-      elapsedHms: "00:00:00",
-    }));
-  const liveDutyCards = (data?.liveOnDuty?.length ?? 0) > 0 ? (data?.liveOnDuty ?? []) : fallbackLiveOnDuty;
+  const liveDutyCards = data?.liveOnDuty ?? [];
 
   return (
     <Layout>
@@ -239,8 +229,8 @@ export default function DashboardPage() {
             </span>
           )}
           <div className="ml-auto flex items-center gap-2 text-[11px] font-mono text-green-600">
-            <Countdown intervalMs={15000} onTick={() => { void refetch(); void refetchFivem(); }} />
-            <button onClick={() => { void refetch(); void refetchFivem(); }} className="hover:text-green-400 transition-colors">
+            <Countdown intervalMs={15000} onTick={() => { void refetch(); }} />
+            <button onClick={() => { void refetch(); }} className="hover:text-green-400 transition-colors">
               <RefreshCw className="w-3 h-3" />
             </button>
             <span className="text-green-500/80"><LiveClock /></span>

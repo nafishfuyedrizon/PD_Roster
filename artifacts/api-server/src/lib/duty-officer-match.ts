@@ -23,10 +23,6 @@ export type OpenDutySession = {
   overlapStart: Date;
 };
 
-const BDT_OFFSET_MS = 6 * 60 * 60 * 1000;
-const FUTURE_EVENT_TOLERANCE_MS = 5 * 60 * 1000;
-const MAX_BDT_CORRECTION_WINDOW_MS = 12 * 60 * 60 * 1000;
-
 const DEFAULT_MAX_OPEN_DUTY_HOURS = Math.max(
   1,
   Number.parseInt(process.env.PD_MAX_OPEN_DUTY_HOURS ?? "18", 10) || 18,
@@ -190,9 +186,8 @@ export function getCurrentOpenDutySessions(
 
     if (!officer?.callSign) continue;
 
-    const sessionStart = normalizeOpenDutyEventAt(event.eventAt, now);
     const overlapStart =
-      sessionStart.getTime() > currentWeekStart.getTime() ? sessionStart : currentWeekStart;
+      event.eventAt.getTime() > currentWeekStart.getTime() ? event.eventAt : currentWeekStart;
     const elapsedSecs = Math.max(
       0,
       Math.floor((now.getTime() - overlapStart.getTime()) / 1000),
@@ -203,31 +198,11 @@ export function getCurrentOpenDutySessions(
     claimedOfficerIds.add(officer.id);
     sessions.push({
       officer,
-      event: {
-        ...event,
-        eventAt: sessionStart,
-      },
+      event,
       elapsedSecs,
       overlapStart,
     });
   }
 
   return sessions.sort((a, b) => b.event.eventAt.getTime() - a.event.eventAt.getTime());
-}
-
-function normalizeOpenDutyEventAt(eventAt: Date, now: Date): Date {
-  const date = new Date(eventAt);
-  const diffMs = date.getTime() - now.getTime();
-
-  // MySQL duty events may be stored in BDT wall-clock time without timezone metadata.
-  // When that happens they appear about 6h in the future on the UTC API server, which
-  // causes the live duty panel to drop valid on-duty sessions as "negative elapsed".
-  if (
-    diffMs > FUTURE_EVENT_TOLERANCE_MS &&
-    diffMs <= MAX_BDT_CORRECTION_WINDOW_MS
-  ) {
-    return new Date(date.getTime() - BDT_OFFSET_MS);
-  }
-
-  return date;
 }

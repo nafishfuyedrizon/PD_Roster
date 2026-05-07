@@ -338,10 +338,10 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
                 </span>
               )}
             </div>
-            {fir.suspectDetails && fir.suspectDetails.toLowerCase() !== "nothing" && fir.suspectDetails.toLowerCase() !== "none" && (
+            {fir.eventDescription && fir.eventDescription.toLowerCase() !== "nothing" && fir.eventDescription.toLowerCase() !== "none" && (
               <div className="flex items-start gap-1 mt-1.5">
-                <AlertTriangle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-                <span className="text-[11px] text-red-300 font-medium line-clamp-1">{fir.suspectDetails}</span>
+                <AlertTriangle className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />
+                <span className="text-[11px] text-muted-foreground font-medium line-clamp-1">{fir.eventDescription}</span>
               </div>
             )}
             {fir.officerName && (
