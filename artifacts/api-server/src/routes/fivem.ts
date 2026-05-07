@@ -139,6 +139,7 @@ router.get("/fivem/players", async (req, res): Promise<void> => {
       ping: p.ping ?? 0,
       license: rawLicense,
       timeOnServer,
+      dutySince: onDuty && latestDuty?.eventAt ? latestDuty.eventAt.toISOString() : null,
       officer: officer
         ? { name: officer.name, rank: officer.rank, callSign: officer.callSign, department: officer.department }
         : null,

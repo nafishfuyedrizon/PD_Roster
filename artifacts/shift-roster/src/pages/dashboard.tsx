@@ -44,6 +44,17 @@ interface DashboardData {
   lowestWeekly: LowestEntry[];
 }
 
+interface FivemPlayer {
+  serverId: number;
+  fivemName: string;
+  ping: number;
+  license: string | null;
+  timeOnServer?: string | null;
+  dutySince?: string | null;
+  officer: { name: string; rank: string; callSign: string; department: string } | null;
+  onDuty: boolean;
+}
+
 function useDashboard(weekView: "current" | "previous", threshold: number, refetchInterval = 60_000) {
   return useQuery<DashboardData>({
     queryKey: ["dashboard", weekView, threshold],
@@ -146,13 +157,11 @@ export default function DashboardPage() {
 
   const { data: fivemData, isLoading: fivemLoading, refetch: refetchFivem } = useQuery<{
     configured: boolean; online: boolean; serverUrl?: string;
-    players: { serverId: number; fivemName: string; ping: number; license: string | null;
-      officer: { name: string; rank: string; callSign: string; department: string } | null;
-      onDuty: boolean; }[];
+    players: FivemPlayer[];
   }>({
     queryKey: ["fivem-players"],
     queryFn: () => fetch("/api/fivem/players", { credentials: "include" }).then((r) => r.json()),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
     staleTime: 0,
   });
 
@@ -190,6 +199,17 @@ export default function DashboardPage() {
   }
 
   const maxRankCount = Math.max(...(data?.rankDistribution.map((r) => r.count) ?? [1]));
+  const fallbackLiveOnDuty: LiveOfficer[] = (fivemData?.players ?? [])
+    .filter((player) => player.officer && player.onDuty && player.dutySince)
+    .map((player) => ({
+      licenseId: player.license ?? `server-${player.serverId}`,
+      csNumber: player.officer?.callSign ?? null,
+      name: player.officer?.name ?? player.fivemName,
+      rank: player.officer?.rank ?? "Unknown",
+      onSince: player.dutySince!,
+      elapsedHms: "00:00:00",
+    }));
+  const liveDutyCards = (data?.liveOnDuty?.length ?? 0) > 0 ? (data?.liveOnDuty ?? []) : fallbackLiveOnDuty;
 
   return (
     <Layout>
@@ -215,12 +235,12 @@ export default function DashboardPage() {
           </span>
           {!isLoading && (
             <span className="text-[10px] font-mono bg-green-500/15 text-green-400 border border-green-500/25 px-2.5 py-0.5 rounded-full font-semibold">
-              {data?.liveOnDuty.length ?? 0} ON DUTY
+              {liveDutyCards.length} ON DUTY
             </span>
           )}
           <div className="ml-auto flex items-center gap-2 text-[11px] font-mono text-green-600">
-            <Countdown intervalMs={15000} onTick={refetch} />
-            <button onClick={() => refetch()} className="hover:text-green-400 transition-colors">
+            <Countdown intervalMs={15000} onTick={() => { void refetch(); void refetchFivem(); }} />
+            <button onClick={() => { void refetch(); void refetchFivem(); }} className="hover:text-green-400 transition-colors">
               <RefreshCw className="w-3 h-3" />
             </button>
             <span className="text-green-500/80"><LiveClock /></span>
@@ -232,11 +252,11 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
               {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-[82px] rounded-md" />)}
             </div>
-          ) : data?.liveOnDuty.length === 0 ? (
+          ) : liveDutyCards.length === 0 ? (
             <div className="text-center py-8 text-green-700 text-xs font-mono">No officers currently on duty</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-              {data?.liveOnDuty.map((o) => (
+              {liveDutyCards.map((o) => (
                 <div
                   key={o.licenseId}
                   className="flex flex-col gap-0.5 rounded-md px-3 py-2.5 transition-colors cursor-default"

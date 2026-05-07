@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GraduationCap, Trash2, ChevronDown, ChevronUp, CheckCircle2, Circle, Lock, Unlock, Link } from "lucide-react";
+import { GraduationCap, Trash2, ChevronDown, ChevronUp, Check, Lock, Unlock, Link } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Cadet = {
@@ -137,11 +137,17 @@ function CheckboxCell({
     <button
       onClick={locked ? undefined : onClick}
       disabled={locked}
-      className={`flex items-center justify-center w-full h-full py-1 ${locked ? "pointer-events-none select-none" : "cursor-pointer"}`}
+      className={`flex items-center justify-center w-5 h-5 rounded-[3px] border transition-colors ${
+        value
+          ? locked
+            ? "border-green-500/40 bg-green-500/15 text-green-400/70"
+            : "border-green-500/60 bg-green-500/20 text-green-300"
+          : locked
+            ? "border-muted-foreground/25 bg-transparent text-transparent"
+            : "border-muted-foreground/40 bg-transparent text-transparent hover:border-muted-foreground/70"
+      } ${locked ? "pointer-events-none select-none" : "cursor-pointer"}`}
     >
-      {value
-        ? <CheckCircle2 className={`w-4 h-4 ${locked ? "text-green-500/60" : "text-green-400 hover:text-green-300"}`} />
-        : <Circle className={`w-4 h-4 ${locked ? "text-gray-700/50" : "text-gray-600 hover:text-gray-400"}`} />}
+      {value ? <Check className="w-3 h-3 stroke-[3]" /> : null}
     </button>
   );
 }
@@ -165,10 +171,10 @@ function CadetRow({ cadet, onToggle, onDelete, onConfirmSolo, onRemoveSolo }: {
 
   const renderGroup = (group: CheckboxGroup) => (
     <div key={group.label} className="flex flex-col gap-1 min-w-0">
-      <div className="text-[10px] text-muted-foreground font-semibold text-center truncate px-1">{group.label}</div>
+      <div className="text-[10px] text-muted-foreground font-semibold text-center leading-tight px-1">{group.label}</div>
       <div className="flex gap-1 justify-center flex-wrap">
         {group.fields.map((f) => (
-          <div key={f} className="flex flex-col items-center gap-0.5">
+          <div key={f} className="flex flex-col items-center gap-0.5 min-w-[24px]">
             <span className="text-[9px] text-muted-foreground">{FIELD_LABELS[f as string] ?? f}</span>
             <CheckboxCell
               value={cadet[f] as boolean}
@@ -391,15 +397,15 @@ function CadetRow({ cadet, onToggle, onDelete, onConfirmSolo, onRemoveSolo }: {
                       return (
                         <div key={f} className="flex flex-col items-center gap-0.5">
                           <span className="text-[9px] text-muted-foreground">{FIELD_LABELS[f]}</span>
-                          <div
-                            className="flex items-center justify-center w-full h-full py-1 pointer-events-none select-none"
+                        <div
+                            className={`flex items-center justify-center w-5 h-5 rounded-[3px] border pointer-events-none select-none ${
+                              isChecked
+                                ? "border-blue-500/50 bg-blue-500/15"
+                                : "border-muted-foreground/25 bg-transparent"
+                            }`}
                             title={isChecked ? `⚡ Auto-verified by bot: ${cadet.autoObsCount} duty sessions ≥2h` : "Not yet reached"}
                           >
-                            {isChecked ? (
-                              <CheckCircle2 className="w-4 h-4 text-blue-400/70" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-gray-700/50" />
-                            )}
+                            {isChecked ? <Check className="w-3 h-3 text-blue-300 stroke-[3]" /> : null}
                           </div>
                         </div>
                       );
@@ -418,7 +424,7 @@ function CadetRow({ cadet, onToggle, onDelete, onConfirmSolo, onRemoveSolo }: {
           {/* Row 2: Phase 2 */}
           <div className="border border-border rounded-md px-3 py-2 bg-card/50">
             <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-2">Phase 2 (Must Drive)</div>
-            <div className="flex gap-4 flex-wrap">
+            <div className="grid gap-x-4 gap-y-3 grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
               {PHASE2_GROUPS.map(renderGroup)}
             </div>
           </div>
