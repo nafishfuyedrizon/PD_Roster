@@ -306,12 +306,12 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
   if (isMysqlDatabaseUrl) {
     const result = await mysqlExecute(
       `UPDATE pd_fir
-       SET status = ?,
-           accepted_by = ?,
-           accepted_at = ?,
-           rejected_by = ?,
-           officer_name = ?
-       WHERE id = ?`,
+ SET status = ?,
+     accepted_by = ?,
+     accepted_at = ?,
+     rejected_by = ?,
+     officer_name = ?
+ WHERE id = ?`,
       [
   status,
   status === "accepted" ? (acceptedBy ?? null) : null,
