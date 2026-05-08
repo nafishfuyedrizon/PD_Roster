@@ -344,7 +344,7 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
                 <span className="text-[11px] text-muted-foreground font-medium line-clamp-1">{fir.eventDescription}</span>
               </div>
             )}
-            {fir.officerName && (
+            {fir.status === "accepted" && fir.officerName && (
               <div className="flex items-center gap-1 mt-1.5">
                 <Shield className="w-3 h-3 text-teal-400" />
                 <button
