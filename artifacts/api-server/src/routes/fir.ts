@@ -310,7 +310,7 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
            accepted_by = ?,
            accepted_at = ?,
            rejected_by = ?,
-           officer_name = ?,
+           officer_name = ?
        WHERE id = ?`,
       [
   status,
