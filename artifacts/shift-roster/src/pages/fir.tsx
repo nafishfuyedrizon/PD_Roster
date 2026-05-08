@@ -138,20 +138,35 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
   }, [profileData, user?.displayName]);
 
   async function confirm() {
-    if (!acceptedByName || !officerName) return;
-    setSaving(true);
-    try {
-      await fetch(`/api/fir/${fir.id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "accepted", acceptedBy: acceptedByName, officerName }),
-      });
-      onDone();
-    } finally {
-      setSaving(false);
+  if (!acceptedByName || !officerName) return;
+  setSaving(true);
+
+  try {
+    const res = await fetch(`/api/fir/${fir.id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "accepted",
+        acceptedBy: acceptedByName,
+        officerName,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      alert(`Accept failed: ${res.status} ${text}`);
+      return;
     }
+
+    onDone();
+  } catch (error) {
+    alert("Accept failed. Check browser console/network.");
+    console.error(error);
+  } finally {
+    setSaving(false);
   }
+}
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
