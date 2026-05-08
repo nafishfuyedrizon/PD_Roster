@@ -101,10 +101,14 @@ function sortByRank(officers: Officer[]): Officer[] {
   return [...officers].sort((a, b) => {
     const rankDiff = getRankOrder(a.rank) - getRankOrder(b.rank);
     if (rankDiff !== 0) return rankDiff;
-    // Group same rank names together before sorting by name
+
     const rankNameDiff = a.rank.localeCompare(b.rank);
     if (rankNameDiff !== 0) return rankNameDiff;
-    return (a.name ?? "").localeCompare(b.name ?? "");
+
+    return (a.callSign ?? "").localeCompare(b.callSign ?? "", undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
   });
 }
 
