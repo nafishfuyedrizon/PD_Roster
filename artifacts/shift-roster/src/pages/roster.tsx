@@ -99,12 +99,15 @@ function getRankOrder(rank: string): number {
 
 function sortByRank(officers: Officer[]): Officer[] {
   return [...officers].sort((a, b) => {
+    // 1) Rank tier first
     const rankDiff = getRankOrder(a.rank) - getRankOrder(b.rank);
     if (rankDiff !== 0) return rankDiff;
 
-    const rankNameDiff = a.rank.localeCompare(b.rank);
-    if (rankNameDiff !== 0) return rankNameDiff;
+    // 2) Department align/group second
+    const deptDiff = getDeptOrder(a.department) - getDeptOrder(b.department);
+    if (deptDiff !== 0) return deptDiff;
 
+    // 3) Call sign sort inside same department
     return (a.callSign ?? "").localeCompare(b.callSign ?? "", undefined, {
       numeric: true,
       sensitivity: "base",
