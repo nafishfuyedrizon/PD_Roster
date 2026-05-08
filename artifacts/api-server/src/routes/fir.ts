@@ -299,6 +299,7 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
   if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const { status, acceptedBy, officerName, rejectedBy } = req.body as { status: "accepted" | "rejected" | "pending"; acceptedBy?: string; officerName?: string; rejectedBy?: string };
+  const nextOfficerName = status === "accepted" ? (officerName ?? null) : null;
   if (!["accepted", "rejected", "pending"].includes(status)) {
     res.status(400).json({ error: "Invalid status" }); return;
   }
@@ -309,16 +310,16 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
            accepted_by = ?,
            accepted_at = ?,
            rejected_by = ?,
-           officer_name = COALESCE(?, officer_name)
+           officer_name = ?,
        WHERE id = ?`,
       [
-        status,
-        status === "accepted" ? (acceptedBy ?? null) : null,
-        status === "accepted" ? new Date() : null,
-        status === "rejected" ? (rejectedBy ?? null) : null,
-        status === "accepted" && officerName != null ? officerName : null,
-        id,
-      ],
+  status,
+  status === "accepted" ? (acceptedBy ?? null) : null,
+  status === "accepted" ? new Date() : null,
+  status === "rejected" ? (rejectedBy ?? null) : null,
+  nextOfficerName,
+  id,
+ ],
     );
     if (result.affectedRows === 0) { res.status(404).json({ error: "FIR not found" }); return; }
     const row = (await getMysqlFirRows(undefined, 10000)).find((fir) => fir.id === id) ?? null;
@@ -327,12 +328,12 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
     return;
   }
   const [row] = await db.update(pdFirTable).set({
-    status,
-    acceptedBy: status === "accepted" ? (acceptedBy ?? null) : null,
-    acceptedAt: status === "accepted" ? new Date() : null,
-    rejectedBy: status === "rejected" ? (rejectedBy ?? null) : null,
-    ...(status === "accepted" && officerName != null ? { officerName } : {}),
-  }).where(eq(pdFirTable.id, id)).returning();
+  status,
+  acceptedBy: status === "accepted" ? (acceptedBy ?? null) : null,
+  acceptedAt: status === "accepted" ? new Date() : null,
+  rejectedBy: status === "rejected" ? (rejectedBy ?? null) : null,
+  officerName: nextOfficerName,
+}).where(eq(pdFirTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "FIR not found" }); return; }
   broadcastFirEvent("thread_update");
   res.json(row);
