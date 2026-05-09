@@ -124,37 +124,42 @@ async function getMysqlFirRows(
     bookmarked: asBool(row.bookmarked),
   }));
 
-  const officers = await getMysqlOfficers();
+    const officers = await getMysqlOfficers();
   const idToName = new Map<string, string>();
   const displayToName = new Map<string, string>();
   const discordIds = new Set<string>();
   const displayNames = new Set<string>();
 
-  for (const reply of fir.threadReplies ?? []) {
-  const replyAuthorId = reply.authorId || reply.authorid;
-  const replyAuthorName = (
-    reply.authorName ||
-    reply.author ||
-    reply.username ||
-    ""
-  ).trim();
+  for (const fir of firs) {
+    for (const reply of fir.threadReplies ?? []) {
+      const replyAuthorId = (reply as any).authorId || (reply as any).authorid;
+      const replyAuthorName = (
+        (reply as any).authorName ||
+        (reply as any).author ||
+        (reply as any).username ||
+        ""
+      ).trim();
 
-  if (replyAuthorId) discordIds.add(String(replyAuthorId));
-  if (replyAuthorName) displayNames.add(replyAuthorName);
-}
+      if (replyAuthorId) discordIds.add(String(replyAuthorId));
+      if (replyAuthorName) displayNames.add(replyAuthorName);
+    }
   }
 
   for (const officer of officers) {
     if (!officer.name) continue;
+
     if (officer.discordUid && discordIds.has(officer.discordUid)) {
       idToName.set(officer.discordUid, officer.name);
     }
+
     if (officer.discordId && discordIds.has(officer.discordId)) {
       idToName.set(officer.discordId, officer.name);
     }
+
     for (const displayName of displayNames) {
       const officerName = officer.name.toLowerCase();
       const display = displayName.toLowerCase();
+
       if (
         officerName.includes(display) ||
         display.includes(officerName.split(" ")[0] ?? "")
@@ -165,26 +170,27 @@ async function getMysqlFirRows(
   }
 
   return firs.map((fir) => ({
-  ...fir,
-  threadReplies: fir.threadReplies?.map((reply: any) => {
-    const replyAuthorId = reply.authorId || reply.authorid;
-    const replyAuthorName = (
-      reply.authorName ||
-      reply.author ||
-      reply.username ||
-      "Unknown Officer"
-    ).trim();
+    ...fir,
+    threadReplies: fir.threadReplies?.map((reply: any) => {
+      const replyAuthorId = reply.authorId || reply.authorid;
+      const replyAuthorName = (
+        reply.authorName ||
+        reply.author ||
+        reply.username ||
+        "Unknown Officer"
+      ).trim();
 
-    return {
-      ...reply,
-      authorId: replyAuthorId ?? null,
-      author:
-        (replyAuthorId && idToName.get(String(replyAuthorId))) ||
-        displayToName.get(replyAuthorName) ||
-        replyAuthorName,
-    };
-  }) ?? null,
-}));
+      return {
+        ...reply,
+        authorId: replyAuthorId ?? null,
+        author:
+          (replyAuthorId && idToName.get(String(replyAuthorId))) ||
+          displayToName.get(replyAuthorName) ||
+          replyAuthorName,
+      };
+    }) ?? null,
+  }));
+}
 
 export function broadcastFirEvent(type: "new_fir" | "thread_update") {
   const data = JSON.stringify({ type, ts: Date.now() });
