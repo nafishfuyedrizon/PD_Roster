@@ -57,6 +57,13 @@ function filterFirsByStatus(
   });
 }
 
+function firRowKey(fir: Fir, index: number) {
+  return (
+    fir.discordMessageId ||
+    `${fir.id}:${fir.postedAt}:${fir.complainantCid ?? ""}:${fir.complainantName ?? ""}:${index}`
+  );
+}
+
 const BDT = "Asia/Dhaka";
 
 function formatDate(iso: string) {
@@ -699,6 +706,7 @@ export default function FirPage() {
       if (!res.ok) throw new Error("Failed to fetch FIRs");
       return res.json();
     },
+    placeholderData: [],
     staleTime: 30000,
     refetchInterval: 120000,
   });
@@ -717,6 +725,7 @@ export default function FirPage() {
       if (!res.ok) throw new Error("Failed to fetch filtered FIRs");
       return res.json();
     },
+    placeholderData: [],
     staleTime: 30000,
     refetchInterval: 120000,
   });
@@ -903,10 +912,13 @@ export default function FirPage() {
             <p className="text-sm">{debouncedSearch ? "No FIRs matched your search." : "No FIRs found."}</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {firs.map((fir) => (
+          <div
+            key={`fir-list:${statusFilter}:${debouncedSearch}`}
+            className="space-y-2"
+          >
+            {firs.map((fir, index) => (
               <FirCard
-                key={fir.id}
+                key={firRowKey(fir, index)}
                 fir={fir}
                 onStatusChange={async () => {
                   await Promise.all([
