@@ -358,13 +358,40 @@ router.patch("/fir/:id/bookmark", async (req, res): Promise<void> => {
 router.patch("/fir/:id", async (req, res): Promise<void> => {
   if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
-  const { status, acceptedBy, officerName, rejectedBy } = req.body as { status: "accepted" | "rejected" | "pending"; acceptedBy?: string; officerName?: string; rejectedBy?: string };
+  const {
+    status,
+    acceptedBy,
+    officerName,
+    rejectedBy,
+    discordMessageId,
+    postedAt,
+    complainantCid,
+    complainantName,
+  } = req.body as {
+    status: "accepted" | "rejected" | "pending";
+    acceptedBy?: string;
+    officerName?: string;
+    rejectedBy?: string;
+    discordMessageId?: string;
+    postedAt?: string;
+    complainantCid?: string;
+    complainantName?: string;
+  };
   const nextOfficerName = status === "accepted" ? (officerName ?? null) : null;
   if (!["accepted", "rejected", "pending"].includes(status)) {
     res.status(400).json({ error: "Invalid status" }); return;
   }
   if (isMysqlDatabaseUrl) {
-    const result = await mysqlExecute(
+    const updateArgs = [
+      status,
+      status === "accepted" ? (acceptedBy ?? null) : null,
+      status === "accepted" ? new Date() : null,
+      status === "rejected" ? (rejectedBy ?? null) : null,
+      status,
+      status === "accepted" ? (officerName ?? null) : null,
+    ] as const;
+
+    let result = await mysqlExecute(
       `UPDATE pd_fir
        SET status = ?,
            accepted_by = ?,
@@ -375,18 +402,61 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
              ELSE NULL
            END
        WHERE id = ?`,
-      [
-        status,
-        status === "accepted" ? (acceptedBy ?? null) : null,
-        status === "accepted" ? new Date() : null,
-        status === "rejected" ? (rejectedBy ?? null) : null,
-        status,
-        status === "accepted" ? (officerName ?? null) : null,
-        id,
-      ],
+      [...updateArgs, id],
     );
+
+    if (result.affectedRows === 0 && discordMessageId?.trim()) {
+      result = await mysqlExecute(
+        `UPDATE pd_fir
+         SET status = ?,
+             accepted_by = ?,
+             accepted_at = ?,
+             rejected_by = ?,
+             officer_name = CASE
+               WHEN ? = 'accepted' THEN ?
+               ELSE NULL
+             END
+         WHERE discord_message_id = ?`,
+        [...updateArgs, discordMessageId.trim()],
+      );
+    }
+
+    if (
+      result.affectedRows === 0 &&
+      postedAt &&
+      (complainantCid?.trim() || complainantName?.trim())
+    ) {
+      result = await mysqlExecute(
+        `UPDATE pd_fir
+         SET status = ?,
+             accepted_by = ?,
+             accepted_at = ?,
+             rejected_by = ?,
+             officer_name = CASE
+               WHEN ? = 'accepted' THEN ?
+               ELSE NULL
+             END
+         WHERE posted_at = ?
+           AND (
+             complainant_cid = ?
+             OR complainant_name = ?
+           )
+         LIMIT 1`,
+        [
+          ...updateArgs,
+          postedAt,
+          complainantCid?.trim() ?? "",
+          complainantName?.trim() ?? "",
+        ],
+      );
+    }
+
     if (result.affectedRows === 0) { res.status(404).json({ error: "FIR not found" }); return; }
-    const row = (await getMysqlFirRows(undefined, 10000)).find((fir) => fir.id === id) ?? null;
+    const row = (await getMysqlFirRows(undefined, 10000)).find((fir) =>
+      fir.id === id ||
+      (!!discordMessageId && fir.discordMessageId === discordMessageId) ||
+      (!!postedAt && fir.postedAt?.toISOString?.() === new Date(postedAt).toISOString()),
+    ) ?? null;
     broadcastFirEvent("thread_update");
     res.json(row);
     return;

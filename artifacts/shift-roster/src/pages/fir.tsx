@@ -150,6 +150,10 @@ function AcceptModal({ fir, onClose, onDone }: { fir: Fir; onClose: () => void; 
         status: "accepted",
         acceptedBy: acceptedByName,
         officerName,
+        discordMessageId: fir.discordMessageId,
+        postedAt: fir.postedAt,
+        complainantCid: fir.complainantCid,
+        complainantName: fir.complainantName,
       }),
     });
 
@@ -262,13 +266,28 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
   async function handleReject() {
     setActionLoading(true);
     try {
-      await fetch(`/api/fir/${fir.id}`, {
+      const res = await fetch(`/api/fir/${fir.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "rejected", rejectedBy: myName }),
+        body: JSON.stringify({
+          status: "rejected",
+          rejectedBy: myName,
+          discordMessageId: fir.discordMessageId,
+          postedAt: fir.postedAt,
+          complainantCid: fir.complainantCid,
+          complainantName: fir.complainantName,
+        }),
       });
+      if (!res.ok) {
+        const text = await res.text();
+        alert(`Reject failed: ${res.status} ${text}`);
+        return;
+      }
       onStatusChange();
+    } catch (error) {
+      alert("Reject failed. Check browser console/network.");
+      console.error(error);
     } finally {
       setActionLoading(false);
     }
@@ -277,13 +296,27 @@ function FirCard({ fir, onStatusChange }: { fir: Fir; onStatusChange: () => void
   async function handleResetPending() {
     setActionLoading(true);
     try {
-      await fetch(`/api/fir/${fir.id}`, {
+      const res = await fetch(`/api/fir/${fir.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "pending" }),
+        body: JSON.stringify({
+          status: "pending",
+          discordMessageId: fir.discordMessageId,
+          postedAt: fir.postedAt,
+          complainantCid: fir.complainantCid,
+          complainantName: fir.complainantName,
+        }),
       });
+      if (!res.ok) {
+        const text = await res.text();
+        alert(`Reset failed: ${res.status} ${text}`);
+        return;
+      }
       onStatusChange();
+    } catch (error) {
+      alert("Reset failed. Check browser console/network.");
+      console.error(error);
     } finally {
       setActionLoading(false);
     }
@@ -850,10 +883,17 @@ export default function FirPage() {
               <FirCard
                 key={fir.id}
                 fir={fir}
-                onStatusChange={() => {
-                  qc.invalidateQueries({ queryKey: ["/api/fir"] });
-                  qc.invalidateQueries({ queryKey: ["/api/fir/stats"] });
-                  qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] });
+                onStatusChange={async () => {
+                  await Promise.all([
+                    qc.invalidateQueries({ queryKey: ["/api/fir"] }),
+                    qc.invalidateQueries({ queryKey: ["/api/fir/stats"] }),
+                    qc.invalidateQueries({ queryKey: ["/api/qualification-chart"] }),
+                  ]);
+                  await Promise.all([
+                    qc.refetchQueries({ queryKey: ["/api/fir"] }),
+                    qc.refetchQueries({ queryKey: ["/api/fir/stats"] }),
+                    qc.refetchQueries({ queryKey: ["/api/qualification-chart"] }),
+                  ]);
                 }}
               />
             ))}
