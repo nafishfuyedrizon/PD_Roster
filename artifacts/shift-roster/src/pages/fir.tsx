@@ -692,17 +692,30 @@ export default function FirPage() {
     refetchInterval: 120000,
   });
 
+  const { data: visibleFirs = [], isLoading: isVisibleLoading, refetch: refetchVisible } = useQuery<Fir[]>({
+    queryKey: ["/api/fir", "visible", debouncedSearch, statusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter === "bookmarked") {
+        params.set("bookmarked", "1");
+      } else if (statusFilter !== "all") {
+        params.set("status", statusFilter);
+      }
+      const res = await fetch(`/api/fir?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch filtered FIRs");
+      return res.json();
+    },
+    staleTime: 30000,
+    refetchInterval: 120000,
+  });
+
   const pendingCount    = rawFirs.filter(f => (f.status ?? "pending") === "pending").length;
   const acceptedCount   = rawFirs.filter(f => f.status === "accepted").length;
   const rejectedCount   = rawFirs.filter(f => f.status === "rejected").length;
   const bookmarkedCount = rawFirs.filter(f => f.bookmarked).length;
 
-  const firs = [...rawFirs]
-    .filter(f => {
-      if (statusFilter === "bookmarked") return f.bookmarked;
-      if (statusFilter === "all") return true;
-      return (f.status ?? "pending") === statusFilter;
-    })
+  const firs = [...visibleFirs]
     .sort((a, b) => {
       const priority = (s: string) => (s === "pending" ? 0 : 1);
       const pa = priority(a.status ?? "pending");
@@ -736,6 +749,7 @@ export default function FirPage() {
           const payload = JSON.parse(e.data) as { type: string };
           if (payload.type === "new_fir" || payload.type === "thread_update") {
             refetch();
+            refetchVisible();
             refetchStats();
           }
         } catch { }
@@ -867,7 +881,7 @@ export default function FirPage() {
         </div>
 
         {/* FIR list */}
-        {isLoading ? (
+        {isLoading || isVisibleLoading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground text-sm gap-2">
             <RefreshCw className="w-4 h-4 animate-spin" />
             Loading FIRs...
