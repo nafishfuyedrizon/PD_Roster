@@ -375,7 +375,6 @@ const isStaffRole = !!staffRole;
       }
     }
 
-    const staffRole = staffRows[0] ?? null;
     const isHC  = isStaffRole && (staffRole?.isSeniorStaff ?? false); // High Command
     const isFTP = isStaffRole && (staffRole?.isStaff ?? false);       // FTP Supervisor
     setSessionUser(req, {
