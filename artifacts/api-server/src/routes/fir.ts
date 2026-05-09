@@ -267,10 +267,17 @@ router.get("/fir/stream", (req, res): void => {
 });
 
 router.get("/fir", async (req, res): Promise<void> => {
-  const { search, limit: lim } = req.query as Record<string, string>;
+  const { search, limit: lim, status, bookmarked } = req.query as Record<string, string>;
   const limit = lim ? Math.min(parseInt(lim, 10) || 10000, 10000) : 10000;
   if (isMysqlDatabaseUrl) {
-    res.json(await getMysqlFirRows(search, limit));
+    let rows = await getMysqlFirRows(search, limit);
+    if (status && ["pending", "accepted", "rejected"].includes(status)) {
+      rows = rows.filter((row) => (row.status ?? "pending") === status);
+    }
+    if (bookmarked === "1") {
+      rows = rows.filter((row) => row.bookmarked);
+    }
+    res.json(rows);
     return;
   }
   let query = db.select().from(pdFirTable).orderBy(desc(pdFirTable.postedAt)).$dynamic();
@@ -325,7 +332,15 @@ router.get("/fir", async (req, res): Promise<void> => {
       : null,
   }));
 
-  res.json(result);
+  let filtered = result;
+  if (status && ["pending", "accepted", "rejected"].includes(status)) {
+    filtered = filtered.filter((row) => (row.status ?? "pending") === status);
+  }
+  if (bookmarked === "1") {
+    filtered = filtered.filter((row) => !!row.bookmarked);
+  }
+
+  res.json(filtered);
 });
 
 // ── Toggle bookmark ───────────────────────────────────────────────────────────
