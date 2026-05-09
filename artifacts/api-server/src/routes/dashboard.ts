@@ -3,6 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { db, discordDutyEventsTable, emsDutyLogsTable, officersTable } from "@workspace/db";
 import { getAllSettings } from "./settings";
 import { findOfficerByDutyIdentity, getCurrentOpenDutySessions } from "../lib/duty-officer-match.js";
+import { BOT_DUTY_HEARTBEAT_KEY, DUTY_SYNC_STALE_AFTER_MS } from "../lib/discord-bot.js";
 import {
   getMysqlDutyEvents,
   getMysqlDutyLogs,
@@ -44,6 +45,12 @@ function getPreviousWeekPeriod(date: Date): string {
   return getWeekPeriod(prev);
 }
 
+function parseHeartbeat(value: unknown): Date | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 router.get("/dashboard", async (req, res): Promise<void> => {
   const now = new Date();
   const currentWeek = getWeekPeriod(now);
@@ -64,9 +71,15 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   const ranksFromSettings = (siteSettings.ranks as string[] | undefined) ?? [];
   const RANK_ORDER: Record<string, number> = {};
   ranksFromSettings.forEach((r, i) => { RANK_ORDER[r.toUpperCase()] = i + 1; });
+  const lastDutySyncAt = parseHeartbeat(siteSettings[BOT_DUTY_HEARTBEAT_KEY]);
+  const liveDutyFresh =
+    !!lastDutySyncAt &&
+    now.getTime() - lastDutySyncAt.getTime() <= DUTY_SYNC_STALE_AFTER_MS;
 
   // ── Live on duty ───────────────────────────────────────────────────────────
-  const openSessions = getCurrentOpenDutySessions(allEvents, officers, now);
+  const openSessions = liveDutyFresh
+    ? getCurrentOpenDutySessions(allEvents, officers, now)
+    : [];
   const liveOpenDutySecsByCs = Object.fromEntries(
     openSessions.map((session) => [session.officer.callSign, session.elapsedSecs]),
   );
@@ -277,6 +290,8 @@ router.get("/dashboard", async (req, res): Promise<void> => {
   res.json({
     liveOnDuty,
     recentDutyActivity,
+    liveDutyFresh,
+    lastDutySyncAt: lastDutySyncAt?.toISOString() ?? null,
     stats: {
       totalMembers,
       active,

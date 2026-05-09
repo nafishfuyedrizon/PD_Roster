@@ -10,6 +10,7 @@ import {
   pdCitationsTable,
   pdFirTable,
   adminLogsTable,
+  siteSettingsTable,
   type FirThreadMessage,
 } from "@workspace/db";
 import { eq, and, asc, desc, or, lt, gte, lte } from "drizzle-orm";
@@ -17,6 +18,7 @@ import { logger } from "./logger";
 import { findOfficerByDutyIdentity } from "./duty-officer-match";
 import {
   getMysqlOfficers,
+  setMysqlSetting,
   getMysqlShiftConfigs,
   getNextMysqlId,
   isMysqlDatabaseUrl,
@@ -59,6 +61,31 @@ const RECENT_RESCAN_INTERVAL_MS = Math.max(5000, Number.parseInt(process.env.PD_
 const SECONDARY_RECENT_RESCAN_LIMIT = Math.max(1, Math.min(10, Number.parseInt(process.env.PD_REGISTRAR_SECONDARY_RESCAN_LIMIT ?? "10", 10) || 10));
 const ENABLE_FIR_REACTION_SYNC = process.env.PD_FIR_REACTION_SYNC === "true";
 let dutySyncEnabled = true;
+const BOT_DUTY_HEARTBEAT_KEY = "bot_last_duty_sync_at";
+const DUTY_SYNC_STALE_AFTER_MS = Math.max(
+  60_000,
+  RECENT_RESCAN_INTERVAL_MS * 2 + 15_000,
+);
+
+async function touchDutyHeartbeat(at = new Date()) {
+  try {
+    if (isMysqlDatabaseUrl) {
+      await setMysqlSetting(BOT_DUTY_HEARTBEAT_KEY, at.toISOString());
+      return;
+    }
+    await db
+      .insert(siteSettingsTable)
+      .values({ key: BOT_DUTY_HEARTBEAT_KEY, value: JSON.stringify(at.toISOString()) })
+      .onConflictDoUpdate({
+        target: siteSettingsTable.key,
+        set: { value: JSON.stringify(at.toISOString()), updatedAt: new Date() },
+      });
+  } catch (err) {
+    logger.warn({ err }, "Could not update duty heartbeat");
+  }
+}
+
+export { BOT_DUTY_HEARTBEAT_KEY, DUTY_SYNC_STALE_AFTER_MS };
 
 function isSafePdDutyChannelName(name: string | null | undefined): boolean {
   const value = (name ?? "").toLowerCase();
@@ -581,9 +608,24 @@ async function processMessage(
 
     try {
       let inserted = false;
+      let affectedLicenseId = parsed.licenseId;
+      let affectedWeekPeriod = weekPeriod;
+      let previousLicenseId: string | null = null;
+      let previousWeekPeriod: string | null = null;
       if (isMysqlDatabaseUrl) {
-        const existing = await mysqlQuery<{ id: number }>(
-          `SELECT id FROM pd_discord_duty_events WHERE discord_message_id = ? LIMIT 1`,
+        const existing = await mysqlQuery<{
+          id: number;
+          license_id: string;
+          week_period: string;
+          officer_name: string | null;
+          rank: string | null;
+          event_type: "on" | "off";
+          event_at: string | Date;
+        }>(
+          `SELECT id, license_id, week_period, officer_name, rank, event_type, event_at
+           FROM pd_discord_duty_events
+           WHERE discord_message_id = ?
+           LIMIT 1`,
           [msg.id],
         );
         if (existing.length === 0) {
@@ -595,11 +637,47 @@ async function processMessage(
             [nextId, parsed.licenseId, parsed.officerName, parsed.rank, parsed.eventType, eventAt, msg.id, weekPeriod],
           );
           inserted = true;
+        } else {
+          const current = existing[0]!;
+          previousLicenseId = current.license_id;
+          previousWeekPeriod = current.week_period;
+          const sameRow =
+            current.license_id === parsed.licenseId &&
+            (current.officer_name ?? "") === parsed.officerName &&
+            (current.rank ?? "") === parsed.rank &&
+            current.event_type === parsed.eventType &&
+            new Date(current.event_at).getTime() === eventAt.getTime() &&
+            current.week_period === weekPeriod;
+          if (!sameRow) {
+            await mysqlExecute(
+              `UPDATE pd_discord_duty_events
+               SET license_id = ?, officer_name = ?, rank = ?, event_type = ?, event_at = ?, week_period = ?
+               WHERE id = ?`,
+              [parsed.licenseId, parsed.officerName, parsed.rank, parsed.eventType, eventAt, weekPeriod, current.id],
+            );
+          } else {
+            await touchDutyHeartbeat();
+            return { licenseId: parsed.licenseId, weekPeriod, inserted: false };
+          }
         }
       } else {
-        const insertResult = await db
-          .insert(discordDutyEventsTable)
-          .values({
+        const existing = await db
+          .select({
+            id: discordDutyEventsTable.id,
+            licenseId: discordDutyEventsTable.licenseId,
+            officerName: discordDutyEventsTable.officerName,
+            rank: discordDutyEventsTable.rank,
+            eventType: discordDutyEventsTable.eventType,
+            eventAt: discordDutyEventsTable.eventAt,
+            weekPeriod: discordDutyEventsTable.weekPeriod,
+          })
+          .from(discordDutyEventsTable)
+          .where(eq(discordDutyEventsTable.discordMessageId, msg.id))
+          .limit(1)
+          .then((rows) => rows[0] ?? null);
+
+        if (!existing) {
+          await db.insert(discordDutyEventsTable).values({
             licenseId: parsed.licenseId,
             officerName: parsed.officerName,
             rank: parsed.rank,
@@ -607,14 +685,47 @@ async function processMessage(
             eventAt,
             discordMessageId: msg.id,
             weekPeriod,
-          })
-          .onConflictDoNothing();
-        inserted = Array.isArray(insertResult) || !!insertResult;
+          });
+          inserted = true;
+        } else {
+          previousLicenseId = existing.licenseId;
+          previousWeekPeriod = existing.weekPeriod;
+          const sameRow =
+            existing.licenseId === parsed.licenseId &&
+            existing.officerName === parsed.officerName &&
+            (existing.rank ?? "") === parsed.rank &&
+            existing.eventType === parsed.eventType &&
+            existing.eventAt.getTime() === eventAt.getTime() &&
+            existing.weekPeriod === weekPeriod;
+          if (!sameRow) {
+            await db
+              .update(discordDutyEventsTable)
+              .set({
+                licenseId: parsed.licenseId,
+                officerName: parsed.officerName,
+                rank: parsed.rank,
+                eventType: parsed.eventType,
+                eventAt,
+                weekPeriod,
+              })
+              .where(eq(discordDutyEventsTable.id, existing.id));
+          } else {
+            await touchDutyHeartbeat();
+            return { licenseId: parsed.licenseId, weekPeriod, inserted: false };
+          }
+        }
+      }
+
+      if (previousLicenseId && previousWeekPeriod && (previousLicenseId !== affectedLicenseId || previousWeekPeriod !== affectedWeekPeriod)) {
+        await recomputeDutyHours(previousLicenseId, previousWeekPeriod);
       }
 
       if (inserted && !opts?.skipRecompute) {
         await recomputeDutyHours(parsed.licenseId, weekPeriod);
+      } else if (!opts?.skipRecompute) {
+        await recomputeDutyHours(parsed.licenseId, weekPeriod);
       }
+      await touchDutyHeartbeat();
       return { licenseId: parsed.licenseId, weekPeriod, inserted };
     } catch (err) {
       logger.error({ err, messageId: msg.id }, "Error processing message");
@@ -622,6 +733,44 @@ async function processMessage(
     break;
   }
   return null;
+}
+
+async function removeDutyMessageByDiscordId(messageId: string) {
+  try {
+    if (isMysqlDatabaseUrl) {
+      const existing = await mysqlQuery<{ id: number; license_id: string; week_period: string }>(
+        `SELECT id, license_id, week_period
+         FROM pd_discord_duty_events
+         WHERE discord_message_id = ?
+         LIMIT 1`,
+        [messageId],
+      ).then((rows) => rows[0] ?? null);
+      if (!existing) return false;
+      await mysqlExecute(`DELETE FROM pd_discord_duty_events WHERE id = ?`, [existing.id]);
+      await recomputeDutyHours(existing.license_id, existing.week_period);
+      await touchDutyHeartbeat();
+      return true;
+    }
+
+    const existing = await db
+      .select({
+        id: discordDutyEventsTable.id,
+        licenseId: discordDutyEventsTable.licenseId,
+        weekPeriod: discordDutyEventsTable.weekPeriod,
+      })
+      .from(discordDutyEventsTable)
+      .where(eq(discordDutyEventsTable.discordMessageId, messageId))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+    if (!existing) return false;
+    await db.delete(discordDutyEventsTable).where(eq(discordDutyEventsTable.id, existing.id));
+    await recomputeDutyHours(existing.licenseId, existing.weekPeriod);
+    await touchDutyHeartbeat();
+    return true;
+  } catch (err) {
+    logger.error({ err, messageId }, "Error removing duty message");
+    return false;
+  }
 }
 
 // ── Historical backfill ────────────────────────────────────────────────────
@@ -739,6 +888,7 @@ async function backfillHistory(channel: TextChannel) {
 
   logger.info({ scanned, processed, inserted, skipped, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff }, "History backfill complete");
   await botLog("SYNC", "duty-hours", "History Backfill", { scanned, processed, inserted, skipped, pairs: dirtyPairs.size, backfillMonths: BACKFILL_MONTHS, reachedCutoff });
+  await touchDutyHeartbeat();
 }
 
 async function reconcileRecentDutyMessages(channel: TextChannel) {
@@ -766,6 +916,7 @@ async function reconcileRecentDutyMessages(channel: TextChannel) {
     }
   }
 
+  await touchDutyHeartbeat();
   logger.info(
     { scanned: sorted.length, inserted, repairedPairs: dirtyPairs.size, intervalMs: RECENT_RESCAN_INTERVAL_MS },
     "Recent duty reconcile complete",
@@ -1169,6 +1320,31 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
   return "ignored";
 }
 
+async function removeFirMessageByDiscordId(messageId: string): Promise<boolean> {
+  try {
+    if (isMysqlDatabaseUrl) {
+      const result = await mysqlExecute(`DELETE FROM pd_fir WHERE discord_message_id = ?`, [messageId]);
+      if (result.affectedRows > 0) {
+        broadcastFirEvent("thread_update");
+        return true;
+      }
+      return false;
+    }
+    const rows = await db
+      .delete(pdFirTable)
+      .where(eq(pdFirTable.discordMessageId, messageId))
+      .returning({ id: pdFirTable.id });
+    if (rows.length > 0) {
+      broadcastFirEvent("thread_update");
+      return true;
+    }
+    return false;
+  } catch (err) {
+    logger.error({ err, messageId }, "Error removing FIR");
+    return false;
+  }
+}
+
 async function fetchFirThreadReplies(msg: Message): Promise<FirThreadMessage[]> {
   try {
     if (!msg.thread) return [];
@@ -1331,6 +1507,23 @@ async function processCitationMessage(msg: Message): Promise<"inserted" | "skipp
     logger.error({ err, messageId: msg.id }, "Error saving citation");
   }
   return "ignored";
+}
+
+async function removeCitationMessageByDiscordId(messageId: string): Promise<boolean> {
+  try {
+    if (isMysqlDatabaseUrl) {
+      const result = await mysqlExecute(`DELETE FROM pd_citations WHERE discord_message_id = ?`, [messageId]);
+      return result.affectedRows > 0;
+    }
+    const rows = await db
+      .delete(pdCitationsTable)
+      .where(eq(pdCitationsTable.discordMessageId, messageId))
+      .returning({ id: pdCitationsTable.id });
+    return rows.length > 0;
+  } catch (err) {
+    logger.error({ err, messageId }, "Error removing citation");
+    return false;
+  }
 }
 
 async function backfillCitations(channel: TextChannel) {
@@ -1526,6 +1719,57 @@ export async function startDiscordBot() {
       !msg.author.bot
     ) {
       await updateFirThreadByThreadId(msg.channelId);
+    }
+  });
+
+  client.on("messageUpdate", async (_oldMsg, newMsg) => {
+    try {
+      const message = newMsg.partial ? await newMsg.fetch() : newMsg;
+      if (dutySyncEnabled && message.channelId === CHANNEL_ID) {
+        const synced = await processMessage(message as Message);
+        if (!synced) {
+          await removeDutyMessageByDiscordId(message.id);
+        }
+      } else if (CITATION_CHANNEL_ID && message.channelId === CITATION_CHANNEL_ID) {
+        const state = await processCitationMessage(message as Message);
+        if (state === "ignored") {
+          await removeCitationMessageByDiscordId(message.id);
+        }
+      } else if (FIR_CHANNEL_ID && message.channelId === FIR_CHANNEL_ID) {
+        const state = await processFirMessage(message as Message);
+        if (state === "ignored") {
+          await removeFirMessageByDiscordId(message.id);
+        }
+      } else if (
+        FIR_CHANNEL_ID &&
+        message.channel.type === ChannelType.PublicThread &&
+        (message.channel as any).parentId === FIR_CHANNEL_ID &&
+        !message.author?.bot
+      ) {
+        await updateFirThreadByThreadId(message.channelId);
+      }
+    } catch (err) {
+      logger.warn({ err }, "Could not sync edited Discord message");
+    }
+  });
+
+  client.on("messageDelete", async (msg) => {
+    try {
+      if (dutySyncEnabled && msg.channelId === CHANNEL_ID) {
+        await removeDutyMessageByDiscordId(msg.id);
+      } else if (CITATION_CHANNEL_ID && msg.channelId === CITATION_CHANNEL_ID) {
+        await removeCitationMessageByDiscordId(msg.id);
+      } else if (FIR_CHANNEL_ID && msg.channelId === FIR_CHANNEL_ID) {
+        await removeFirMessageByDiscordId(msg.id);
+      } else if (
+        FIR_CHANNEL_ID &&
+        msg.channel.type === ChannelType.PublicThread &&
+        (msg.channel as any).parentId === FIR_CHANNEL_ID
+      ) {
+        await updateFirThreadByThreadId(msg.channelId);
+      }
+    } catch (err) {
+      logger.warn({ err }, "Could not sync deleted Discord message");
     }
   });
 
