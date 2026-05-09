@@ -493,7 +493,14 @@ export async function getMysqlDutyLogs() {
 
 export async function getMysqlDutyEvents() {
   const rows = await mysqlQuery<MysqlDutyEventRow>(
-    `SELECT * FROM pd_discord_duty_events ORDER BY event_at DESC, id DESC`,
+    `SELECT *
+     FROM pd_discord_duty_events
+     WHERE discord_message_id IS NULL
+        OR (
+          discord_message_id NOT LIKE 'auto-close-%'
+          AND discord_message_id NOT LIKE 'auto-off:%'
+        )
+     ORDER BY event_at DESC, id DESC`,
   );
   return rows.map((row) => ({
     id: Number(row.id),
