@@ -59,6 +59,35 @@ function parseThreadReplies(raw: string | null): FirThreadMessage[] | null {
   }
 }
 
+function normalizeFirPreview(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isBogusFirPreview(value: string | null | undefined): boolean {
+  const text = normalizeFirPreview(value);
+  if (!text) return true;
+  if (/^pd fir\s*[•:#-]*\s*#?\d+$/i.test(text)) return true;
+  if (/^(new fir submission|fir submission|test|result|output|report)$/i.test(text)) return true;
+  return false;
+}
+
+function hasMeaningfulFirContent(row: {
+  complainantName: string | null;
+  complainantCid: string | null;
+  complainantContact: string | null;
+  eventDescription: string | null;
+  suspectDetails: string | null;
+  evidence: string | null;
+}): boolean {
+  if (row.complainantName?.trim()) return true;
+  if (row.complainantCid?.trim()) return true;
+  if (row.complainantContact?.trim()) return true;
+  if (row.suspectDetails?.trim()) return true;
+  if (row.evidence?.trim()) return true;
+  if (!isBogusFirPreview(row.eventDescription)) return true;
+  return false;
+}
+
 async function getMysqlFirRows(
   search?: string,
   limit = 10000,
@@ -122,7 +151,7 @@ async function getMysqlFirRows(
     postedAt: asDate(row.posted_at),
     createdAt: asDate(row.created_at),
     bookmarked: asBool(row.bookmarked),
-  }));
+  })).filter((row) => hasMeaningfulFirContent(row));
 
       const officers = await getMysqlOfficers();
   const idToOfficer = new Map<string, { id: number; name: string }>();
@@ -437,23 +466,20 @@ router.get("/fir/officer-breakdown", async (req, res): Promise<void> => {
 
 router.get("/fir/stats", async (_req, res): Promise<void> => {
   if (isMysqlDatabaseUrl) {
-    const [total] = await mysqlQuery<{ count: number | string }>(
-      `SELECT COUNT(*) AS count FROM pd_fir`,
-    );
-    const topOfficers = await mysqlQuery<{ officer_name: string | null; firs: number | string }>(
-      `SELECT officer_name, COUNT(*) AS firs
-       FROM pd_fir
-       WHERE officer_name IS NOT NULL AND officer_name <> ''
-       GROUP BY officer_name
-       ORDER BY firs DESC
-       LIMIT 10`,
-    );
+    const firRows = await getMysqlFirRows(undefined, 10000);
+    const topOfficerMap = new Map<string, number>();
+    for (const fir of firRows) {
+      const officerName = fir.officerName?.trim();
+      if (!officerName) continue;
+      topOfficerMap.set(officerName, (topOfficerMap.get(officerName) ?? 0) + 1);
+    }
+    const topOfficers = [...topOfficerMap.entries()]
+      .map(([officer_name, firs]) => ({ officer_name, firs }))
+      .sort((a, b) => b.firs - a.firs)
+      .slice(0, 10);
     res.json({
-      total: Number(total?.count ?? 0),
-      topOfficers: topOfficers.map((row) => ({
-        officer_name: row.officer_name,
-        firs: Number(row.firs ?? 0),
-      })),
+      total: firRows.length,
+      topOfficers,
     });
     return;
   }

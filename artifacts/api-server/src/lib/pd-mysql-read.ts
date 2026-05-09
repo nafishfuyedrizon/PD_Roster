@@ -89,37 +89,6 @@ function asDate(value: unknown): Date {
   return new Date(0);
 }
 
-function asBangladeshWallTimeDate(value: unknown): Date {
-  const offsetMinutes = 6 * 60;
-
-  if (value instanceof Date) {
-    return new Date(value.getTime() - offsetMinutes * 60_000);
-  }
-
-  const text = asString(value)?.trim();
-  if (text) {
-    const match = text.match(
-      /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/,
-    );
-    if (match) {
-      const [, year, month, day, hour = "00", minute = "00", second = "00"] = match;
-      return new Date(
-        Date.UTC(
-          Number(year),
-          Number(month) - 1,
-          Number(day),
-          Number(hour),
-          Number(minute),
-          Number(second),
-          0,
-        ) - offsetMinutes * 60_000,
-      );
-    }
-  }
-
-  return asDate(value);
-}
-
 function asString(value: unknown): string | null {
   if (typeof value === "string") return value;
   if (typeof value === "number") return String(value);
@@ -508,7 +477,7 @@ export async function getMysqlDutyEvents() {
     officerName: row.officer_name ?? "",
     rank: row.rank ?? null,
     eventType: row.event_type ?? "",
-    eventAt: asBangladeshWallTimeDate(row.event_at),
+    eventAt: asDate(row.event_at),
     discordMessageId: row.discord_message_id ?? "",
     weekPeriod: row.week_period ?? "",
     createdAt: asDate(row.created_at),

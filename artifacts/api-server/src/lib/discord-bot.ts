@@ -894,6 +894,28 @@ function parseFir(text: string): ParsedFir {
   };
 }
 
+function normalizeFirPreview(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isBogusFirPreview(value: string | null | undefined): boolean {
+  const text = normalizeFirPreview(value);
+  if (!text) return true;
+  if (/^pd fir\s*[•:#-]*\s*#?\d+$/i.test(text)) return true;
+  if (/^(new fir submission|fir submission|test|result|output|report)$/i.test(text)) return true;
+  return false;
+}
+
+function hasMeaningfulFirData(parsed: ParsedFir): boolean {
+  if (parsed.complainantName?.trim()) return true;
+  if (parsed.complainantCid?.trim()) return true;
+  if (parsed.complainantContact?.trim()) return true;
+  if (parsed.suspectDetails?.trim()) return true;
+  if (parsed.evidence?.trim()) return true;
+  if (!isBogusFirPreview(parsed.eventDescription)) return true;
+  return false;
+}
+
 function isFirMessage(text: string): boolean {
   const normalized = stripDiscordMarkdown(text).toLowerCase();
   return /pd\s*fir|new fir submission|fir submission/.test(normalized) ||
@@ -945,8 +967,11 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
 
   const parsed = parseFir(combined);
 
-  const hasData = !!(parsed.complainantName || parsed.complainantCid || parsed.eventDescription || parsed.suspectDetails);
-  if (!hasData) return "ignored";
+  if (isBogusFirPreview(parsed.eventDescription)) {
+    parsed.eventDescription = null;
+  }
+
+  if (!hasMeaningfulFirData(parsed)) return "ignored";
 
   const threadReplies = await fetchFirThreadReplies(msg);
   const threadId = msg.thread?.id ?? null;
