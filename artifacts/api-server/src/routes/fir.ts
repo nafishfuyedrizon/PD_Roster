@@ -309,14 +309,18 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
            accepted_by = ?,
            accepted_at = ?,
            rejected_by = ?,
-           officer_name = COALESCE(?, officer_name)
+           officer_name = CASE
+             WHEN ? = 'accepted' THEN ?
+             ELSE NULL
+           END
        WHERE id = ?`,
       [
         status,
         status === "accepted" ? (acceptedBy ?? null) : null,
         status === "accepted" ? new Date() : null,
         status === "rejected" ? (rejectedBy ?? null) : null,
-        status === "accepted" && officerName != null ? officerName : null,
+        status,
+        status === "accepted" ? (officerName ?? null) : null,
         id,
       ],
     );
@@ -331,7 +335,7 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
     acceptedBy: status === "accepted" ? (acceptedBy ?? null) : null,
     acceptedAt: status === "accepted" ? new Date() : null,
     rejectedBy: status === "rejected" ? (rejectedBy ?? null) : null,
-    ...(status === "accepted" && officerName != null ? { officerName } : {}),
+    officerName: status === "accepted" ? (officerName ?? null) : null,
   }).where(eq(pdFirTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "FIR not found" }); return; }
   broadcastFirEvent("thread_update");
