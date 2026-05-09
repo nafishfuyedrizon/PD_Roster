@@ -124,9 +124,9 @@ async function getMysqlFirRows(
     bookmarked: asBool(row.bookmarked),
   }));
 
-    const officers = await getMysqlOfficers();
-  const idToName = new Map<string, string>();
-  const displayToName = new Map<string, string>();
+      const officers = await getMysqlOfficers();
+  const idToOfficer = new Map<string, { id: number; name: string }>();
+  const displayToOfficer = new Map<string, { id: number; name: string }>();
   const discordIds = new Set<string>();
   const displayNames = new Set<string>();
 
@@ -148,12 +148,17 @@ async function getMysqlFirRows(
   for (const officer of officers) {
     if (!officer.name) continue;
 
-    if (officer.discordUid && discordIds.has(officer.discordUid)) {
-      idToName.set(officer.discordUid, officer.name);
+    const officerInfo = {
+      id: Number(officer.id),
+      name: officer.name,
+    };
+
+    if (officer.discordUid && discordIds.has(String(officer.discordUid))) {
+      idToOfficer.set(String(officer.discordUid), officerInfo);
     }
 
-    if (officer.discordId && discordIds.has(officer.discordId)) {
-      idToName.set(officer.discordId, officer.name);
+    if (officer.discordId && discordIds.has(String(officer.discordId))) {
+      idToOfficer.set(String(officer.discordId), officerInfo);
     }
 
     for (const displayName of displayNames) {
@@ -164,7 +169,7 @@ async function getMysqlFirRows(
         officerName.includes(display) ||
         display.includes(officerName.split(" ")[0] ?? "")
       ) {
-        displayToName.set(displayName, officer.name);
+        displayToOfficer.set(displayName, officerInfo);
       }
     }
   }
@@ -180,18 +185,21 @@ async function getMysqlFirRows(
         "Unknown Officer"
       ).trim();
 
+      const matchedOfficer =
+        (replyAuthorId && idToOfficer.get(String(replyAuthorId))) ||
+        displayToOfficer.get(replyAuthorName) ||
+        null;
+
       return {
         ...reply,
         authorId: replyAuthorId ?? null,
-        author:
-          (replyAuthorId && idToName.get(String(replyAuthorId))) ||
-          displayToName.get(replyAuthorName) ||
-          replyAuthorName,
+        author: matchedOfficer?.name ?? replyAuthorName,
+        authorOfficerId: matchedOfficer?.id ?? null,
+        authorOfficerName: matchedOfficer?.name ?? null,
       };
     }) ?? null,
   }));
 }
-
 export function broadcastFirEvent(type: "new_fir" | "thread_update") {
   const data = JSON.stringify({ type, ts: Date.now() });
   for (const client of sseClients) {
