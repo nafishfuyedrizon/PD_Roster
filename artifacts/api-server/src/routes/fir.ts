@@ -130,11 +130,18 @@ async function getMysqlFirRows(
   const discordIds = new Set<string>();
   const displayNames = new Set<string>();
 
-  for (const fir of firs) {
-    for (const reply of fir.threadReplies ?? []) {
-      if (reply.authorId) discordIds.add(reply.authorId);
-      else if (reply.author) displayNames.add(reply.author);
-    }
+  for (const reply of fir.threadReplies ?? []) {
+  const replyAuthorId = reply.authorId || reply.authorid;
+  const replyAuthorName = (
+    reply.authorName ||
+    reply.author ||
+    reply.username ||
+    ""
+  ).trim();
+
+  if (replyAuthorId) discordIds.add(String(replyAuthorId));
+  if (replyAuthorName) displayNames.add(replyAuthorName);
+}
   }
 
   for (const officer of officers) {
@@ -158,16 +165,26 @@ async function getMysqlFirRows(
   }
 
   return firs.map((fir) => ({
-    ...fir,
-    threadReplies: fir.threadReplies?.map((reply) => ({
+  ...fir,
+  threadReplies: fir.threadReplies?.map((reply: any) => {
+    const replyAuthorId = reply.authorId || reply.authorid;
+    const replyAuthorName = (
+      reply.authorName ||
+      reply.author ||
+      reply.username ||
+      "Unknown Officer"
+    ).trim();
+
+    return {
       ...reply,
+      authorId: replyAuthorId ?? null,
       author:
-        (reply.authorId && idToName.get(reply.authorId)) ||
-        (reply.author && displayToName.get(reply.author)) ||
-        reply.author,
-    })) ?? null,
-  }));
-}
+        (replyAuthorId && idToName.get(String(replyAuthorId))) ||
+        displayToName.get(replyAuthorName) ||
+        replyAuthorName,
+    };
+  }) ?? null,
+}));
 
 export function broadcastFirEvent(type: "new_fir" | "thread_update") {
   const data = JSON.stringify({ type, ts: Date.now() });
