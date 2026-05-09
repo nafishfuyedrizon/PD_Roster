@@ -375,21 +375,23 @@ const isStaffRole = !!staffRole;
       }
     }
 
-    const isHC  = isStaffRole && (staffRole?.isSeniorStaff ?? false); // High Command
-    const isFTP = isStaffRole && (staffRole?.isStaff ?? false);       // FTP Supervisor
-    setSessionUser(req, {
-      id: discordUser.id,
-      username: discordUser.username,
-      displayName,
-      avatar: avatarUrl,
-      roles,
-      guildId: DISCORD_GUILD_ID,
-      isOwner,
-      isSuperAdmin: isOwner,
-      isSeniorStaff: isOwner || isHC,
-      isStaff: isOwner || isHC || isFTP,
-      isTrusted: isOwner || isStaffRole,
-    });
+    const isHC = isStaffRole && (staffRole?.isSeniorStaff ?? false); // High Command
+const isFTP = isStaffRole && (staffRole?.isStaff ?? false);      // FTP Supervisor
+const isSuperAdminRole = isStaffRole && (staffRole?.isSuperAdmin ?? false);
+
+setSessionUser(req, {
+  id: discordUser.id,
+  username: discordUser.username,
+  displayName,
+  avatar: avatarUrl,
+  roles,
+  guildId: DISCORD_GUILD_ID,
+  isOwner,
+  isSuperAdmin: isOwner || isSuperAdminRole || isHC,
+  isSeniorStaff: isOwner || isSuperAdminRole || isHC,
+  isStaff: isOwner || isSuperAdminRole || isHC || isFTP,
+  isTrusted: isOwner || isSuperAdminRole || isHC || isFTP || isStaffRole,
+});
 
     try {
       await db.insert(adminLogsTable).values({
@@ -425,10 +427,17 @@ router.get("/auth/me", async (req: Request, res: Response) => {
   // Refresh staff roles from DB so role changes take effect without re-login
   try {
     const sr = await getStaffRoleByDiscordUid(user.id);
-    const isSuperAdmin = user.isOwner || (sr?.isSuperAdmin ?? false);
-    const isSeniorStaff = isSuperAdmin || (sr?.isSeniorStaff ?? false);
-    const isStaff = isSeniorStaff || (sr?.isStaff ?? false);
-    const isTrusted = isStaff || (sr?.isTrusted ?? false);
+    const isSuperAdmin =
+  user.isOwner || (sr?.isSuperAdmin ?? false) || (sr?.isSeniorStaff ?? false);
+
+const isSeniorStaff =
+  isSuperAdmin || (sr?.isSeniorStaff ?? false);
+
+const isStaff =
+  isSeniorStaff || (sr?.isStaff ?? false);
+
+const isTrusted =
+  isStaff || (sr?.isTrusted ?? false);
     res.json({
       user: {
         ...user,
