@@ -89,21 +89,24 @@ export default function AdminStaffRolesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, field, value }: { id: number; field: string; value: boolean }) =>
-      fetch(`/api/admin/staff-roles/${id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: value }),
-      }).then((r) => r.json()),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/staff-roles"] }),
-  });
+  mutationFn: async ({ id, field, value }: { id: number; field: string; value: boolean }) => {
+    const res = await fetch(`/api/admin/staff-roles/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value }),
+    });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      fetch(`/api/admin/staff-roles/${id}`, { method: "DELETE", credentials: "include" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/staff-roles"] }),
-  });
+    if (!res.ok) {
+      const text = await res.text();
+      alert(`Power update failed: ${res.status} ${text}`);
+      throw new Error(text);
+    }
+
+    return res.json();
+  },
+  onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/staff-roles"] }),
+});
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
