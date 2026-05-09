@@ -373,6 +373,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </div>
+        <footer className="border-t border-border px-4 py-5 text-center">
+          <div className="text-[11px] md:text-xs uppercase tracking-[0.28em] text-muted-foreground font-mono">
+            LEGACY BD PD ROSTER SYSTEM // CONFIDENTIAL // AUTHORIZED PERSONNEL ONLY
+          </div>
+          <div className="mt-2 text-[11px] md:text-xs text-muted-foreground font-mono">
+            maintained by <span className="text-foreground font-semibold">nafish fuyed</span>
+          </div>
+        </footer>
       </main>
     </div>
   );
