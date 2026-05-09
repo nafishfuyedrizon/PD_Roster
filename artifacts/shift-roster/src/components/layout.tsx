@@ -63,7 +63,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Logo / Header */}
       <div className="p-4 border-b border-border flex items-center gap-3">
         <img
-          src={`${import.meta.env.BASE_URL}pd-logo.png`}
+          src={`${import.meta.env.BASE_URL}sasp-logo.png`}
           alt="PD Logo"
           className="w-9 h-9 object-contain shrink-0 drop-shadow-md"
         />
@@ -340,7 +340,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Menu className="w-5 h-5" />
         </button>
         <img
-          src={`${import.meta.env.BASE_URL}pd-logo.png`}
+          src={`${import.meta.env.BASE_URL}sasp-logo.png`}
           alt="PD Logo"
           className="w-7 h-7 object-contain drop-shadow-md"
         />
