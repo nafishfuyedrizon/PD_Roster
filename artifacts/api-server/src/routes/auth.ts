@@ -255,7 +255,18 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     const isTempAllowed = hasTempAccess(discordUser.id);
 
     // Check staff roles table
-    const staffRows = await db.select().from(staffRolesTable).where(eq(staffRolesTable.discordUid, discordUser.id)).limit(1);
+    let staffRows: any[] = [];
+
+try {
+  staffRows = await db
+    .select()
+    .from(staffRolesTable)
+    .where(eq(staffRolesTable.discordUid, discordUser.id))
+    .limit(1);
+} catch (err) {
+  console.warn("[auth] Staff roles DB lookup skipped:", err);
+  staffRows = [];
+};
     const isStaffRole = staffRows.length > 0;
 
     // Use bot token to fetch guild member info — avoids needing guilds/guilds.members.read from user
