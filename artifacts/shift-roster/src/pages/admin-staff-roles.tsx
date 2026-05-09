@@ -107,7 +107,25 @@ export default function AdminStaffRolesPage() {
   },
   onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/staff-roles"] }),
 });
+const deleteMutation = useMutation({
+  mutationFn: async (id: number) => {
+    if (!confirm("Remove this staff role?")) return false;
 
+    const res = await fetch(`/api/admin/staff-roles/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      alert(`Delete failed: ${res.status} ${text}`);
+      throw new Error(text);
+    }
+
+    return true;
+  },
+  onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/admin/staff-roles"] }),
+});
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
