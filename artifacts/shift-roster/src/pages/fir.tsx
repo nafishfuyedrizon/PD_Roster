@@ -46,6 +46,17 @@ interface FirStats {
   topOfficers: { officer_name: string; firs: number }[];
 }
 
+function filterFirsByStatus(
+  firs: Fir[],
+  statusFilter: "all" | "pending" | "accepted" | "rejected" | "bookmarked",
+) {
+  return firs.filter((fir) => {
+    if (statusFilter === "bookmarked") return !!fir.bookmarked;
+    if (statusFilter === "all") return true;
+    return (fir.status ?? "pending") === statusFilter;
+  });
+}
+
 const BDT = "Asia/Dhaka";
 
 function formatDate(iso: string) {
@@ -715,7 +726,7 @@ export default function FirPage() {
   const rejectedCount   = rawFirs.filter(f => f.status === "rejected").length;
   const bookmarkedCount = rawFirs.filter(f => f.bookmarked).length;
 
-  const firs = [...visibleFirs]
+  const firs = [...filterFirsByStatus(visibleFirs, statusFilter)]
     .sort((a, b) => {
       const priority = (s: string) => (s === "pending" ? 0 : 1);
       const pa = priority(a.status ?? "pending");
