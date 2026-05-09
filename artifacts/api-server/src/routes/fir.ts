@@ -124,51 +124,82 @@ async function getMysqlFirRows(
     bookmarked: asBool(row.bookmarked),
   }));
 
-  const officers = await getMysqlOfficers();
-  const idToName = new Map<string, string>();
-  const displayToName = new Map<string, string>();
+      const officers = await getMysqlOfficers();
+  const idToOfficer = new Map<string, { id: number; name: string }>();
+  const displayToOfficer = new Map<string, { id: number; name: string }>();
   const discordIds = new Set<string>();
   const displayNames = new Set<string>();
 
   for (const fir of firs) {
     for (const reply of fir.threadReplies ?? []) {
-      if (reply.authorId) discordIds.add(reply.authorId);
-      else if (reply.author) displayNames.add(reply.author);
+      const replyAuthorId = (reply as any).authorId || (reply as any).authorid;
+      const replyAuthorName = (
+        (reply as any).authorName ||
+        (reply as any).author ||
+        (reply as any).username ||
+        ""
+      ).trim();
+
+      if (replyAuthorId) discordIds.add(String(replyAuthorId));
+      if (replyAuthorName) displayNames.add(replyAuthorName);
     }
   }
 
   for (const officer of officers) {
     if (!officer.name) continue;
-    if (officer.discordUid && discordIds.has(officer.discordUid)) {
-      idToName.set(officer.discordUid, officer.name);
+
+    const officerInfo = {
+      id: Number(officer.id),
+      name: officer.name,
+    };
+
+    if (officer.discordUid && discordIds.has(String(officer.discordUid))) {
+      idToOfficer.set(String(officer.discordUid), officerInfo);
     }
-    if (officer.discordId && discordIds.has(officer.discordId)) {
-      idToName.set(officer.discordId, officer.name);
+
+    if (officer.discordId && discordIds.has(String(officer.discordId))) {
+      idToOfficer.set(String(officer.discordId), officerInfo);
     }
+
     for (const displayName of displayNames) {
       const officerName = officer.name.toLowerCase();
       const display = displayName.toLowerCase();
+
       if (
         officerName.includes(display) ||
         display.includes(officerName.split(" ")[0] ?? "")
       ) {
-        displayToName.set(displayName, officer.name);
+        displayToOfficer.set(displayName, officerInfo);
       }
     }
   }
 
   return firs.map((fir) => ({
     ...fir,
-    threadReplies: fir.threadReplies?.map((reply) => ({
-      ...reply,
-      author:
-        (reply.authorId && idToName.get(reply.authorId)) ||
-        (reply.author && displayToName.get(reply.author)) ||
-        reply.author,
-    })) ?? null,
+    threadReplies: fir.threadReplies?.map((reply: any) => {
+      const replyAuthorId = reply.authorId || reply.authorid;
+      const replyAuthorName = (
+        reply.authorName ||
+        reply.author ||
+        reply.username ||
+        "Unknown Officer"
+      ).trim();
+
+      const matchedOfficer =
+        (replyAuthorId && idToOfficer.get(String(replyAuthorId))) ||
+        displayToOfficer.get(replyAuthorName) ||
+        null;
+
+      return {
+        ...reply,
+        authorId: replyAuthorId ?? null,
+        author: matchedOfficer?.name ?? replyAuthorName,
+        authorOfficerId: matchedOfficer?.id ?? null,
+        authorOfficerName: matchedOfficer?.name ?? null,
+      };
+    }) ?? null,
   }));
 }
-
 export function broadcastFirEvent(type: "new_fir" | "thread_update") {
   const data = JSON.stringify({ type, ts: Date.now() });
   for (const client of sseClients) {
@@ -299,6 +330,7 @@ router.patch("/fir/:id", async (req, res): Promise<void> => {
   if (guard(req, res, 2)) return;
   const id = Number(req.params.id);
   const { status, acceptedBy, officerName, rejectedBy } = req.body as { status: "accepted" | "rejected" | "pending"; acceptedBy?: string; officerName?: string; rejectedBy?: string };
+  const nextOfficerName = status === "accepted" ? (officerName ?? null) : null;
   if (!["accepted", "rejected", "pending"].includes(status)) {
     res.status(400).json({ error: "Invalid status" }); return;
   }

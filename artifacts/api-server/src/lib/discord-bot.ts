@@ -1004,7 +1004,7 @@ async function processFirMessage(msg: Message): Promise<"inserted" | "updated" |
                evidence = ?,
                officer_name = COALESCE(officer_name, ?),
                raw_content = ?,
-               thread_id = ?,
+               thread_replies = COALESCE(?, thread_replies),
                thread_replies = ?,
                status = ?,
                accepted_at = CASE

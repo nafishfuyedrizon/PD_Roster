@@ -78,11 +78,15 @@ router.get("/profile", async (req: Request, res: Response) => {
           .from(emsDutyLogsTable)
           .where(eq(emsDutyLogsTable.csNumber, officer.callSign));
 
-    const weeks = allWeekRows
+    const weeks = Array.from(
+  new Set(
+    allWeekRows
       .map((r) => r.weekPeriod)
-      .filter((w): w is string => !!w)
-      .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a))
-      .slice(0, 5);
+      .filter((w): w is string => !!w),
+  ),
+)
+  .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a))
+  .slice(0, 5);
 
     const duties: Record<string, Record<string, string>> = {};
     for (const week of weeks) {
@@ -184,11 +188,15 @@ router.get("/profile/view", async (req: Request, res: Response) => {
           .from(emsDutyLogsTable)
           .where(eq(emsDutyLogsTable.csNumber, officer.callSign));
 
-    const weeks = allWeekRows2
+    const weeks = Array.from(
+  new Set(
+    allWeekRows2
       .map((r) => r.weekPeriod)
-      .filter((w): w is string => !!w)
-      .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a))
-      .slice(0, 5);
+      .filter((w): w is string => !!w),
+  ),
+)
+  .sort((a, b) => weekPeriodSortKey(b) - weekPeriodSortKey(a))
+  .slice(0, 5);
     const duties: Record<string, Record<string, string>> = {};
     const SHIFT_TYPES_V = ["NORMAL", "TRAINING", "UNDERCOVER", "EXTRA", "ALL"];
     for (const week of weeks) {

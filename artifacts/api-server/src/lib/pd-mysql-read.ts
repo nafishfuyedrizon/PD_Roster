@@ -632,16 +632,16 @@ export async function getMysqlStaffRoles() {
      ORDER BY created_at ASC, id ASC`,
   );
   return rows.map((row) => ({
-    id: Number(row.id),
-    isSuperAdmin: asBool(row.isSuperAdmin),
-    isSeniorStaff: asBool(row.isSeniorStaff),
-    isStaff: asBool(row.isStaff),
-    isTrusted: asBool(row.isTrusted),
-    discordUid: row.discord_uid ?? "",
-    displayName: row.display_name ?? null,
-    addedBy: row.added_by ?? null,
-    createdAt: asDate(row.created_at),
-  }));
+  id: Number(row.id),
+  isSuperAdmin: asBool(row.is_super_admin),
+  isSeniorStaff: asBool(row.is_senior_staff),
+  isStaff: asBool(row.is_staff),
+  isTrusted: asBool(row.is_trusted),
+  discordUid: row.discord_uid ?? "",
+  displayName: row.display_name ?? null,
+  addedBy: row.added_by ?? null,
+  createdAt: asDate(row.created_at),
+}));
 }
 
 export async function getMysqlAdminDutyLogs(filters: {

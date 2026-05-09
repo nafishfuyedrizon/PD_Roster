@@ -98,13 +98,34 @@ function getRankOrder(rank: string): number {
 }
 
 function sortByRank(officers: Officer[]): Officer[] {
+  const deptOrder: Record<string, number> = {
+    SASP: 1,
+    BCSO: 2,
+    SAHP: 3,
+    SWAT: 4,
+    FTP: 5,
+    Management: 6,
+    PTA: 7,
+    IA: 8,
+    FIB: 9,
+    "Game Wardens": 10,
+  };
+
+  const getDeptOrder = (dept?: string | null): number => {
+    return deptOrder[dept ?? ""] ?? 99;
+  };
+
   return [...officers].sort((a, b) => {
     const rankDiff = getRankOrder(a.rank) - getRankOrder(b.rank);
     if (rankDiff !== 0) return rankDiff;
-    // Group same rank names together before sorting by name
-    const rankNameDiff = a.rank.localeCompare(b.rank);
-    if (rankNameDiff !== 0) return rankNameDiff;
-    return (a.name ?? "").localeCompare(b.name ?? "");
+
+    const deptDiff = getDeptOrder(a.department) - getDeptOrder(b.department);
+    if (deptDiff !== 0) return deptDiff;
+
+    return (a.callSign ?? "").localeCompare(b.callSign ?? "", undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
   });
 }
 
