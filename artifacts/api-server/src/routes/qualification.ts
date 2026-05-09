@@ -225,6 +225,36 @@ function parseDurationToSeconds(duration: string | null | undefined): number {
   return 0;
 }
 
+function dedupeMysqlDutyLogs<
+  T extends {
+    csNumber?: string | null;
+    officerName?: string | null;
+    logDate?: string | null;
+    shiftType?: string | null;
+    duration?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+  },
+>(logs: T[]): T[] {
+  const seen = new Set<string>();
+  const deduped: T[] = [];
+  for (const log of logs) {
+    const key = [
+      (log.csNumber ?? "").trim().toUpperCase(),
+      (log.officerName ?? "").trim().toLowerCase(),
+      log.logDate ?? "",
+      (log.shiftType ?? "").trim().toLowerCase(),
+      log.duration ?? "",
+      log.startTime ?? "",
+      log.endTime ?? "",
+    ].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(log);
+  }
+  return deduped;
+}
+
 function monthNameToNumber(value: string | null | undefined): number | null {
   if (!value) return null;
   const months = [
@@ -459,6 +489,8 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       acceptedFirCountMap.set(officerName, (acceptedFirCountMap.get(officerName) ?? 0) + 1);
     }
 
+    const dedupedDutyLogs = dedupeMysqlDutyLogs(dutyLogs);
+
     const rows = eligibleOfficers.map((officer) => {
       const entry = entryByName.get(officer.name ?? "") ?? null;
       const lastPromotion = officer.lastPromotion ?? entry?.lastPromotion ?? null;
@@ -467,7 +499,7 @@ router.get("/qualification-chart", async (_req, res): Promise<void> => {
       let hoursInRank = entry?.hoursInRank ?? 0;
 
       if (since) {
-        const dutyLogSeconds = dutyLogs
+        const dutyLogSeconds = dedupedDutyLogs
           .filter((log) => {
             if (log.csNumber !== officer.callSign && log.officerName !== officer.name) {
               return false;
