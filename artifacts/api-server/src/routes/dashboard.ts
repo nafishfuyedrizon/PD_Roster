@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { desc, eq } from "drizzle-orm";
 import { db, discordDutyEventsTable, emsDutyLogsTable, officersTable } from "@workspace/db";
 import { getAllSettings } from "./settings";
-import { findOfficerByDutyIdentity, getCurrentOpenDutySessions } from "../lib/duty-officer-match.js";
+import { findOfficerByDutyIdentity, getCurrentOpenDutySessions, normalizeLicenseId } from "../lib/duty-officer-match.js";
 import { BOT_DUTY_HEARTBEAT_KEY, DUTY_SYNC_STALE_AFTER_MS } from "../lib/discord-bot.js";
 import {
   getMysqlDutyEvents,
@@ -51,6 +51,102 @@ function parseHeartbeat(value: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+type OfficerRecord = {
+  callSign: string;
+  rockstarLicenseId?: string | null;
+  fivemName?: string | null;
+};
+
+type DutyEventRecord = {
+  licenseId: string;
+  officerName: string;
+};
+
+type FivemDutyGate = {
+  configured: boolean;
+  online: boolean;
+  onlineOfficerCallSigns: Set<string>;
+};
+
+function normalizePlayerName(value: unknown): string {
+  return typeof value === "string" ? value.toLowerCase().trim() : "";
+}
+
+async function getFivemDutyGate(
+  serverUrl: unknown,
+  officers: OfficerRecord[],
+  dutyEvents: DutyEventRecord[],
+): Promise<FivemDutyGate> {
+  if (typeof serverUrl !== "string" || !serverUrl.trim()) {
+    return { configured: false, online: false, onlineOfficerCallSigns: new Set() };
+  }
+
+  let fivemPlayers: unknown[] = [];
+  let online = false;
+
+  try {
+    const base = serverUrl.trim().replace(/\/$/, "");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const resp = await fetch(`${base}/players.json`, { signal: controller.signal }).finally(() =>
+      clearTimeout(timeout),
+    );
+
+    if (resp.ok) {
+      const body = await resp.json();
+      fivemPlayers = Array.isArray(body) ? body : [];
+      online = true;
+    }
+  } catch {
+    online = false;
+  }
+
+  if (!online) {
+    return { configured: true, online: false, onlineOfficerCallSigns: new Set() };
+  }
+
+  const licenseMap = new Map<string, OfficerRecord>();
+  const fivemNameMap = new Map<string, OfficerRecord>();
+
+  for (const officer of officers) {
+    const license = normalizeLicenseId(officer.rockstarLicenseId);
+    if (license) licenseMap.set(license, officer);
+
+    const fivemName = normalizePlayerName(officer.fivemName);
+    if (fivemName) fivemNameMap.set(fivemName, officer);
+  }
+
+  const dutyNameMap = new Map<string, OfficerRecord>();
+  for (const event of dutyEvents) {
+    const eventName = normalizePlayerName(event.officerName);
+    if (!eventName || dutyNameMap.has(eventName)) continue;
+
+    const officer = licenseMap.get(normalizeLicenseId(event.licenseId));
+    if (officer) dutyNameMap.set(eventName, officer);
+  }
+
+  const onlineOfficerCallSigns = new Set<string>();
+  for (const player of fivemPlayers) {
+    const playerData = player as { identifiers?: unknown; name?: unknown };
+    const identifiers = Array.isArray(playerData.identifiers) ? playerData.identifiers : [];
+    const rawLicense =
+      identifiers
+        .find((id): id is string => typeof id === "string" && id.startsWith("license:"))
+        ?.replace(/^license:/i, "")
+        .toLowerCase() ?? "";
+    const playerName = normalizePlayerName(playerData.name);
+
+    const officer =
+      licenseMap.get(rawLicense) ??
+      fivemNameMap.get(playerName) ??
+      dutyNameMap.get(playerName);
+
+    if (officer?.callSign) onlineOfficerCallSigns.add(officer.callSign);
+  }
+
+  return { configured: true, online: true, onlineOfficerCallSigns };
+}
+
 router.get("/dashboard", async (req, res): Promise<void> => {
   const now = new Date();
   const currentWeek = getWeekPeriod(now);
@@ -77,9 +173,16 @@ router.get("/dashboard", async (req, res): Promise<void> => {
     now.getTime() - lastDutySyncAt.getTime() <= DUTY_SYNC_STALE_AFTER_MS;
 
   // ── Live on duty ───────────────────────────────────────────────────────────
-  const openSessions = liveDutyFresh
+  const rawOpenSessions = liveDutyFresh
     ? getCurrentOpenDutySessions(allEvents, officers, now)
     : [];
+  const fivemDutyGate = await getFivemDutyGate(siteSettings.fivem_server_url, officers, allEvents);
+  const openSessions =
+    fivemDutyGate.configured && fivemDutyGate.online
+      ? rawOpenSessions.filter((session) =>
+          fivemDutyGate.onlineOfficerCallSigns.has(session.officer.callSign),
+        )
+      : rawOpenSessions;
   const liveOpenDutySecsByCs = Object.fromEntries(
     openSessions.map((session) => [session.officer.callSign, session.elapsedSecs]),
   );
@@ -291,6 +394,11 @@ router.get("/dashboard", async (req, res): Promise<void> => {
     liveOnDuty,
     recentDutyActivity,
     liveDutyFresh,
+    liveDutyGate: {
+      fivemConfigured: fivemDutyGate.configured,
+      fivemOnline: fivemDutyGate.online,
+      onlinePdOfficers: fivemDutyGate.onlineOfficerCallSigns.size,
+    },
     lastDutySyncAt: lastDutySyncAt?.toISOString() ?? null,
     stats: {
       totalMembers,
