@@ -59,6 +59,8 @@ function actionBadge(type: string) {
   if (type === "DELETE") return <Badge className="bg-red-600/20 text-red-400 border-red-600/30 text-[10px] px-1.5">DELETE</Badge>;
   if (type === "LOGIN")  return <Badge className="bg-teal-600/20 text-teal-400 border-teal-600/30 text-[10px] px-1.5">LOGIN</Badge>;
   if (type === "VOTE")   return <Badge className="bg-purple-600/20 text-purple-400 border-purple-600/30 text-[10px] px-1.5">VOTE</Badge>;
+  if (type === "CONNECT") return <Badge className="bg-cyan-600/20 text-cyan-300 border-cyan-600/30 text-[10px] px-1.5">CONNECT</Badge>;
+  if (type === "SYNC") return <Badge className="bg-amber-600/20 text-amber-300 border-amber-600/30 text-[10px] px-1.5">SYNC</Badge>;
   return <Badge className="bg-blue-600/20 text-blue-400 border-blue-600/30 text-[10px] px-1.5">UPDATE</Badge>;
 }
 
@@ -68,6 +70,8 @@ function actionIcon(type: string) {
   if (type === "LOGIN")  return <LogIn className="w-3.5 h-3.5 text-teal-400" />;
   if (type === "VOTE")   return <Vote className="w-3.5 h-3.5 text-purple-400" />;
   if (type === "UPDATE" ) return <Edit3 className="w-3.5 h-3.5 text-blue-400" />;
+  if (type === "CONNECT") return <Wifi className="w-3.5 h-3.5 text-cyan-300" />;
+  if (type === "SYNC") return <RefreshCw className="w-3.5 h-3.5 text-amber-300" />;
   return <Settings className="w-3.5 h-3.5 text-blue-400" />;
 }
 
@@ -218,7 +222,7 @@ export default function AdminLogsPage() {
 
             return (
               <div
-                key={log.id}
+                key={`${log.id}-${log.entityType}-${log.entityId ?? log.entityName ?? "log"}-${log.createdAt}`}
                 className="bg-secondary/30 border border-border/50 rounded-md px-4 py-3"
               >
                 <div className="flex items-start justify-between gap-3 flex-wrap">
