@@ -873,7 +873,7 @@ export default function PdDutyHourPage() {
           {statsLoading ? <Skeleton className="h-8 w-16" /> : (
             <div className="text-3xl font-bold text-foreground tabular-nums">{stats?.activePersonnel ?? 0}</div>
           )}
-          <div className="text-[10px] text-muted-foreground mt-0.5">with duty logged</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">active roster</div>
         </div>
         <div className="bg-card border border-border rounded-lg px-4 py-3" data-testid="stat-monthly-total">
           <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-1">

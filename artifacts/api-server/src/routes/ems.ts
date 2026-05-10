@@ -283,12 +283,9 @@ router.get("/ems/stats", async (req, res): Promise<void> => {
       ? getCurrentOpenDutyWeekSecsByCallSign(allDutyEvents, allPdOfficersForStats)
       : {};
 
-  // Active personnel = PD officers that are Active and have at least one duty log
-  const logCsSet = new Set(allLogs.filter((l) => hasPositiveDuty(l.dutyHours)).map((l) => l.csNumber));
-  Object.keys(liveWeekSecsByCs).forEach((cs) => logCsSet.add(cs));
-  const activePersonnel = allPdOfficersForStats.filter(
-    (o) => o.status === "Active" && logCsSet.has(o.callSign)
-  ).length;
+  // Active personnel is the roster status count. Officers with zero logged duty
+  // still belong in this summary card and are shown in the under-hours table.
+  const activePersonnel = allPdOfficersForStats.filter((o) => o.status === "Active").length;
 
   // Monthly total across all PD officer logs (aggregate across selected shifts)
   const pdLogSecs: Record<string, number> = {};
