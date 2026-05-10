@@ -471,6 +471,19 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
     const entry = byCs.get(cs);
     if (entry) {
       entry.totalMins = Math.max(0, entry.totalMins + Math.round(adjSecs / 60));
+      continue;
+    }
+
+    const officer = officerByCs.get(cs);
+    const adjMins = Math.round(adjSecs / 60);
+    if (officer && adjMins > 0) {
+      byCs.set(cs, {
+        name: officer.name ?? cs,
+        rank: officer.rank ?? "",
+        department: officer.department,
+        id: officer.id,
+        totalMins: adjMins,
+      });
     }
   }
 
