@@ -614,6 +614,7 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
 
     const officerMap = new Map(allOfficers.filter((o) => o.callSign).map((o) => [o.callSign, o]));
     const baseSecs: Record<string, number> = {};
+    const allShiftBuckets = new Map<string, { cs: string; hasAll: boolean; secs: number }>();
 
     for (const log of allLogs) {
       if (!officerMap.has(log.csNumber)) continue;
@@ -625,8 +626,29 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
         } else if (!resolvedShifts.includes(log.shiftType)) {
           continue;
         }
+        baseSecs[log.csNumber] = (baseSecs[log.csNumber] ?? 0) + parseHmsLocal(log.dutyHours);
+        continue;
       }
-      baseSecs[log.csNumber] = (baseSecs[log.csNumber] ?? 0) + parseHmsLocal(log.dutyHours);
+
+      const bucketKey = `${log.csNumber}::${log.weekPeriod}`;
+      const rowSecs = parseHmsLocal(log.dutyHours);
+      const existing = allShiftBuckets.get(bucketKey);
+      if (log.shiftType === "ALL") {
+        allShiftBuckets.set(bucketKey, { cs: log.csNumber, hasAll: true, secs: rowSecs });
+        continue;
+      }
+      if (existing?.hasAll) continue;
+      allShiftBuckets.set(bucketKey, {
+        cs: log.csNumber,
+        hasAll: false,
+        secs: (existing?.secs ?? 0) + rowSecs,
+      });
+    }
+
+    if (combinedShiftKey === "ALL") {
+      for (const bucket of allShiftBuckets.values()) {
+        baseSecs[bucket.cs] = (baseSecs[bucket.cs] ?? 0) + bucket.secs;
+      }
     }
 
     const adjRows = adjustments.filter((row) =>
@@ -698,6 +720,7 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
       name: officersTable.name,
       rank: officersTable.rank,
       status: officersTable.status,
+      lastPromotion: officersTable.lastPromotion,
     }).from(officersTable).orderBy(asc(officersTable.callSign)),
     db.select().from(emsDutyLogsTable).where(and(...logConds)),
     db.select().from(dutyAdjustmentsTable)
@@ -708,10 +731,34 @@ router.get("/admin/duty-adjustments", async (req, res): Promise<void> => {
   const officerMap = new Map(allOfficers.filter((o) => o.callSign).map((o) => [o.callSign!, o]));
 
   const baseSecs: Record<string, number> = {};
+  const allShiftBuckets = new Map<string, { cs: string; hasAll: boolean; secs: number }>();
   for (const l of allLogs) {
     if (!officerMap.has(l.csNumber)) continue;
     if (weekEndMonthNum(l.weekPeriod) !== monthNum) continue;
-    baseSecs[l.csNumber] = (baseSecs[l.csNumber] ?? 0) + parseHmsLocal(l.dutyHours);
+    if (combinedShiftKey !== "ALL") {
+      baseSecs[l.csNumber] = (baseSecs[l.csNumber] ?? 0) + parseHmsLocal(l.dutyHours);
+      continue;
+    }
+
+    const bucketKey = `${l.csNumber}::${l.weekPeriod}`;
+    const rowSecs = parseHmsLocal(l.dutyHours);
+    const existing = allShiftBuckets.get(bucketKey);
+    if (l.shiftType === "ALL") {
+      allShiftBuckets.set(bucketKey, { cs: l.csNumber, hasAll: true, secs: rowSecs });
+      continue;
+    }
+    if (existing?.hasAll) continue;
+    allShiftBuckets.set(bucketKey, {
+      cs: l.csNumber,
+      hasAll: false,
+      secs: (existing?.secs ?? 0) + rowSecs,
+    });
+  }
+
+  if (combinedShiftKey === "ALL") {
+    for (const bucket of allShiftBuckets.values()) {
+      baseSecs[bucket.cs] = (baseSecs[bucket.cs] ?? 0) + bucket.secs;
+    }
   }
 
   const adjSecs: Record<string, number> = {};

@@ -44,7 +44,7 @@ export async function mysqlExecute(
   query: string,
   params: unknown[] = [],
 ): Promise<mysql.ResultSetHeader> {
-  const [result] = await getMysqlPool().execute(query, params);
+  const [result] = await getMysqlPool().execute(query, params as any);
   return result as mysql.ResultSetHeader;
 }
 
@@ -222,10 +222,10 @@ type MysqlSiteSettingRow = {
 
 type MysqlStaffRoleJoinedRow = {
   id: number;
-  isSuperAdmin: unknown;
-  isSeniorStaff: unknown;
-  isStaff: unknown;
-  isTrusted: unknown;
+  is_super_admin: unknown;
+  is_senior_staff: unknown;
+  is_staff: unknown;
+  is_trusted: unknown;
   discord_uid: string | null;
   display_name: string | null;
   added_by: string | null;

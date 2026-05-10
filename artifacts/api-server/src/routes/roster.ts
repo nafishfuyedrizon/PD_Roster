@@ -39,6 +39,20 @@ function todayMDY(): string {
   return `${mm}/${dd}/${d.getFullYear()}`;
 }
 
+function weekEndMonth(wp: string | null | undefined): string {
+  const end = (wp ?? "").split("-")[1] ?? "";
+  return (end.split("/")[0] ?? "").padStart(2, "0");
+}
+
+function weekSortKey(wp: string, dutyYear: string | null | undefined): string {
+  const [start = "", end = ""] = wp.split("-");
+  const [startMonth = "00", startDay = "00"] = start.split("/");
+  const [endMonth = "00", endDay = "00"] = end.split("/");
+  const endYear = Number(dutyYear ?? new Date().getUTCFullYear());
+  const startYear = Number(startMonth) > Number(endMonth) ? endYear - 1 : endYear;
+  return `${String(endYear).padStart(4, "0")}-${endMonth.padStart(2, "0")}-${endDay.padStart(2, "0")}::${String(startYear).padStart(4, "0")}-${startMonth.padStart(2, "0")}-${startDay.padStart(2, "0")}`;
+}
+
 const router: IRouter = Router();
 
 const MYSQL_OFFICER_FIELD_MAP: Record<string, string> = {
@@ -335,15 +349,14 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
   const departmentBreakdown = Object.entries(deptMap).map(([department, count]) => ({ department, count }));
   const rankBreakdown = Object.entries(rankMap).map(([rank, count]) => ({ rank, count }));
 
-  // Top performers come from ems_duty_logs, filtered by period when specified
-  // weekPeriod format: "MM/DD-MM/DD" — start-month at chars 1-2 (SQL 1-indexed)
+  // Top performers come from ems_duty_logs, filtered by period when specified.
+  // Month views use the week end-month so they line up with Admin's monthly totals.
   // dutyYear column stores the 4-digit year for cross-year correctness
-  // Always filter by shift_type = 'ALL' to avoid double-counting per-shift rows
-  const logConditions: ReturnType<typeof eq>[] = [eq(emsDutyLogsTable.shiftType, "ALL")];
+  const logConditions: ReturnType<typeof eq>[] = [];
   if (weekPeriod) {
     logConditions.push(eq(emsDutyLogsTable.weekPeriod, weekPeriod));
   } else {
-    if (month) logConditions.push(sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 1, 2) = ${month}` as ReturnType<typeof eq>);
+    if (month) logConditions.push(sql`SUBSTRING(${emsDutyLogsTable.weekPeriod}, 7, 2) = ${month}` as ReturnType<typeof eq>);
     if (year)  logConditions.push(eq(emsDutyLogsTable.dutyYear, year));
   }
 
@@ -366,10 +379,9 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
       ? [
           getMysqlDutyLogs().then((rows) =>
             rows.filter((row) => {
-              if (row.shiftType !== "ALL") return false;
               if (weekPeriod && row.weekPeriod !== weekPeriod) return false;
               if (!weekPeriod) {
-                if (month && row.weekPeriod.slice(0, 2) !== month) return false;
+                if (month && weekEndMonth(row.weekPeriod) !== month) return false;
                 if (year && row.dutyYear !== year) return false;
               }
               return true;
@@ -389,7 +401,7 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
           ),
         ]
       : [
-          db.select().from(emsDutyLogsTable).where(and(...logConditions)),
+          db.select().from(emsDutyLogsTable).where(logConditions.length ? and(...logConditions) : undefined),
           db.select().from(dutyAdjustmentsTable).where(and(...adjConditions)),
         ],
   );
@@ -418,13 +430,29 @@ router.get("/roster/stats", async (req, res): Promise<void> => {
     });
   }
 
+  const weeklyBuckets = new Map<string, { log: typeof dutyLogs[number]; mins: number; hasAll: boolean }>();
   for (const log of dutyLogs) {
+    const bucketKey = `${log.csNumber}::${log.weekPeriod}`;
+    const mins = parseDutyMinutes(log.dutyHours);
+    const existing = weeklyBuckets.get(bucketKey);
+    if (log.shiftType === "ALL") {
+      weeklyBuckets.set(bucketKey, { log, mins, hasAll: true });
+      continue;
+    }
+    if (existing?.hasAll) continue;
+    weeklyBuckets.set(bucketKey, {
+      log,
+      mins: (existing?.mins ?? 0) + mins,
+      hasAll: false,
+    });
+  }
+
+  for (const { log, mins } of weeklyBuckets.values()) {
     const key = log.csNumber;
     // Only include PD officers — skip any call signs not in the roster
     const officer = officerByCs.get(key);
     if (!officer) continue;
     const existing = byCs.get(key);
-    const mins = parseDutyMinutes(log.dutyHours);
     if (!existing) {
       byCs.set(key, {
         name: officer.name ?? log.name,
@@ -515,15 +543,20 @@ router.get("/roster/fto-pairs", async (req, res): Promise<void> => {
 
 router.get("/roster/week-periods", async (_req, res): Promise<void> => {
   const periods = isMysqlDatabaseUrl
-    ? [...new Set((await getMysqlDutyLogs()).map((row) => row.weekPeriod))]
-        .filter((period) => period && period.trim() !== "")
-        .sort((a, b) => b.localeCompare(a))
-    : (await db
-        .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod })
+    ? [...new Map(
+        (await getMysqlDutyLogs())
+          .filter((row) => row.weekPeriod && row.weekPeriod.trim() !== "")
+          .sort((a, b) => weekSortKey(b.weekPeriod, b.dutyYear).localeCompare(weekSortKey(a.weekPeriod, a.dutyYear)))
+          .map((row) => [row.weekPeriod, row.weekPeriod] as const),
+      ).values()]
+    : [...new Map((await db
+        .selectDistinct({ weekPeriod: emsDutyLogsTable.weekPeriod, dutyYear: emsDutyLogsTable.dutyYear })
         .from(emsDutyLogsTable)
-        .orderBy(desc(emsDutyLogsTable.weekPeriod)))
-        .map((r) => r.weekPeriod)
-        .filter((p) => p && p.trim() !== "");
+        .orderBy(desc(emsDutyLogsTable.dutyYear), desc(emsDutyLogsTable.weekPeriod)))
+        .sort((a, b) => weekSortKey(b.weekPeriod, b.dutyYear).localeCompare(weekSortKey(a.weekPeriod, a.dutyYear)))
+        .filter((r) => r.weekPeriod && r.weekPeriod.trim() !== "")
+        .map((r) => [r.weekPeriod, r.weekPeriod] as const),
+      ).values()];
   res.json(ListWeekPeriodsResponse.parse(periods));
 });
 
